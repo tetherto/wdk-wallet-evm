@@ -13,6 +13,4 @@
 // limitations under the License.
 'use strict'
 
-import WalletManagerEvm from './src/index.js'
-
-export { WalletManagerEvm }
+export { default } from './src/wallet-manager-evm.js' 

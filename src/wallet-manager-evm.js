@@ -15,36 +15,13 @@
 
 import { HDNodeWallet, Mnemonic, JsonRpcProvider } from 'ethers'
 
-import WalletAccountEvm from './account.js'
+import WalletAccountEvm from './wallet-account-evm.js'
 
 const BIP_44_ETH_DERIVATION_PATH_BASE = 'm/44\'/60\'/0\'/0'
 
 export default class WalletManagerEvm {
   #wallet
   #provider
-
-  /**
-   * Generates a random BIP-39 seed phrase
-   * @returns {string} Returns a random BIP-39 seed phrase
-  */
-  static getRandomSeedPhrase () {
-    const wallet = HDNodeWallet.createRandom()
-    return wallet.mnemonic.phrase
-  }
-
-  /**
-   * Checks if a BIP-39 seed phrase is valid
-   * @param {string} seedPhrase - The wallet’s BIP-39 seed phrase.
-   * @returns {boolean} Returns `true` if the seed phrase is valid
-  */
-  static isValidSeedPhrase (seedPhrase) {
-    try {
-      Mnemonic.fromPhrase(seedPhrase)
-      return true
-    } catch {
-      return false
-    }
-  }
 
   /**
    * Creates an instance of WalletManagerEvm
@@ -69,6 +46,24 @@ export default class WalletManagerEvm {
   }
 
   /**
+   * Generates a random BIP-39 seed phrase
+   * @returns {string} Returns a random BIP-39 seed phrase
+  */
+   static getRandomSeedPhrase () {
+    const wallet = HDNodeWallet.createRandom()
+    return wallet.mnemonic.phrase
+  }
+
+  /**
+   * Checks if a BIP-39 seed phrase is valid
+   * @param {string} seedPhrase - The wallet’s BIP-39 seed phrase.
+   * @returns {boolean} Returns `true` if the seed phrase is valid
+  */
+  static isValidSeedPhrase (seedPhrase) {
+    return Mnemonic.isValidMnemonic(seedPhrase)
+  }
+
+  /**
   * Get the seed phrase.
   * @returns {string}
   */
@@ -78,10 +73,10 @@ export default class WalletManagerEvm {
 
   /**
    * Returns the wallet account at a specific index
-   * @param {number} index - The index of the account to get
+   * @param {number} [index] - The index of the account to get
    * @returns {WalletAccountEvm} The account
   */
-  getAccount (index) {
+  getAccount (index = 0) {
     const account = this.#wallet.derivePath(index.toString())
 
     return new WalletAccountEvm(account)
