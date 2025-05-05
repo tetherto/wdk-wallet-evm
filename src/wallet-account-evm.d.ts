@@ -8,6 +8,10 @@
  * @property {string} to - The transaction's recipient.
  * @property {number} value - The amount of ethers to send to the recipient (in weis).
  * @property {string} [data] - The transaction's data in hex format.
+ * @property {number} [gasLimit] - The maximum amount of gas this transaction is permitted to use.
+ * @property {number} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
+ * @property {number} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
+ * @property {number} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
  */
 export default class WalletAccountEvm {
     constructor(account: any);
@@ -95,4 +99,20 @@ export type EvmTransaction = {
      * - The transaction's data in hex format.
      */
     data?: string;
+    /**
+     * - The maximum amount of gas this transaction is permitted to use.
+     */
+    gasLimit?: number;
+    /**
+     * - The price (in wei) per unit of gas this transaction will pay.
+     */
+    gasPrice?: number;
+    /**
+     * - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
+     */
+    maxFeePerGas?: number;
+    /**
+     * - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
+     */
+    maxPriorityFeePerGas?: number;
 };
