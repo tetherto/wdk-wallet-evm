@@ -54,15 +54,6 @@ export default class WalletAccountEvm {
   }
 
   /**
-   * The account's address.
-   *
-   * @type {string}
-   */
-  get address () {
-    return this.#account.address
-  }
-
-  /**
    * The account's key pair.
    *
    * @type {KeyPair}
@@ -72,6 +63,15 @@ export default class WalletAccountEvm {
       privateKey: this.#account.privateKey,
       publicKey: this.#account.publicKey
     }
+  }
+
+  /**
+   * Returns the account's address.
+   * 
+   * @returns {Promise<string>} The account's address.
+   */
+  async getAddress() {
+    return this.#account.address
   }
 
   /**
@@ -124,7 +124,7 @@ export default class WalletAccountEvm {
     }
 
     const balance = await this.#account.provider.getBalance(this.address)
-    
+
     return Number(balance)
   }
 

@@ -24,17 +24,17 @@ export default class WalletAccountEvm {
      */
     get path(): number;
     /**
-     * The account's address.
-     *
-     * @type {string}
-     */
-    get address(): string;
-    /**
      * The account's key pair.
      *
      * @type {KeyPair}
      */
     get keyPair(): KeyPair;
+    /**
+     * Returns the account's address.
+     *
+     * @returns {Promise<string>} The account's address.
+     */
+    getAddress(): Promise<string>;
     /**
      * Signs a message.
      *
