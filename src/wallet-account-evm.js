@@ -15,11 +15,6 @@
 
 import { verifyMessage, Contract } from 'ethers'
 
-const ERC_20_ABI = [
-  'function balanceOf(address owner) view returns (uint256)',
-  'function decimals() view returns (uint8)'
-]
-
 /**
  * @typedef {Object} KeyPair
  * @property {string} publicKey - The public key.
@@ -27,9 +22,9 @@ const ERC_20_ABI = [
  */
 
 /**
- * @typedef {Object} Transaction
+ * @typedef {Object} EvmTransaction
  * @property {string} to - The transaction's recipient.
- * @property {number} value - The amount of native tokens to send to the recipient.
+ * @property {number} value - The amount of ethers to send to the recipient (in weis).
  * @property {string} [data] - The transaction's data in hex format.
  */
 
@@ -105,7 +100,7 @@ export default class WalletAccountEvm {
   /**
    * Sends a transaction with arbitrary data.
    *
-   * @param {Transaction} tx - The transaction to send.
+   * @param {EvmTransaction} tx - The transaction to send.
    * @returns {Promise<string>} The transaction's hash.
    */
   async sendTransaction (tx) {
@@ -129,11 +124,12 @@ export default class WalletAccountEvm {
     }
 
     const balance = await this.#account.provider.getBalance(this.address)
+    
     return Number(balance)
   }
 
   /**
-   * Returns the account balance for a specific token in its base unit (e.g., 1 USDT will return 1_000_000).
+   * Returns the account balance for a specific token in its base unit.
    *
    * @param {string} tokenAddress - The smart contract address of the token.
    * @returns {Promise<number>} The token balance.
@@ -143,9 +139,10 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to retrieve token balances.')
     }
 
-    const tokenContract = new Contract(tokenAddress, ERC_20_ABI, this.#account.provider)
-    const rawBalance = await tokenContract.balanceOf(this.address)
+    const abi = [ 'function balanceOf(address owner) view returns (uint256)' ]
+    const token = new Contract(tokenAddress, abi, this.#account.provider)
+    const balance = await token.balanceOf(this.address)
 
-    return Number(rawBalance)
+    return Number(balance)
   }
 }
