@@ -127,7 +127,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to retrieve balances.')
     }
 
-    const balance = await this.#account.provider.getBalance(this.address)
+    const balance = await this.#account.provider.getBalance(await this.getAddress())
 
     return Number(balance)
   }
@@ -145,7 +145,7 @@ export default class WalletAccountEvm {
 
     const abi = [ 'function balanceOf(address owner) view returns (uint256)' ]
     const token = new Contract(tokenAddress, abi, this.#account.provider)
-    const balance = await token.balanceOf(this.address)
+    const balance = await token.balanceOf(await this.getAddress())
 
     return Number(balance)
   }
