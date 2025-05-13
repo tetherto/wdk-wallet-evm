@@ -65,9 +65,18 @@ export default class WalletAccountEvm {
      * Quotes a transaction.
      *
      * @param {EvmTransaction} tx - The transaction to quote.
-     * @returns {Promise<string>} The transaction’s fee (in weis).
+     * @returns {Promise<number>} The transaction’s fee (in weis).
      */
-    quoteTransaction(tx: EvmTransaction): Promise<string>;
+    quoteTransaction(tx: EvmTransaction): Promise<number>;
+    /**
+     * Returns the current fee rates.
+     *
+     * @returns {Promise<{ normal: number, fast: number }>} The fee rates (in weis).
+     */
+    getFeeRates(): Promise<{
+        normal: number;
+        fast: number;
+    }>;
     /**
      * Returns the account's native token balance.
      *
