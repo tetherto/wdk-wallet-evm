@@ -54,3 +54,4 @@ export type EvmWalletConfig = {
      */
     rpcUrl?: string;
 };
+import WalletAccountEvm from './wallet-account-evm.js';
