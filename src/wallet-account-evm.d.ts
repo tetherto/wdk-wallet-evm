@@ -35,9 +35,9 @@ export default class WalletAccountEvm {
     /**
      * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
      *
-     * @type {number}
+     * @type {string}
      */
-    get path(): number;
+    get path(): string;
     /**
      * The account's key pair.
      *

@@ -93,7 +93,7 @@ export default class WalletAccountEvm {
   /**
    * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
    *
-   * @type {number}
+   * @type {string}
    */
   get path () {
     return this.#account.path
