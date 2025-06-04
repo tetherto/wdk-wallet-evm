@@ -1,4 +1,5 @@
 import hre from 'hardhat'
+import { mnemonicToSeedSync } from 'bip39'
 import { wordlists } from 'ethers'
 
 import WalletManagerEvm from '../src/wallet-manager-evm.js'
@@ -11,11 +12,16 @@ describe('WalletManagerEvm', () => {
   let walletManager
 
   beforeEach(async () => {
-    walletManager = new WalletManagerEvm(SEED_PHRASE, {
-      rpcUrl: hre.network.provider,
+    const seedBytes = mnemonicToSeedSync(SEED_PHRASE)
+    walletManager = new WalletManagerEvm(seedBytes, {
+      provider: hre.network.provider,
     })
 
     await hre.network.provider.send('hardhat_reset')
+  })
+
+  afterEach(() => {
+    walletManager.dispose()
   })
 
   test('shouwld throw if seed phrase is invalid', () => {
@@ -71,10 +77,10 @@ describe('WalletManagerEvm', () => {
     })
   })
 
-  describe('seedPhrase getter', () => {
+  describe('seed getter', () => {
     test('returns the original seed phrase used during construction', () => {
       const wallet = new WalletManagerEvm(SEED_PHRASE)
-      expect(wallet.seedPhrase).toBe(SEED_PHRASE)
+      expect(wallet.seed).toStrictEqual(mnemonicToSeedSync(SEED_PHRASE))
     })
 
     test('throws if constructed with an invalid seed phrase', () => {

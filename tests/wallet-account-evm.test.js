@@ -1,11 +1,13 @@
 import hre from 'hardhat'
-
+import { createHmac } from 'crypto'
 import { isAddress, HDNodeWallet, JsonRpcProvider, ContractFactory, parseUnits, BrowserProvider } from 'ethers';
+import * as secp256k1 from '@noble/secp256k1'
 
 import WalletAccountEvm from '../src/wallet-account-evm.js'
 import WalletManagerEvm from '../src/wallet-manager-evm.js'
 
 import MyToken from './abis/MyToken.json' with { type: "json" }
+import { afterEach } from '@jest/globals';
 
 const SEED_PHRASE = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 
@@ -14,6 +16,12 @@ describe('WalletAccountEvm', () => {
   let myTokenAddress
 
   beforeAll(async () => {
+    secp256k1.etc.hmacSha256Sync = (key, ...messages) => {
+      const hmac = createHmac('sha256', key)
+      messages.forEach(msg => hmac.update(msg))
+      return hmac.digest()
+    }
+
     const hdNode = HDNodeWallet.fromPhrase(SEED_PHRASE);
     const provider = new BrowserProvider(hre.network.provider)
 
@@ -31,7 +39,11 @@ describe('WalletAccountEvm', () => {
   })
 
   beforeEach(async () => {
-    account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { rpcUrl: hre.network.provider })
+    account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: hre.network.provider })
+  })
+
+  afterEach(() => {
+    account.dispose()
   })
 
   test('shouwld throw if seed phrase is invalid', () => {
@@ -55,8 +67,8 @@ describe('WalletAccountEvm', () => {
   describe('keyPair getter', () => {
     test('returns the correct key pair', () => {
       expect(account.keyPair).toEqual({
-        privateKey: expect.any(String),
-        publicKey: expect.any(String)
+        privateKey: expect.any(Uint8Array),
+        publicKey: expect.any(Uint8Array)
       })
     })
   })
