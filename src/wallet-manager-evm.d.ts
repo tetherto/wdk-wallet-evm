@@ -15,16 +15,16 @@ export default class WalletManagerEvm {
     /**
      * Creates a new wallet manager for evm blockchains.
      *
-     * @param {string} seedPhrase - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
-    constructor(seedPhrase: string, config?: EvmWalletConfig);
+    constructor(seed: string | Uint8Array, config?: EvmWalletConfig);
     /**
      * The seed phrase of the wallet.
      *
-     * @type {string}
+     * @type {Uint8Array}
      */
-    get seedPhrase(): string;
+    get seed(): Uint8Array;
     /**
      * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
      *
@@ -54,6 +54,10 @@ export default class WalletManagerEvm {
         normal: number;
         fast: number;
     }>;
+    /**
+     * Disposes all the wallet accounts, and erases their private keys from the memory.
+     */
+    dispose(): void;
     #private;
 }
 export type EvmWalletConfig = import("./wallet-account-evm.js").EvmWalletConfig;

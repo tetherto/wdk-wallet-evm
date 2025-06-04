@@ -14,7 +14,11 @@
 
 'use strict'
 
-import { BrowserProvider, Contract, HDNodeWallet, JsonRpcProvider, Mnemonic, verifyMessage } from 'ethers'
+import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage } from 'ethers'
+
+import * as bip39 from 'bip39'
+
+import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 
 /**
  * @typedef {import('ethers').Eip1193Provider} Eip1193Provider
@@ -22,8 +26,8 @@ import { BrowserProvider, Contract, HDNodeWallet, JsonRpcProvider, Mnemonic, ver
 
 /**
  * @typedef {Object} KeyPair
- * @property {string} publicKey - The public key.
- * @property {string} privateKey - The private key.
+ * @property {Uint8Array} publicKey - The public key.
+ * @property {Uint8Array} privateKey - The private key.
  */
 
 /**
@@ -39,7 +43,7 @@ import { BrowserProvider, Contract, HDNodeWallet, JsonRpcProvider, Mnemonic, ver
 
 /**
  * @typedef {Object} EvmWalletConfig
- * @property {string | Eip1193Provider} [rpcUrl] - The url of the rpc provider, or an instance of a class that implements eip-1193.
+ * @property {string | Eip1193Provider} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193.
  */
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
@@ -50,25 +54,30 @@ export default class WalletAccountEvm {
   /**
    * Creates a new evm wallet account.
    *
-   * @param {string} seedPhrase - The bip-39 mnemonic.
+   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
    * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
-  constructor (seedPhrase, path, config = {}) {
-    if (!Mnemonic.isValidMnemonic(seedPhrase)) {
-      throw new Error('The seed phrase is invalid.')
+  constructor (seed, path, config = {}) {
+    if (typeof seed === 'string') {
+      if (!bip39.validateMnemonic(seed)) {
+        throw new Error('The seed phrase is invalid.')
+      }
+
+      seed = bip39.mnemonicToSeedSync(seed)
     }
 
-    const wallet = HDNodeWallet.fromPhrase(seedPhrase, undefined, BIP_44_ETH_DERIVATION_PATH_PREFIX)
+    path = BIP_44_ETH_DERIVATION_PATH_PREFIX + '/' + path
 
-    this.#account = wallet.derivePath(path)
+    this.#account = MemorySafeHDNodeWallet.fromSeed(seed)
+      .derivePath(path)
 
-    const { rpcUrl } = config
+    let { provider } = config
 
-    if (rpcUrl) {
-      const provider = typeof rpcUrl === 'string'
-        ? new JsonRpcProvider(rpcUrl)
-        : new BrowserProvider(rpcUrl)
+    if (provider) {
+      provider = typeof provider === 'string'
+        ? new JsonRpcProvider(provider)
+        : new BrowserProvider(provider)
 
       this.#account = this.#account.connect(provider)
     }
@@ -99,8 +108,8 @@ export default class WalletAccountEvm {
    */
   get keyPair () {
     return {
-      privateKey: this.#account.privateKey,
-      publicKey: this.#account.publicKey
+      privateKey: this.#account.privateKeyBuffer,
+      publicKey: this.#account.publicKeyBuffer
     }
   }
 
@@ -201,5 +210,12 @@ export default class WalletAccountEvm {
     const balance = await token.balanceOf(await this.getAddress())
 
     return Number(balance)
+  }
+
+  /**
+   * Disposes the wallet account, and erases the private key from the memory.
+   */
+  dispose () {
+    this.#account.dispose()
   }
 }

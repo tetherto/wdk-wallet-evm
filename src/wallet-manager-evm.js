@@ -14,7 +14,9 @@
 
 'use strict'
 
-import { BrowserProvider, HDNodeWallet, JsonRpcProvider, Mnemonic } from 'ethers'
+import { BrowserProvider, JsonRpcProvider } from 'ethers'
+
+import * as bip39 from 'bip39'
 
 import WalletAccountEvm from './wallet-account-evm.js'
 
@@ -24,31 +26,37 @@ const FEE_RATE_FAST_MULTIPLIER = 2.0
 /** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 export default class WalletManagerEvm {
-  #seedPhrase
+  #seed
   #config
+  #accounts
+
   #provider
 
   /**
    * Creates a new wallet manager for evm blockchains.
    *
-   * @param {string} seedPhrase - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
-  constructor (seedPhrase, config = {}) {
-    if (!WalletManagerEvm.isValidSeedPhrase(seedPhrase)) {
-      throw new Error('The seed phrase is invalid.')
+  constructor (seed, config = {}) {
+    if (typeof seed === 'string') {
+      if (!WalletManagerEvm.isValidSeedPhrase(seed)) {
+        throw new Error('The seed phrase is invalid.')
+      }
+
+      seed = bip39.mnemonicToSeedSync(seed)
     }
 
-    this.#seedPhrase = seedPhrase
-
+    this.#seed = seed
     this.#config = config
+    this.#accounts = { }
 
-    const { rpcUrl } = config
+    const { provider } = config
 
-    if (rpcUrl) {
-      this.#provider = typeof rpcUrl === 'string'
-        ? new JsonRpcProvider(rpcUrl)
-        : new BrowserProvider(rpcUrl)
+    if (provider) {
+      this.#provider = typeof provider === 'string'
+        ? new JsonRpcProvider(provider)
+        : new BrowserProvider(provider)
     }
   }
 
@@ -58,9 +66,7 @@ export default class WalletManagerEvm {
    * @returns {string} The seed phrase.
    */
   static getRandomSeedPhrase () {
-    const wallet = HDNodeWallet.createRandom()
-
-    return wallet.mnemonic.phrase
+    return bip39.generateMnemonic()
   }
 
   /**
@@ -70,16 +76,16 @@ export default class WalletManagerEvm {
    * @returns {boolean} True if the seed phrase is valid.
    */
   static isValidSeedPhrase (seedPhrase) {
-    return Mnemonic.isValidMnemonic(seedPhrase)
+    return bip39.validateMnemonic(seedPhrase)
   }
 
   /**
    * The seed phrase of the wallet.
    *
-   * @type {string}
+   * @type {Uint8Array}
    */
-  get seedPhrase () {
-    return this.#seedPhrase
+  get seed () {
+    return this.#seed
   }
 
   /**
@@ -105,7 +111,13 @@ export default class WalletManagerEvm {
    * @returns {Promise<WalletAccountEvm>} The account.
    */
   async getAccountByPath (path) {
-    return new WalletAccountEvm(this.#seedPhrase, path, this.#config)
+    if (!this.#accounts[path]) {
+      const account = new WalletAccountEvm(this.#seed, path, this.#config)
+
+      this.#accounts[path] = account
+    }
+
+    return this.#accounts[path]
   }
 
   /**
@@ -126,5 +138,16 @@ export default class WalletManagerEvm {
       normal: Math.round(maxFeePerGas * FEE_RATE_NORMAL_MULTIPLIER),
       fast: maxFeePerGas * FEE_RATE_FAST_MULTIPLIER
     }
+  }
+
+  /**
+   * Disposes all the wallet accounts, and erases their private keys from the memory.
+   */
+  dispose () {
+    for (const account of Object.values(this.#accounts)) {
+      account.dispose()
+    }
+
+    this.#accounts = { }
   }
 }
