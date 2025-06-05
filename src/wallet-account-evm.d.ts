@@ -2,11 +2,11 @@ export default class WalletAccountEvm {
     /**
      * Creates a new evm wallet account.
      *
-     * @param {string} seedPhrase - The bip-39 mnemonic.
+     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
      * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
-    constructor(seedPhrase: string, path: string, config?: EvmWalletConfig);
+    constructor(seed: string | Uint8Array, path: string, config?: EvmWalletConfig);
     /**
      * The derivation path's index of this account.
      *
@@ -73,17 +73,22 @@ export default class WalletAccountEvm {
      * @returns {Promise<number>} The token balance.
      */
     getTokenBalance(tokenAddress: string): Promise<number>;
+    /**
+     * Disposes the wallet account, and erases the private key from the memory.
+     */
+    dispose(): void;
     #private;
 }
+export type Eip1193Provider = import('ethers').Eip1193Provider;
 export type KeyPair = {
     /**
      * - The public key.
      */
-    publicKey: string;
+    publicKey: Uint8Array;
     /**
      * - The private key.
      */
-    privateKey: string;
+    privateKey: Uint8Array;
 };
 export type EvmTransaction = {
     /**
@@ -117,7 +122,7 @@ export type EvmTransaction = {
 };
 export type EvmWalletConfig = {
     /**
-     * - The rpc url of the provider.
+     * - The url of the rpc provider, or an instance of a class that implements eip-1193.
      */
-    rpcUrl?: string;
+    provider?: string | Eip1193Provider;
 };
