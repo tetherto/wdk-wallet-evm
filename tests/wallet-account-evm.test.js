@@ -8,7 +8,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/
 
 import { WalletAccountEvm } from '../index.js'
 
-import TestToken from './abis/TestToken.json'
+import TestToken from './abis/TestToken.json' with { type: 'json' }
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
