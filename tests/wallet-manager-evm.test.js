@@ -1,7 +1,5 @@
 import hre from 'hardhat'
 
-import { wordlists } from 'ethers'
-
 import * as bip39 from 'bip39'
 
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
@@ -59,7 +57,7 @@ describe('WalletManagerEvm', () => {
       expect(words).toHaveLength(12)
 
       words.forEach(word => {
-        expect(wordlists.en.getWordIndex(word))
+        expect(bip39.wordlists.EN.includes(word))
           .not.toBe(-1)
       })
     })
