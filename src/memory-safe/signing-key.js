@@ -21,7 +21,7 @@ import { sodium_memzero } from 'sodium-universal'
 
 import * as secp256k1 from '@noble/secp256k1'
 import { hmac } from '@noble/hashes/hmac'
-import { sha256 } from '@noble/hashes/sha2'
+import { sha256 } from '@noble/hashes/sha256'
 
 const NULL = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
