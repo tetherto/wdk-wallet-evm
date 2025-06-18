@@ -41,6 +41,14 @@ export default class WalletManagerEvm extends AbstractWalletManager {
     super(seed, config)
 
     /**
+     * The evm wallet configuration.
+     * 
+     * @protected
+     * @type {EvmWalletConfig}
+     */
+    this._config = config
+
+    /**
      * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
      *
      * @protected

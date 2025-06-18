@@ -7,6 +7,13 @@ export default class WalletManagerEvm {
      */
     constructor(seed: string | Uint8Array, config?: EvmWalletConfig);
     /**
+     * The evm wallet configuration.
+     *
+     * @protected
+     * @type {EvmWalletConfig}
+     */
+    protected _config: EvmWalletConfig;
+    /**
      * A map between derivation paths and wallet accounts. It contains all the wallet accounts that have been accessed through the {@link getAccount} and {@link getAccountByPath} methods.
      *
      * @protected
