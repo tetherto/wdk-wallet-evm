@@ -1,6 +1,14 @@
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm implements IWalletAccount {
     /**
+     * Resolves the transaction data needed for EVM transfers.
+     *
+     * @protected
+     * @param {TransferOptions} options - The transfer's options.
+     * @returns {EvmTransaction} The evm transaction.
+     */
+    protected static _getTransferTx(options: TransferOptions): EvmTransaction;
+    /**
      * Creates a new evm wallet account.
      *
      * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.

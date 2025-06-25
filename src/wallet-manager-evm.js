@@ -42,7 +42,7 @@ export default class WalletManagerEvm extends AbstractWalletManager {
 
     /**
      * The evm wallet configuration.
-     * 
+     *
      * @protected
      * @type {EvmWalletConfig}
      */

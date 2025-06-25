@@ -50,22 +50,6 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
-function getTransferTx (options) {
-  const { token, recipient, amount } = options
-
-  const abi = ['function transfer(address to, uint256 amount) returns (bool)']
-
-  const contract = new Contract(token, abi)
-
-  const tx = {
-    to: token,
-    value: 0,
-    data: contract.interface.encodeFunctionData('transfer', [recipient, amount])
-  }
-
-  return tx
-}
-
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm {
   /**
@@ -264,7 +248,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to transfer tokens.')
     }
 
-    const tx = getTransferTx(options)
+    const tx = WalletAccountEvm._getTransferTx(options)
 
     const { fee } = await this.quoteSendTransaction(tx)
 
@@ -290,7 +274,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to quote transfer operations.')
     }
 
-    const tx = getTransferTx(options)
+    const tx = WalletAccountEvm._getTransferTx(options)
 
     const result = await this.quoteSendTransaction(tx)
 
@@ -302,5 +286,28 @@ export default class WalletAccountEvm {
    */
   dispose () {
     this._account.dispose()
+  }
+
+  /**
+   * Resolves the transaction data needed for EVM transfers.
+   *
+   * @protected
+   * @param {TransferOptions} options - The transfer's options.
+   * @returns {EvmTransaction} The evm transaction.
+   */
+  static _getTransferTx (options) {
+    const { token, recipient, amount } = options
+
+    const abi = ['function transfer(address to, uint256 amount) returns (bool)']
+
+    const contract = new Contract(token, abi)
+
+    const tx = {
+      to: token,
+      value: 0,
+      data: contract.interface.encodeFunctionData('transfer', [recipient, amount])
+    }
+
+    return tx
   }
 }
