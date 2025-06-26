@@ -248,7 +248,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to transfer tokens.')
     }
 
-    const tx = WalletAccountEvm._getTransferTx(options)
+    const tx = await this._getTransferTx(options)
 
     const { fee } = await this.quoteSendTransaction(tx)
 
@@ -274,7 +274,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to quote transfer operations.')
     }
 
-    const tx = WalletAccountEvm._getTransferTx(options)
+    const tx = await this._getTransferTx(options)
 
     const result = await this.quoteSendTransaction(tx)
 
@@ -295,7 +295,7 @@ export default class WalletAccountEvm {
    * @param {TransferOptions} options - The transfer's options.
    * @returns {EvmTransaction} The evm transaction.
    */
-  static _getTransferTx (options) {
+  async _getTransferTx (options) {
     const { token, recipient, amount } = options
 
     const abi = ['function transfer(address to, uint256 amount) returns (bool)']
@@ -305,7 +305,8 @@ export default class WalletAccountEvm {
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('transfer', [recipient, amount])
+      data: contract.interface.encodeFunctionData('transfer', [recipient, amount]),
+      from: await this.getAddress()
     }
 
     return tx
