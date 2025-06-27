@@ -1,4 +1,4 @@
-export default class WalletManagerEvm {
+export default class WalletManagerEvm extends AbstractWalletManager {
     /**
      * Creates a new wallet manager for evm blockchains.
      *
@@ -63,4 +63,5 @@ export default class WalletManagerEvm {
 export type Provider = import("ethers").Provider;
 export type FeeRates = import("@wdk/wallet").FeeRates;
 export type EvmWalletConfig = import("./wallet-account-evm.js").EvmWalletConfig;
+import AbstractWalletManager from '@wdk/wallet';
 import WalletAccountEvm from './wallet-account-evm.js';

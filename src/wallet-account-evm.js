@@ -208,14 +208,11 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to send transactions.')
     }
 
-    const transaction = await this._account.sendTransaction(tx)
+    const { fee } = await this.quoteSendTransaction(tx)
 
-    const { hash, fee } = await transaction.wait()
+    const { hash } = await this._account.sendTransaction(tx)
 
-    return {
-      hash,
-      fee: Number(fee)
-    }
+    return { hash, fee }
   }
 
   /**
@@ -248,7 +245,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to transfer tokens.')
     }
 
-    const tx = WalletAccountEvm._getTransferTx(options)
+    const tx = await this._getTransferTransaction(options)
 
     const { fee } = await this.quoteSendTransaction(tx)
 
@@ -257,9 +254,9 @@ export default class WalletAccountEvm {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
-    const result = await this.sendTransaction(tx)
+    const { hash } = await this._account.sendTransaction(tx)
 
-    return result
+    return { hash, fee }
   }
 
   /**
@@ -274,7 +271,7 @@ export default class WalletAccountEvm {
       throw new Error('The wallet must be connected to a provider to quote transfer operations.')
     }
 
-    const tx = WalletAccountEvm._getTransferTx(options)
+    const tx = await this._getTransferTransaction(options)
 
     const result = await this.quoteSendTransaction(tx)
 
@@ -289,13 +286,13 @@ export default class WalletAccountEvm {
   }
 
   /**
-   * Resolves the transaction data needed for EVM transfers.
+   * Returns an evm transaction to execute the given token transfer.
    *
    * @protected
    * @param {TransferOptions} options - The transfer's options.
-   * @returns {EvmTransaction} The evm transaction.
+   * @returns {Promise<EvmTransaction>} The evm transaction.
    */
-  static _getTransferTx (options) {
+  async _getTransferTransaction (options) {
     const { token, recipient, amount } = options
 
     const abi = ['function transfer(address to, uint256 amount) returns (bool)']
@@ -303,6 +300,7 @@ export default class WalletAccountEvm {
     const contract = new Contract(token, abi)
 
     const tx = {
+      from: await this.getAddress(),
       to: token,
       value: 0,
       data: contract.interface.encodeFunctionData('transfer', [recipient, amount])

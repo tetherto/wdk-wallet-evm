@@ -1,14 +1,6 @@
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm implements IWalletAccount {
     /**
-     * Resolves the transaction data needed for EVM transfers.
-     *
-     * @protected
-     * @param {TransferOptions} options - The transfer's options.
-     * @returns {EvmTransaction} The evm transaction.
-     */
-    protected static _getTransferTx(options: TransferOptions): EvmTransaction;
-    /**
      * Creates a new evm wallet account.
      *
      * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
@@ -116,9 +108,17 @@ export default class WalletAccountEvm implements IWalletAccount {
      * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;
+    /**
+     * Returns an evm transaction to execute the given token transfer.
+     *
+     * @protected
+     * @param {TransferOptions} options - The transfer's options.
+     * @returns {Promise<EvmTransaction>} The evm transaction.
+     */
+    protected _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
 }
-export type HDNodeWallet = import('ethers').HDNodeWallet;
-export type Eip1193Provider = import('ethers').Eip1193Provider;
+export type HDNodeWallet = import("ethers").HDNodeWallet;
+export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type IWalletAccount = import("@wdk/wallet").IWalletAccount;
 export type KeyPair = import("@wdk/wallet").KeyPair;
 export type TransactionResult = import("@wdk/wallet").TransactionResult;

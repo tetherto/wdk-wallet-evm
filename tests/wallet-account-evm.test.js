@@ -208,17 +208,17 @@ describe('WalletAccountEvm', () => {
         value: 1_000
       }
 
+      const EXPECTED_FEE = 57_752_750_000_000
+
       const { hash, fee } = await account.sendTransaction(TRANSACTION)
 
       const transaction = await hre.ethers.provider.getTransaction(hash)
-
-      const receipt = await hre.ethers.provider.getTransactionReceipt(hash)
 
       expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSACTION.to)
       expect(transaction.value).toBe(BigInt(TRANSACTION.value))
 
-      expect(receipt.fee).toBe(BigInt(fee))
+      expect(fee).toBe(EXPECTED_FEE)
     })
 
     test('should successfully send a transaction with arbitrary data', async () => {
@@ -228,18 +228,18 @@ describe('WalletAccountEvm', () => {
         data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
       }
 
+      const EXPECTED_FEE = 66_814_000_000_000
+
       const { hash, fee } = await account.sendTransaction(TRANSACTION_WITH_DATA)
 
       const transaction = await hre.ethers.provider.getTransaction(hash)
-
-      const receipt = await hre.ethers.provider.getTransactionReceipt(hash)
 
       expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSACTION_WITH_DATA.to)
       expect(transaction.value).toBe(BigInt(TRANSACTION_WITH_DATA.value))
       expect(transaction.data).toBe(TRANSACTION_WITH_DATA.data)
 
-      expect(receipt.fee).toBe(BigInt(fee))
+      expect(fee).toBe(EXPECTED_FEE)
     })
 
     test('should throw if the account is not connected to a provider', async () => {
@@ -294,11 +294,11 @@ describe('WalletAccountEvm', () => {
         amount: 100
       }
 
+      const EXPECTED_FEE = 143_352_000_000_000
+
       const { hash, fee } = await account.transfer(TRANSFER)
 
       const transaction = await hre.ethers.provider.getTransaction(hash)
-
-      const receipt = await hre.ethers.provider.getTransactionReceipt(hash)
 
       expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSFER.token)
@@ -308,7 +308,7 @@ describe('WalletAccountEvm', () => {
 
       expect(transaction.data).toBe(data)
 
-      expect(receipt.fee).toBe(BigInt(fee))
+      expect(fee).toBe(EXPECTED_FEE)
     })
 
     test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
