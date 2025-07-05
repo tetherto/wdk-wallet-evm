@@ -105,7 +105,7 @@ export default class WalletAccountEvm implements IWalletAccount {
      */
     quoteTransfer(options: TransferOptions): Promise<Omit<TransferResult, "hash">>;
     /**
-     * Returns a transaction’s receipt.
+     * Returns a transaction's receipt.
      *
      * @param {string} hash - The transaction's hash.
      * @returns {Promise<EvmTransactionReceipt | null>} – The receipt, or null if the transaction has not been included in a block yet.

@@ -220,7 +220,7 @@ export default class WalletAccountEvm {
   /**
    * Quotes the costs of a send transaction operation.
    *
-   * @see {sendTransaction}
+   * @see {@link sendTransaction}
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
@@ -264,7 +264,7 @@ export default class WalletAccountEvm {
   /**
    * Quotes the costs of a transfer operation.
    *
-   * @see {transfer}
+   * @see {@link transfer}
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    */
@@ -281,14 +281,14 @@ export default class WalletAccountEvm {
   }
 
   /**
-   * Returns a transaction’s receipt.
+   * Returns a transaction's receipt.
    *
    * @param {string} hash - The transaction's hash.
    * @returns {Promise<EvmTransactionReceipt | null>} – The receipt, or null if the transaction has not been included in a block yet.
    */
   async getTransactionReceipt (hash) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to get the transaction receipt.')
+      throw new Error('The wallet must be connected to a provider to fetch transaction receipts.')
     }
 
     return await this._account.provider.getTransactionReceipt(hash)

@@ -375,11 +375,11 @@ describe('WalletAccountEvm', () => {
 
   describe('getTransactionReceipt', () => {
     test('should return the correct transaction receipt', async () => {
-      const [sender, receiver] = await hre.ethers.getSigners();
+      const [sender] = await hre.ethers.getSigners();
 
       const TRANSACTION = {
         to: "0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd",
-        value: 0,
+        value: 0
       }
 
       const { hash } = await sender.sendTransaction(TRANSACTION);
@@ -400,9 +400,12 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
+      const HASH = '0xe60970cd7685466037bac1ff337e08265ac9f48af70a12529bdca5caf5a2b14b'
+
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
-      await expect(account.getTransactionReceipt('0x123')).rejects.toThrow('The wallet must be connected to a provider to get the transaction receipt.')
+      await expect(account.getTransactionReceipt(HASH))
+        .rejects.toThrow('The wallet must be connected to a provider to fetch transaction receipts.')
     })
   })
 
