@@ -2,7 +2,7 @@ import hre from 'hardhat'
 
 import { ContractFactory } from 'ethers'
 
-import { describe, expect, test, beforeAll, afterAll } from '@jest/globals'
+import { describe, expect, test, beforeEach, afterEach } from '@jest/globals'
 
 import WalletManagerEvm from '../../index.js'
 
@@ -50,7 +50,7 @@ describe('@wdk/wallet-evm', () => {
     await hre.network.provider.send('hardhat_reset')
   }
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     await reset()
     wallet = new WalletManagerEvm(SEED_PHRASE, {
       provider: hre.network.provider
@@ -59,7 +59,7 @@ describe('@wdk/wallet-evm', () => {
     account1 = await wallet.getAccountByPath("0'/0/1")
   })
 
-  afterAll(async () => {
+  afterEach(async () => {
     await hre.network.provider.send('hardhat_reset')
   })
 
@@ -144,7 +144,7 @@ describe('@wdk/wallet-evm', () => {
       amount: txAmount
     }
 
-    const EXPECTED_FEE = 121_999_315_190_976
+    const EXPECTED_FEE = 143_352_000_000_000
 
     const { fee } = await account0.quoteTransfer(TRANSACTION)
 
