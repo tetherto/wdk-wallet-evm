@@ -385,5 +385,4 @@ describe('WalletAccountEvm', () => {
         .rejects.toThrow('The wallet must be connected to a provider to fetch transaction receipts.')
     })
   })
-
 })

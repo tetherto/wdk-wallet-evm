@@ -188,4 +188,93 @@ describe('WalletAccountReadOnlyEvm', () => {
         .rejects.toThrow('invalid BytesLike value')
     })
   })
+
+  describe('sendTransaction', () => {
+    test('should throw error for read-only account', async () => {
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      await expect(account.sendTransaction(TRANSACTION))
+        .rejects.toThrow('Sending transactions is not supported for read-only accounts')
+    })
+
+    test('should throw error for read-only account with arbitrary data', async () => {
+      const TRANSACTION_WITH_DATA = {
+        to: testToken.target,
+        value: 0,
+        data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
+      }
+
+      await expect(account.sendTransaction(TRANSACTION_WITH_DATA))
+        .rejects.toThrow('Sending transactions is not supported for read-only accounts')
+    })
+
+    test('should throw read-only error before provider check', async () => {
+      const account = new WalletAccountReadOnlyEvm(ACCOUNT.address)
+
+      await expect(account.sendTransaction({ }))
+        .rejects.toThrow('Sending transactions is not supported for read-only accounts')
+    })
+  })
+
+  describe('quoteSendTransaction', () => {
+    test('should successfully quote a transaction', async () => {
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const EXPECTED_FEE = 49_611_983_472_910
+
+      const { fee } = await account.quoteSendTransaction(TRANSACTION)
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should successfully quote a transaction with arbitrary data', async () => {
+      const TRANSACTION_WITH_DATA = {
+        to: testToken.target,
+        value: 0,
+        data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
+      }
+
+      const EXPECTED_FEE = 57_395_969_261_360
+
+      const { fee } = await account.quoteSendTransaction(TRANSACTION_WITH_DATA)
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const account = new WalletAccountReadOnlyEvm(ACCOUNT.address)
+
+      await expect(account.quoteSendTransaction({ }))
+        .rejects.toThrow('The wallet must be connected to a provider to quote send transaction operations.')
+    })
+  })
+
+  describe('quoteTransfer', () => {
+    test('should successfully quote a transfer operation', async () => {
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100
+      }
+
+      const EXPECTED_FEE = 123_145_253_772_480
+
+      const { fee } = await account.quoteTransfer(TRANSFER)
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const account = new WalletAccountReadOnlyEvm(ACCOUNT.address)
+
+      await expect(account.quoteTransfer({ }))
+        .rejects.toThrow('The wallet must be connected to a provider to quote transfer operations.')
+    })
+  })
 }) 
