@@ -88,4 +88,14 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountEvm {
   async sendTransaction (tx) {
     throw new Error('Sending transactions is not supported for read-only accounts')
   }
+
+  /**
+     * This method is not supported in read-only accounts.
+     *
+     * @param {import('./wallet-account-evm.js').TransferOptions} options - The transfer's options.
+     * @throws {Error} Always throws an error since transferring tokens is not supported.
+     */
+  async transfer (options) {
+    throw new Error('Transferring tokens is not supported for read-only accounts')
+  }
 }

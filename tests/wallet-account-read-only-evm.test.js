@@ -255,6 +255,42 @@ describe('WalletAccountReadOnlyEvm', () => {
     })
   })
 
+  describe('transfer', () => {
+    test('should throw error for read-only account', async () => {
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100
+      }
+
+      await expect(account.transfer(TRANSFER))
+        .rejects.toThrow('Transferring tokens is not supported for read-only accounts')
+    })
+
+    test('should throw read-only error regardless of transfer fee configuration', async () => {
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100
+      }
+
+      const account = new WalletAccountReadOnlyEvm(ACCOUNT.address, {
+        provider: hre.network.provider,
+        transferMaxFee: 0
+      })
+
+      await expect(account.transfer(TRANSFER))
+        .rejects.toThrow('Transferring tokens is not supported for read-only accounts')
+    })
+
+    test('should throw read-only error regardless of provider connection', async () => {
+      const account = new WalletAccountReadOnlyEvm(ACCOUNT.address)
+
+      await expect(account.transfer({ }))
+        .rejects.toThrow('Transferring tokens is not supported for read-only accounts')
+    })
+  })
+
   describe('quoteTransfer', () => {
     test('should successfully quote a transfer operation', async () => {
       const TRANSFER = {

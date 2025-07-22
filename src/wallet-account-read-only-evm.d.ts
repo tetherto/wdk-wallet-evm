@@ -34,10 +34,27 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountEvm {
     sign(message: string): Promise<never>;
 
     /**
+     * Verifies a message's signature.
+     * 
+     * @param {string} message - The original message.
+     * @param {string} signature - The signature to verify.
+     * @returns {Promise<boolean>} True if the signature is valid and matches this account's address.
+     */
+    verify(message: string, signature: string): Promise<boolean>;
+
+    /**
      * Sends a transaction. This operation is not supported for read-only accounts.
      * 
      * @param {EvmTransaction} tx - The transaction.
      * @throws {Error} Always throws an error as sending transactions is not supported.
      */
     sendTransaction(tx: EvmTransaction): Promise<never>;
+
+    /**
+     * Transfers tokens. This operation is not supported for read-only accounts.
+     * 
+     * @param {TransferOptions} options - The transfer's options.
+     * @throws {Error} Always throws an error as transferring tokens is not supported.
+     */
+    transfer(options: TransferOptions): Promise<never>;
 } 
