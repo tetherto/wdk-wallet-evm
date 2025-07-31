@@ -169,7 +169,7 @@ export default class WalletAccountEvm extends WalletAccountEvmReadOnly {
       throw new Error('The wallet must be connected to a provider to transfer tokens.')
     }
 
-    const tx = await this._getTransferTransaction(options)
+    const tx = await WalletAccountEvm._getTransferTransaction(options)
 
     const { fee } = await this.quoteSendTransaction(tx)
 

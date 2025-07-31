@@ -61,7 +61,7 @@ export default class WalletAccountReadOnlyEvm extends AbstractWalletAccountReadO
      * @param {TransferOptions} options - The transfer's options.
      * @returns {Promise<EvmTransaction>} The evm transaction.
      */
-    protected _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
+    protected static _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;

@@ -145,7 +145,7 @@ export default class WalletAccountReadOnlyEvm extends AbstractWalletAccountReadO
       throw new Error('The wallet must be connected to a provider to quote transfer operations.')
     }
 
-    const tx = await this._getTransferTransaction(options)
+    const tx = await WalletAccountReadOnlyEvm._getTransferTransaction(options)
 
     const result = await this.quoteSendTransaction(tx)
 
@@ -173,7 +173,7 @@ export default class WalletAccountReadOnlyEvm extends AbstractWalletAccountReadO
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<EvmTransaction>} The evm transaction.
    */
-  async _getTransferTransaction (options) {
+  static async _getTransferTransaction (options) {
     const { token, recipient, amount } = options
 
     const abi = ['function transfer(address to, uint256 amount) returns (bool)']
