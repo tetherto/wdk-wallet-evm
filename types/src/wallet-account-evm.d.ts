@@ -70,6 +70,12 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     transfer(options: TransferOptions): Promise<TransferResult>;
     /**
+     * Returns a read-only copy of the account.
+     *
+     * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
+     */
+    toReadOnlyAccount(): Promise<WalletAccountReadOnlyEvm>;
+    /**
      * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;

@@ -182,6 +182,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
+   * Returns a read-only copy of the account.
+   *
+   * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
+   */
+  async toReadOnlyAccount () {
+    const readOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
+
+    return readOnlyAccount
+  }
+
+  /**
    * Disposes the wallet account, erasing the private key from the memory.
    */
   dispose () {

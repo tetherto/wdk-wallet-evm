@@ -52,7 +52,7 @@ export default class WalletManagerEvm extends AbstractWalletManager {
     /**
      * Returns the current fee rates.
      *
-     * @returns {Promise<FeeRates>} The fee rates.
+     * @returns {Promise<FeeRates>} The fee rates (in weis).
      */
     getFeeRates(): Promise<FeeRates>;
     /**
