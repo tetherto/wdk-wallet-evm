@@ -29,8 +29,7 @@ const HardenedBit = 0x80000000
 
 const _guard = { }
 
-// eslint-disable-next-line camelcase
-function ser_I (index, chainCode, publicKey, privateKeyBuffer) {
+function serI (index, chainCode, publicKey, privateKeyBuffer) {
   const data = new Uint8Array(37)
 
   if (index & HardenedBit) {
@@ -156,7 +155,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       if (index & HardenedBit) { path += "'" }
     }
 
-    const { IR, IL } = ser_I(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
+    const { IR, IL } = serI(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
 
     const overflow = addToPrivateKey(this.privateKeyBuffer, IL)
 
@@ -179,10 +178,10 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
   }
 
   static fromSeed (seed) {
-    return MemorySafeHDNodeWallet.#fromSeed(seed, null)
+    return MemorySafeHDNodeWallet._fromSeed(seed, null)
   }
 
-  static #fromSeed (_seed, mnemonic) {
+  static _fromSeed (_seed, mnemonic) {
     assertArgument(isBytesLike(_seed), 'invalid seed', 'seed', '[REDACTED]')
 
     const seed = getBytes(_seed, 'seed')

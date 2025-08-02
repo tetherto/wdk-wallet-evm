@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { AbstractWalletAccountReadOnly } from '@wdk/wallet'
+import { WalletAccountReadOnly } from '@wdk/wallet'
 
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 
@@ -43,7 +43,7 @@ import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
  * @property {number} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
 
-export default class WalletAccountReadOnlyEvm extends AbstractWalletAccountReadOnly {
+export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Creates a new evm read-only wallet account.
    *

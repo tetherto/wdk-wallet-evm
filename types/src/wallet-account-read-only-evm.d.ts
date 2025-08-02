@@ -1,4 +1,4 @@
-export default class WalletAccountReadOnlyEvm extends AbstractWalletAccountReadOnly {
+export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Returns an evm transaction to execute the given token transfer.
      *
@@ -109,4 +109,4 @@ export type EvmWalletConfig = {
      */
     transferMaxFee?: number;
 };
-import { AbstractWalletAccountReadOnly } from '@wdk/wallet';
+import { WalletAccountReadOnly } from '@wdk/wallet';

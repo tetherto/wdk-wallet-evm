@@ -171,8 +171,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const { fee } = await this.quoteSendTransaction(tx)
 
-    // eslint-disable-next-line eqeqeq
-    if (this._config.transferMaxFee != undefined && fee >= this._config.transferMaxFee) {
+    if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 

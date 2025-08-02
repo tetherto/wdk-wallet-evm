@@ -14,7 +14,7 @@
 
 'use strict'
 
-import AbstractWalletManager from '@wdk/wallet'
+import WalletManager from '@wdk/wallet'
 
 import { BrowserProvider, JsonRpcProvider } from 'ethers'
 
@@ -30,7 +30,7 @@ const FEE_RATE_NORMAL_MULTIPLIER = 1.1
 
 const FEE_RATE_FAST_MULTIPLIER = 2.0
 
-export default class WalletManagerEvm extends AbstractWalletManager {
+export default class WalletManagerEvm extends WalletManager {
   /**
    * Creates a new wallet manager for evm blockchains.
    *

@@ -30,8 +30,8 @@ const ACCOUNT_1 = {
   }
 }
 
-const INITIAL_BALANCE = 1_000_000_000_000_000_000,
-      INITIAL_TOKEN_BALANCE = 1_000_000
+const INITIAL_BALANCE = 1_000_000_000_000_000_000
+const INITIAL_TOKEN_BALANCE = 1_000_000
 
 async function deployTestToken () {
   const [signer] = await hre.ethers.getSigners()
@@ -47,8 +47,8 @@ async function deployTestToken () {
 
 describe('@wdk/wallet-evm', () => {
   let testToken,
-      wallet
-  
+    wallet
+
   async function sendEthersTo (to, value) {
     const [signer] = await hre.ethers.getSigners()
     const transaction = await signer.sendTransaction({ to, value })
@@ -68,7 +68,7 @@ describe('@wdk/wallet-evm', () => {
 
       await sendTestTokensTo(account.address, BigInt(INITIAL_TOKEN_BALANCE))
     }
-  
+
     wallet = new WalletManagerEvm(SEED_PHRASE, {
       provider: hre.network.provider
     })
@@ -104,9 +104,9 @@ describe('@wdk/wallet-evm', () => {
   })
 
   test('should derive two accounts, send a tx from account 1 to 2 and get the correct balances', async () => {
-    const account0 = await wallet.getAccount(0),
-          account1 = await wallet.getAccount(1)
-    
+    const account0 = await wallet.getAccount(0)
+    const account1 = await wallet.getAccount(1)
+
     const TRANSACTION = {
       to: await account1.getAddress(),
       value: 1_000
@@ -116,15 +116,15 @@ describe('@wdk/wallet-evm', () => {
     const receipt = await hre.ethers.provider.getTransactionReceipt(hash)
     const fee = parseInt(receipt.fee)
 
-    const balanceAccount0 = await account0.getBalance(),
-          balanceAccount1 = await account1.getBalance()
+    const balanceAccount0 = await account0.getBalance()
+    const balanceAccount1 = await account1.getBalance()
 
     expect(balanceAccount0).toBe(INITIAL_BALANCE - fee - 1_000)
 
     expect(balanceAccount1).toBe(INITIAL_BALANCE + 1_000)
   })
 
-  test("should derive an account by its path, quote the cost of transferring a token and transfer a token", async () => {
+  test('should derive an account by its path, quote the cost of transferring a token and transfer a token', async () => {
     const account = await wallet.getAccountByPath("0'/0/0")
 
     const TRANSFER = {
@@ -153,9 +153,9 @@ describe('@wdk/wallet-evm', () => {
   })
 
   test('should derive two accounts by their paths, transfer a token from account 1 to 2 and get the correct balances and token balances', async () => {
-    const account0 = await wallet.getAccountByPath("0'/0/0"),
-          account1 = await wallet.getAccountByPath("0'/0/1")
-    
+    const account0 = await wallet.getAccountByPath("0'/0/0")
+    const account1 = await wallet.getAccountByPath("0'/0/1")
+
     const TRANSFER = {
       token: testToken.target,
       recipient: await account1.getAddress(),
@@ -170,8 +170,8 @@ describe('@wdk/wallet-evm', () => {
 
     expect(balanceAccount0).toBe(INITIAL_BALANCE - fee)
 
-    const tokenBalanceAccount0 = await account0.getTokenBalance(testToken.target),
-          tokenBalanceAccount1 = await account1.getTokenBalance(testToken.target)
+    const tokenBalanceAccount0 = await account0.getTokenBalance(testToken.target)
+    const tokenBalanceAccount1 = await account1.getTokenBalance(testToken.target)
 
     expect(tokenBalanceAccount0).toBe(INITIAL_TOKEN_BALANCE - 100)
 
@@ -179,8 +179,8 @@ describe('@wdk/wallet-evm', () => {
   })
 
   test('should derive two accounts, approve x tokens from account 1 to 2, transfer x tokens from account 1 to 2 and get the correct balances and token balances', async () => {
-    const account0 = await wallet.getAccount(0),
-          account1 = await wallet.getAccount(1)
+    const account0 = await wallet.getAccount(0)
+    const account1 = await wallet.getAccount(1)
 
     const TRANSACTION_APPROVE = {
       to: testToken.target,
@@ -210,15 +210,15 @@ describe('@wdk/wallet-evm', () => {
     const transferFromReceipt = await hre.ethers.provider.getTransactionReceipt(transferFromHash)
     const transferFromFee = parseInt(transferFromReceipt.fee)
 
-    const balanceAccount0 = await account0.getBalance(),
-          balanceAccount1 = await account1.getBalance()
+    const balanceAccount0 = await account0.getBalance()
+    const balanceAccount1 = await account1.getBalance()
 
     expect(balanceAccount0).toBe(INITIAL_BALANCE - approveFee)
 
     expect(balanceAccount1).toBe(INITIAL_BALANCE - transferFromFee)
 
-    const tokenBalanceAccount0 = await account0.getTokenBalance(testToken.target),
-          tokenBalanceAccount1 = await account1.getTokenBalance(testToken.target)
+    const tokenBalanceAccount0 = await account0.getTokenBalance(testToken.target)
+    const tokenBalanceAccount1 = await account1.getTokenBalance(testToken.target)
 
     expect(tokenBalanceAccount0).toBe(INITIAL_TOKEN_BALANCE - 100)
 
@@ -227,7 +227,7 @@ describe('@wdk/wallet-evm', () => {
 
   test('should derive an account, sign a message and verify its signature', async () => {
     const account = await wallet.getAccount(0)
-    
+
     const MESSAGE = 'Hello, world!'
 
     const signature = await account.sign(MESSAGE)
@@ -236,9 +236,9 @@ describe('@wdk/wallet-evm', () => {
   })
 
   test('should dispose the wallet and erase the private keys of the accounts', async () => {
-    const account0 = await wallet.getAccount(0),
-          account1 = await wallet.getAccount(1)
-    
+    const account0 = await wallet.getAccount(0)
+    const account1 = await wallet.getAccount(1)
+
     wallet.dispose()
 
     const MESSAGE = 'Hello, world!'
