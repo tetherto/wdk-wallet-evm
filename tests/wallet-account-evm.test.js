@@ -6,7 +6,7 @@ import * as bip39 from 'bip39'
 
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 
-import { WalletAccountEvm } from '../index.js'
+import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
 
@@ -242,6 +242,16 @@ describe('WalletAccountEvm', () => {
 
       await expect(account.transfer({ }))
         .rejects.toThrow('The wallet must be connected to a provider to transfer tokens.')
+    })
+  })
+
+  describe('toReadOnlyAccount', () => {
+    test('should return a read-only copy of the account', async () => {
+      const readOnlyAccount = await account.toReadOnlyAccount()
+
+      expect(readOnlyAccount).toBeInstanceOf(WalletAccountReadOnlyEvm)
+
+      expect(await readOnlyAccount.getAddress()).toBe(ACCOUNT.address)
     })
   })
 })

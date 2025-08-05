@@ -58,10 +58,6 @@ describe('WalletAccountReadOnlyEvm', () => {
 
   describe('getBalance', () => {
     test('should return the correct balance of the account', async () => {
-      const account = new WalletAccountReadOnlyEvm(ADDRESS, {
-        provider: hre.network.provider
-      })
-
       const balance = await account.getBalance()
 
       expect(balance).toBe(INITIAL_BALANCE)
@@ -77,10 +73,6 @@ describe('WalletAccountReadOnlyEvm', () => {
 
   describe('getTokenBalance', () => {
     test('should return the correct token balance of the account', async () => {
-      const account = new WalletAccountReadOnlyEvm(ADDRESS, {
-        provider: hre.network.provider
-      })
-
       const balance = await account.getTokenBalance(testToken.target)
 
       expect(balance).toBe(INITIAL_TOKEN_BALANCE)
