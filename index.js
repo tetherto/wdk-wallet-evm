@@ -30,3 +30,5 @@ export { default } from './src/wallet-manager-evm.js'
 export { default as WalletAccountReadOnlyEvm } from './src/wallet-account-read-only-evm.js'
 
 export { default as WalletAccountEvm } from './src/wallet-account-evm.js'
+
+export { default as LedgerWalletAccountEvm } from './src/ledger-wallet-account-evm.js'

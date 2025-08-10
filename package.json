@@ -15,6 +15,8 @@
     "test:integration:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage"
   },
   "dependencies": {
+    "@ethers-ext/signer-ledger": "^6.0.0-beta.1",
+    "@ledgerhq/hw-transport-mocker": "^6.29.8",
     "@noble/curves": "1.9.2",
     "@noble/secp256k1": "2.2.3",
     "@wdk/wallet": "https://github.com/tetherto/wdk-wallet#develop",
