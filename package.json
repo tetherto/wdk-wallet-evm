@@ -14,16 +14,6 @@
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",
     "test:integration:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage"
   },
-  "exports": {
-    ".": {
-      "bare": "./bare.js",
-      "import": "./index.js",
-      "types": "./index.d.ts"
-    },
-    "./package": {
-      "default": "./package.json"
-    }
-  },
   "dependencies": {
     "@noble/curves": "1.9.2",
     "@noble/secp256k1": "2.2.3",
@@ -47,5 +37,15 @@
     "rimraf": "6.0.1",
     "standard": "17.1.2",
     "typescript": "5.8.3"
+  },
+  "exports": {
+    ".": {
+      "bare": "./bare.js",
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./package": {
+      "default": "./package.json"
+    }
   }
 }
