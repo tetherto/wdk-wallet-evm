@@ -1,3 +1,19 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+'use strict'
+
 import {
   assert, assertArgument, assertPrivate, BaseWallet, computeHmac, dataSlice, defineProperties,
   getBytes, getNumber, hexlify, isBytesLike, ripemd160, sha256
@@ -13,8 +29,7 @@ const HardenedBit = 0x80000000
 
 const _guard = { }
 
-// eslint-disable-next-line camelcase
-function ser_I (index, chainCode, publicKey, privateKeyBuffer) {
+function serI (index, chainCode, publicKey, privateKeyBuffer) {
   const data = new Uint8Array(37)
 
   if (index & HardenedBit) {
@@ -96,6 +111,7 @@ function compareWithCurveOrder (buffer, offset = 0) {
   return 0
 }
 
+/** @internal */
 export default class MemorySafeHDNodeWallet extends BaseWallet {
   constructor (guard, signingKey, parentFingerprint, chainCode, path, index, depth, mnemonic, provider) {
     super(signingKey, provider)
@@ -139,7 +155,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       if (index & HardenedBit) { path += "'" }
     }
 
-    const { IR, IL } = ser_I(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
+    const { IR, IL } = serI(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
 
     const overflow = addToPrivateKey(this.privateKeyBuffer, IL)
 
@@ -162,10 +178,10 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
   }
 
   static fromSeed (seed) {
-    return MemorySafeHDNodeWallet.#fromSeed(seed, null)
+    return MemorySafeHDNodeWallet._fromSeed(seed, null)
   }
 
-  static #fromSeed (_seed, mnemonic) {
+  static _fromSeed (_seed, mnemonic) {
     assertArgument(isBytesLike(_seed), 'invalid seed', 'seed', '[REDACTED]')
 
     const seed = getBytes(_seed, 'seed')

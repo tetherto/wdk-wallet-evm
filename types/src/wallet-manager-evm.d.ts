@@ -1,4 +1,4 @@
-export default class WalletManagerEvm extends AbstractWalletManager {
+export default class WalletManagerEvm extends WalletManager {
     /**
      * Creates a new wallet manager for evm blockchains.
      *
@@ -52,7 +52,7 @@ export default class WalletManagerEvm extends AbstractWalletManager {
     /**
      * Returns the current fee rates.
      *
-     * @returns {Promise<FeeRates>} The fee rates.
+     * @returns {Promise<FeeRates>} The fee rates (in weis).
      */
     getFeeRates(): Promise<FeeRates>;
     /**
@@ -63,5 +63,5 @@ export default class WalletManagerEvm extends AbstractWalletManager {
 export type Provider = import("ethers").Provider;
 export type FeeRates = import("@wdk/wallet").FeeRates;
 export type EvmWalletConfig = import("./wallet-account-evm.js").EvmWalletConfig;
-import AbstractWalletManager from '@wdk/wallet';
+import WalletManager from '@wdk/wallet';
 import WalletAccountEvm from './wallet-account-evm.js';

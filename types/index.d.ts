@@ -1,10 +1,11 @@
 export { default } from "./src/wallet-manager-evm.js";
+export { default as WalletAccountReadOnlyEvm } from "./src/wallet-account-read-only-evm.js";
 export { default as WalletAccountEvm } from "./src/wallet-account-evm.js";
+export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type FeeRates = import("@wdk/wallet").FeeRates;
 export type KeyPair = import("@wdk/wallet").KeyPair;
 export type TransactionResult = import("@wdk/wallet").TransactionResult;
 export type TransferOptions = import("@wdk/wallet").TransferOptions;
 export type TransferResult = import("@wdk/wallet").TransferResult;
-export type EvmWalletConfig = import("./src/wallet-manager-evm.js").EvmWalletConfig;
-export type EvmTransaction = import("./src/wallet-account-evm.js").EvmTransaction;
-export type EvmTransactionReceipt = import("./src/wallet-account-evm.js").EvmTransactionReceipt;
+export type EvmTransaction = import("./src/wallet-account-read-only-evm.js").EvmTransaction;
+export type EvmWalletConfig = import("./src/wallet-account-read-only-evm.js").EvmWalletConfig;

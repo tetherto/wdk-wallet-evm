@@ -14,53 +14,51 @@
 
 'use strict'
 
+import { hmac } from '@noble/hashes/hmac'
+import { sha256 } from '@noble/hashes/sha256'
+import * as secp256k1 from '@noble/secp256k1'
+
 import { assertArgument, dataLength, getBytesCopy, Signature, SigningKey, toBeHex } from 'ethers'
 
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 
-import * as secp256k1 from '@noble/secp256k1'
-import { hmac } from '@noble/hashes/hmac'
-import { sha256 } from '@noble/hashes/sha256'
-
 const NULL = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
-secp256k1.etc.hmacSha256Sync = (key, ...messages) =>
-  hmac(sha256, key, secp256k1.etc.concatBytes(...messages))
+secp256k1.etc.hmacSha256Sync = (key, ...messages) => {
+  return hmac(sha256, key, secp256k1.etc.concatBytes(...messages))
+}
 
+/** @internal */
 export default class MemorySafeSigningKey extends SigningKey {
-  #privateKeyBuffer
-
-  #publicKeyBuffer
-
   constructor (privateKeyBuffer) {
     super(NULL)
 
-    this.#privateKeyBuffer = privateKeyBuffer
+    this._privateKeyBuffer = privateKeyBuffer
 
-    this.#publicKeyBuffer = secp256k1.getPublicKey(privateKeyBuffer, true)
+    this._publicKeyBuffer = secp256k1.getPublicKey(privateKeyBuffer, true)
   }
 
   get publicKey () {
-    return SigningKey.computePublicKey(this.#privateKeyBuffer)
+    return SigningKey.computePublicKey(this._privateKeyBuffer)
   }
 
   get compressedPublicKey () {
-    return SigningKey.computePublicKey(this.#privateKeyBuffer, true)
+    return SigningKey.computePublicKey(this._privateKeyBuffer, true)
   }
 
   get privateKeyBuffer () {
-    return this.#privateKeyBuffer
+    return this._privateKeyBuffer
   }
 
   get publicKeyBuffer () {
-    return this.#publicKeyBuffer
+    return this._publicKeyBuffer
   }
 
   sign (digest) {
     assertArgument(dataLength(digest) === 32, 'invalid digest length', 'digest', digest)
 
-    const sig = secp256k1.sign(getBytesCopy(digest), this.#privateKeyBuffer, {
+    const sig = secp256k1.sign(getBytesCopy(digest), this._privateKeyBuffer, {
       lowS: true
     })
 
@@ -72,8 +70,8 @@ export default class MemorySafeSigningKey extends SigningKey {
   }
 
   dispose () {
-    sodium_memzero(this.#privateKeyBuffer)
+    sodium_memzero(this._privateKeyBuffer)
 
-    this.#privateKeyBuffer = undefined
+    this._privateKeyBuffer = undefined
   }
 }

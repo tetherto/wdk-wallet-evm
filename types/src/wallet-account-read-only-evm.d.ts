@@ -1,66 +1,33 @@
-/** @implements {IWalletAccount} */
-export default class WalletAccountEvm implements IWalletAccount {
+export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
-     * Creates a new evm wallet account.
-     *
-     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
-     * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
-     * @param {EvmWalletConfig} [config] - The configuration object.
-     */
-    constructor(seed: string | Uint8Array, path: string, config?: EvmWalletConfig);
-    /**
-     * The wallet account configuration.
+     * Returns an evm transaction to execute the given token transfer.
      *
      * @protected
-     * @type {EvmWalletConfig}
+     * @param {TransferOptions} options - The transfer's options.
+     * @returns {Promise<EvmTransaction>} The evm transaction.
      */
-    protected _config: EvmWalletConfig;
+    protected static _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
     /**
-     * The account.
+     * Creates a new evm read-only wallet account.
+     *
+     * @param {string} address - The account's address.
+     * @param {Omit<EvmWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
+     */
+    constructor(address: string, config?: Omit<EvmWalletConfig, "transferMaxFee">);
+    /**
+     * The read-only wallet account configuration.
      *
      * @protected
-     * @type {HDNodeWallet}
+     * @type {Omit<EvmWalletConfig, 'transferMaxFee'>}
      */
-    protected _account: HDNodeWallet;
+    protected _config: Omit<EvmWalletConfig, "transferMaxFee">;
     /**
-     * The derivation path's index of this account.
+     * An ethers provider to interact with a node of the blockchain.
      *
-     * @type {number}
+     * @protected
+     * @type {Provider | undefined}
      */
-    get index(): number;
-    /**
-     * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
-     *
-     * @type {string}
-     */
-    get path(): string;
-    /**
-     * The account's key pair.
-     *
-     * @type {KeyPair}
-     */
-    get keyPair(): KeyPair;
-    /**
-     * Returns the account's address.
-     *
-     * @returns {Promise<string>} The account's address.
-     */
-    getAddress(): Promise<string>;
-    /**
-     * Signs a message.
-     *
-     * @param {string} message - The message to sign.
-     * @returns {Promise<string>} The message's signature.
-     */
-    sign(message: string): Promise<string>;
-    /**
-     * Verifies a message's signature.
-     *
-     * @param {string} message - The original message.
-     * @param {string} signature - The signature to verify.
-     * @returns {Promise<boolean>} True if the signature is valid.
-     */
-    verify(message: string, signature: string): Promise<boolean>;
+    protected _provider: Provider | undefined;
     /**
      * Returns the account's eth balance.
      *
@@ -75,31 +42,15 @@ export default class WalletAccountEvm implements IWalletAccount {
      */
     getTokenBalance(tokenAddress: string): Promise<number>;
     /**
-     * Sends a transaction.
-     *
-     * @param {EvmTransaction} tx - The transaction.
-     * @returns {Promise<TransactionResult>} The transaction's result.
-     */
-    sendTransaction(tx: EvmTransaction): Promise<TransactionResult>;
-    /**
      * Quotes the costs of a send transaction operation.
      *
-     * @see {sendTransaction}
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
-     * Transfers a token to another address.
-     *
-     * @param {TransferOptions} options - The transfer's options.
-     * @returns {Promise<TransferResult>} The transfer's result.
-     */
-    transfer(options: TransferOptions): Promise<TransferResult>;
-    /**
      * Quotes the costs of a transfer operation.
      *
-     * @see {transfer}
      * @param {TransferOptions} options - The transfer's options.
      * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
      */
@@ -111,24 +62,10 @@ export default class WalletAccountEvm implements IWalletAccount {
      * @returns {Promise<EvmTransactionReceipt | null>} – The receipt, or null if the transaction has not been included in a block yet.
      */
     getTransactionReceipt(hash: string): Promise<EvmTransactionReceipt | null>;
-    /**
-     * Disposes the wallet account, erasing the private key from the memory.
-     */
-    dispose(): void;
-    /**
-     * Returns an evm transaction to execute the given token transfer.
-     *
-     * @protected
-     * @param {TransferOptions} options - The transfer's options.
-     * @returns {Promise<EvmTransaction>} The evm transaction.
-     */
-    protected _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
 }
-export type HDNodeWallet = import("ethers").HDNodeWallet;
+export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
-export type IWalletAccount = import("@wdk/wallet").IWalletAccount;
-export type KeyPair = import("@wdk/wallet").KeyPair;
 export type TransactionResult = import("@wdk/wallet").TransactionResult;
 export type TransferOptions = import("@wdk/wallet").TransferOptions;
 export type TransferResult = import("@wdk/wallet").TransferResult;
@@ -172,3 +109,4 @@ export type EvmWalletConfig = {
      */
     transferMaxFee?: number;
 };
+import { WalletAccountReadOnly } from '@wdk/wallet';
