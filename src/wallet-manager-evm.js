@@ -30,6 +30,9 @@ const FEE_RATE_NORMAL_MULTIPLIER = 1.1
 
 const FEE_RATE_FAST_MULTIPLIER = 2.0
 
+/**
+ *
+ */
 export default class WalletManagerEvm extends WalletManager {
   /**
    * Creates a new wallet manager for evm blockchains.

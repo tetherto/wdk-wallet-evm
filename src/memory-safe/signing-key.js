@@ -31,6 +31,10 @@ secp256k1.etc.hmacSha256Sync = (key, ...messages) => {
 
 /** @internal */
 export default class MemorySafeSigningKey extends SigningKey {
+  /**
+   *
+   * @param privateKeyBuffer
+   */
   constructor (privateKeyBuffer) {
     super(NULL)
 
@@ -39,22 +43,38 @@ export default class MemorySafeSigningKey extends SigningKey {
     this._publicKeyBuffer = secp256k1.getPublicKey(privateKeyBuffer, true)
   }
 
+  /**
+   *
+   */
   get publicKey () {
     return SigningKey.computePublicKey(this._privateKeyBuffer)
   }
 
+  /**
+   *
+   */
   get compressedPublicKey () {
     return SigningKey.computePublicKey(this._privateKeyBuffer, true)
   }
 
+  /**
+   *
+   */
   get privateKeyBuffer () {
     return this._privateKeyBuffer
   }
 
+  /**
+   *
+   */
   get publicKeyBuffer () {
     return this._publicKeyBuffer
   }
 
+  /**
+   *
+   * @param digest
+   */
   sign (digest) {
     assertArgument(dataLength(digest) === 32, 'invalid digest length', 'digest', digest)
 
@@ -69,6 +89,9 @@ export default class MemorySafeSigningKey extends SigningKey {
     })
   }
 
+  /**
+   *
+   */
   dispose () {
     sodium_memzero(this._privateKeyBuffer)
 

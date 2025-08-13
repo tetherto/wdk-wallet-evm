@@ -1,16 +1,32 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { fixupConfigRules } from '@eslint/compat'
 import { FlatCompat } from '@eslint/eslintrc'
-import js from '@eslint/js'
 import jsdoc from 'eslint-plugin-jsdoc'
 
+// Get the path to the standard package's eslintrc.json
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const standardEslintrcPath = join(__dirname, 'node_modules/standard/eslintrc.json')
+const standardPackageDir = join(__dirname, 'node_modules/standard')
+
+// Read the standard config
+const standardConfig = JSON.parse(readFileSync(standardEslintrcPath, 'utf8'))
+
 const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-  recommendedConfig: js.configs.recommended
+  baseDirectory: standardPackageDir,
+  recommendedConfig: {}
 })
 
+// Convert each config in the extends array
+const standardConfigs = standardConfig.extends.flat().map(config =>
+  fixupConfigRules(compat.extends(config))
+).flat()
+
 export default [
-  // Global Standard configuration with compatibility fixes
-  ...fixupConfigRules(compat.extends('standard')),
+  // Convert standard config to flat config format
+  ...standardConfigs,
 
   // Source files: Strict rules with JSDoc requirements
   {
@@ -61,7 +77,7 @@ export default [
       'no-multiple-empty-lines': 'off',
       'eol-last': 'off',
 
-      // Keep basic safety rules but relax others - 
+      // Keep basic safety rules but relax others -
       'no-unused-expressions': 'off', // For assertion libraries
       'no-console': 'off', // Allow console.log in tests for debugging
       'no-unused-vars': 'warn', // Keep as warning instead of error

@@ -29,6 +29,13 @@ const HardenedBit = 0x80000000
 
 const _guard = { }
 
+/**
+ *
+ * @param index
+ * @param chainCode
+ * @param publicKey
+ * @param privateKeyBuffer
+ */
 function serI (index, chainCode, publicKey, privateKeyBuffer) {
   const data = new Uint8Array(37)
 
@@ -48,6 +55,11 @@ function serI (index, chainCode, publicKey, privateKeyBuffer) {
   return { IL: I.slice(0, 32), IR: I.slice(32) }
 }
 
+/**
+ *
+ * @param node
+ * @param path
+ */
 function derivePath (node, path) {
   const components = path.split('/')
 
@@ -78,6 +90,11 @@ function derivePath (node, path) {
   return result
 }
 
+/**
+ *
+ * @param privateKey
+ * @param x
+ */
 function addToPrivateKey (privateKey, x) {
   let carry = 0
 
@@ -90,6 +107,10 @@ function addToPrivateKey (privateKey, x) {
   return carry > 0
 }
 
+/**
+ *
+ * @param privateKey
+ */
 function subtractCurveOrderFromPrivateKey (privateKey) {
   let carry = 0
 
@@ -101,6 +122,11 @@ function subtractCurveOrderFromPrivateKey (privateKey) {
   }
 }
 
+/**
+ *
+ * @param buffer
+ * @param offset
+ */
 function compareWithCurveOrder (buffer, offset = 0) {
   for (let i = 0; i < 32; i++) {
     const curveOrderByte = Number((secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn)
@@ -113,6 +139,18 @@ function compareWithCurveOrder (buffer, offset = 0) {
 
 /** @internal */
 export default class MemorySafeHDNodeWallet extends BaseWallet {
+  /**
+   *
+   * @param guard
+   * @param signingKey
+   * @param parentFingerprint
+   * @param chainCode
+   * @param path
+   * @param index
+   * @param depth
+   * @param mnemonic
+   * @param provider
+   */
   constructor (guard, signingKey, parentFingerprint, chainCode, path, index, depth, mnemonic, provider) {
     super(signingKey, provider)
     assertPrivate(guard, _guard, 'MemorySafeHDNodeWallet')
@@ -132,19 +170,33 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     defineProperties(this, { mnemonic })
   }
 
+  /**
+   *
+   * @param provider
+   */
   connect (provider) {
     return new MemorySafeHDNodeWallet(_guard, this.signingKey, this.parentFingerprint,
       this.chainCode, this.path, this.index, this.depth, this.mnemonic, provider)
   }
 
+  /**
+   *
+   */
   get privateKeyBuffer () {
     return this.signingKey.privateKeyBuffer
   }
 
+  /**
+   *
+   */
   get publicKeyBuffer () {
     return this.signingKey.publicKeyBuffer
   }
 
+  /**
+   *
+   * @param _index
+   */
   deriveChild (_index) {
     const index = getNumber(_index, 'index')
     assertArgument(index <= 0xffffffff, 'invalid index', 'index', index)
@@ -169,18 +221,34 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       path, index, this.depth + 1, this.mnemonic, this.provider)
   }
 
+  /**
+   *
+   * @param path
+   */
   derivePath (path) {
     return derivePath(this, path)
   }
 
+  /**
+   *
+   */
   dispose () {
     this.signingKey.dispose()
   }
 
+  /**
+   *
+   * @param seed
+   */
   static fromSeed (seed) {
     return MemorySafeHDNodeWallet._fromSeed(seed, null)
   }
 
+  /**
+   *
+   * @param _seed
+   * @param mnemonic
+   */
   static _fromSeed (_seed, mnemonic) {
     assertArgument(isBytesLike(_seed), 'invalid seed', 'seed', '[REDACTED]')
 
