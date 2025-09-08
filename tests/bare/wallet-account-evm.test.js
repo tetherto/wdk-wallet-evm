@@ -5,7 +5,7 @@ import * as bip39 from "bip39" with { imports: "bare-wdk-runtime/package" };
 import { ContractFactory, Wallet, JsonRpcProvider } from "ethers" with { imports: "bare-wdk-runtime/package" }
 import TestToken from '../artifacts/TestToken.json' with { type: 'json' }
 
-const getProvider = () => new JsonRpcProvider("http://127.0.0.1:8545");
+const PROVIDER = "http://127.0.0.1:8545"
 
 const SEED_PHRASE =
   "cook voyage document eight skate token alien guide drink uncle term abuse";
@@ -52,13 +52,13 @@ async function delay(ms = 100) {
 function getSigners() {
   const signer = Wallet.fromPhrase(
     "anger burst story spy face pattern whale quit delay fiction ball solve",
-    getProvider()
+    new JsonRpcProvider(PROVIDER)
   );
   return [signer];
 }
 
 test("WalletAccountEvm", async function (t) {
-  let testToken, account;
+  let provider, testToken, account;
 
   async function sendEthersTo(to, value) {
     const [signer] = getSigners();
@@ -80,15 +80,18 @@ test("WalletAccountEvm", async function (t) {
 
     await sendTestTokensTo(ACCOUNT.address, INITIAL_TOKEN_BALANCE);
 
+    provider = new JsonRpcProvider(PROVIDER)
     account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-      provider: getProvider()._getConnection().url,
+      provider: PROVIDER,
     });
   }
 
   async function afterEach() {
     account.dispose();
 
-    await getProvider().send("hardhat_reset", []);
+    await provider.send("hardhat_reset", []);
+
+    provider.destroy()
   }
 
   await t.test("constructor", async (t) => {
@@ -218,7 +221,7 @@ test("WalletAccountEvm", async function (t) {
       };
       const EXPECTED_FEE = 49_611_983_472_910n;
       const { hash, fee } = await account.sendTransaction(TRANSACTION);
-      const transaction = await getProvider().getTransaction(hash);
+      const transaction = await provider.getTransaction(hash);
       t.is(transaction.hash, hash);
       t.is(transaction.to, TRANSACTION.to);
       t.is(transaction.value, BigInt(TRANSACTION.value));
@@ -245,7 +248,7 @@ test("WalletAccountEvm", async function (t) {
           TRANSACTION_WITH_DATA
         );
 
-        const transaction = await getProvider().getTransaction(hash);
+        const transaction = await provider.getTransaction(hash);
 
         t.is(transaction.hash, hash);
         t.is(transaction.to, TRANSACTION_WITH_DATA.to);
@@ -286,7 +289,7 @@ test("WalletAccountEvm", async function (t) {
       const EXPECTED_FEE = 123_145_253_772_480n;
 
       const { hash, fee } = await account.transfer(TRANSFER);
-      const transaction = await getProvider().getTransaction(hash);
+      const transaction = await provider.getTransaction(hash);
       const data = testToken.interface.encodeFunctionData("transfer", [
         TRANSFER.recipient,
         TRANSFER.amount,
@@ -314,7 +317,7 @@ test("WalletAccountEvm", async function (t) {
         };
 
         const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-          provider: getProvider()._getConnection().url,
+          provider: PROVIDER,
           transferMaxFee: 0,
         });
 
