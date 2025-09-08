@@ -25,7 +25,7 @@
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration",
     "test:integration:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration --coverage",
-    "test:bare": "concurrently --names RPC,BARE -c cyan,yellow --hide RPC --kill-others --success=command-BARE 'hardhat node' 'brittle-bare tests/*.bare.js'"
+    "test:bare": "concurrently --names RPC,BARE -c cyan,yellow --hide RPC --kill-others --success=command-BARE 'hardhat node' 'brittle-bare tests/bare/*.test.js'"
   },
   "dependencies": {
     "@noble/curves": "1.9.2",
@@ -61,6 +61,11 @@
     "ignore": [
       "bare.js",
       "tests/**/*.js"
+    ]
+  },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/bare"
     ]
   }
 }
