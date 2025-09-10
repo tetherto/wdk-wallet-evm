@@ -1,4 +1,4 @@
-import { test } from "brittle";
+import test from "brittle";
 import { WalletAccountEvm } from "@wdk/wallet-evm";
 
 import * as bip39 from "bip39" with { imports: "bare-wdk-runtime/package" };
@@ -74,13 +74,14 @@ test("WalletAccountEvm", async function (t) {
   }
 
   async function beforeEach() {
+    provider = new JsonRpcProvider(PROVIDER)
+
     testToken = await deployTestToken();
 
     await sendEthersTo(ACCOUNT.address, INITIAL_BALANCE);
 
     await sendTestTokensTo(ACCOUNT.address, INITIAL_TOKEN_BALANCE);
 
-    provider = new JsonRpcProvider(PROVIDER)
     account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
       provider: PROVIDER,
     });
