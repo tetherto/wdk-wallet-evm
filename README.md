@@ -1,4 +1,4 @@
-# @wdk/wallet-evm
+# @tetherto/wdk-wallet-evm
 
 
 **Note**: This package is currently in beta. Please test thoroughly in development environments before using in production.
@@ -21,22 +21,22 @@ For detailed documentation about the complete WDK ecosystem, visit [docs.wallet.
 
 ## ⬇️ Installation
 
-To install the `@wdk/wallet-evm` package, follow these instructions:
+To install the `@tetherto/wdk-wallet-evm` package, follow these instructions:
 
 You can install it using npm:
 
 ```bash
-npm install @wdk/wallet-evm
+npm install @tetherto/wdk-wallet-evm
 ```
 
 ## 🚀 Quick Start
 
-### Importing from `@wdk/wallet-evm`
+### Importing from `@tetherto/wdk-wallet-evm`
 
 ### Creating a New Wallet
 
 ```javascript
-import WalletManagerEvm, { WalletAccountEvm, WalletAccountReadOnlyEvm } from '@wdk/wallet-evm'
+import WalletManagerEvm, { WalletAccountEvm, WalletAccountReadOnlyEvm } from '@tetherto/wdk-wallet-evm'
 
 // Use a BIP-39 seed phrase (replace with your own secure phrase)
 const seedPhrase = 'test only example nut use this real life secret phrase must random'
@@ -66,7 +66,7 @@ const readOnlyAccount = await account.toReadOnlyAccount()
 ### Managing Multiple Accounts
 
 ```javascript
-import WalletManagerEvm from '@wdk/wallet-evm'
+import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
 
 // Assume wallet is already created
 // Get the first account (index 0)
@@ -96,7 +96,7 @@ console.log('Custom account address:', customAddress)
 For accounts where you have the seed phrase and full access:
 
 ```javascript
-import WalletManagerEvm from '@wdk/wallet-evm'
+import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
 
 // Assume wallet and account are already created
 // Get native token balance (in wei)
@@ -117,7 +117,7 @@ console.log('Token balance:', tokenBalance);
 For addresses where you don't have the seed phrase:
 
 ```javascript
-import { WalletAccountReadOnlyEvm } from '@wdk/wallet-evm'
+import { WalletAccountReadOnlyEvm } from '@tetherto/wdk-wallet-evm'
 
 // Create a read-only account
 const readOnlyAccount = new WalletAccountReadOnlyEvm('0x...', { // Ethereum address
@@ -237,14 +237,14 @@ wallet.dispose()
 
 | Class | Description | Methods |
 |-------|-------------|---------|
-| [WalletManagerEvm](#walletmanagerevm) | Main class for managing EVM wallets. Extends `WalletManager` from `@wdk/wallet`. | [Constructor](#constructor), [Methods](#methods) |
-| [WalletAccountEvm](#walletaccountevm) | Individual EVM wallet account implementation. Extends `WalletAccountReadOnlyEvm` and implements `IWalletAccount` from `@wdk/wallet`. | [Constructor](#constructor-1), [Methods](#methods-1), [Properties](#properties) |
-| [WalletAccountReadOnlyEvm](#walletaccountreadonlyevm) | Read-only EVM wallet account. Extends `WalletAccountReadOnly` from `@wdk/wallet`. | [Constructor](#constructor-2), [Methods](#methods-2) |
+| [WalletManagerEvm](#walletmanagerevm) | Main class for managing EVM wallets. Extends `WalletManager` from `@tetherto/wdk-wallet`. | [Constructor](#constructor), [Methods](#methods) |
+| [WalletAccountEvm](#walletaccountevm) | Individual EVM wallet account implementation. Extends `WalletAccountReadOnlyEvm` and implements `IWalletAccount` from `@tetherto/wdk-wallet`. | [Constructor](#constructor-1), [Methods](#methods-1), [Properties](#properties) |
+| [WalletAccountReadOnlyEvm](#walletaccountreadonlyevm) | Read-only EVM wallet account. Extends `WalletAccountReadOnly` from `@tetherto/wdk-wallet`. | [Constructor](#constructor-2), [Methods](#methods-2) |
 
 ### WalletManagerEvm
 
 The main class for managing EVM wallets.  
-Extends `WalletManager` from `@wdk/wallet`.
+Extends `WalletManager` from `@tetherto/wdk-wallet`.
 
 #### Constructor
 
@@ -277,7 +277,7 @@ const wallet = new WalletManagerEvm(seedPhrase, {
 
 ### WalletAccountEvm
 
-Represents an individual wallet account. Implements `IWalletAccount` from `@wdk/wallet`.
+Represents an individual wallet account. Implements `IWalletAccount` from `@tetherto/wdk-wallet`.
 
 #### Constructor
 
