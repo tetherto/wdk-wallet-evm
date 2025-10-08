@@ -66,9 +66,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
-export type TransactionResult = import("@wdk/wallet").TransactionResult;
-export type TransferOptions = import("@wdk/wallet").TransferOptions;
-export type TransferResult = import("@wdk/wallet").TransferResult;
+export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
+export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type EvmTransaction = {
     /**
      * - The transaction's recipient.
@@ -109,4 +109,4 @@ export type EvmWalletConfig = {
      */
     transferMaxFee?: number | bigint;
 };
-import { WalletAccountReadOnly } from '@wdk/wallet';
+import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';

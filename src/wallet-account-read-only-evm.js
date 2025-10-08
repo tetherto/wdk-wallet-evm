@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { WalletAccountReadOnly } from '@wdk/wallet'
+import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
 import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 
@@ -22,9 +22,9 @@ import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 
-/** @typedef {import('@wdk/wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@wdk/wallet').TransferOptions} TransferOptions */
-/** @typedef {import('@wdk/wallet').TransferResult} TransferResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
+/** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
 /**
  * @typedef {Object} EvmTransaction
