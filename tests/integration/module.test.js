@@ -45,7 +45,7 @@ async function deployTestToken () {
   return contract
 }
 
-describe('@wdk/wallet-evm', () => {
+describe('@tetherto/wdk-wallet-evm', () => {
   let testToken,
     wallet
 

@@ -15,11 +15,11 @@
 
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 
-/** @typedef {import('@wdk/wallet').FeeRates} FeeRates */
-/** @typedef {import('@wdk/wallet').KeyPair} KeyPair */
-/** @typedef {import('@wdk/wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@wdk/wallet').TransferOptions} TransferOptions */
-/** @typedef {import('@wdk/wallet').TransferResult} TransferResult */
+/** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
+/** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
+/** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
+/** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
