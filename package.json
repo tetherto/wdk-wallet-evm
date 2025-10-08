@@ -44,6 +44,10 @@
     "standard": "17.1.2",
     "typescript": "5.8.3"
   },
+  "overrides": {
+    "cookie": "1.0.2",
+    "tmp": "0.2.5"
+  },
   "exports": {
     ".": {
       "types": "./types/index.d.ts",
