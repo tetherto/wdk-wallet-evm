@@ -62,6 +62,13 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<EvmTransactionReceipt | null>} – The receipt, or null if the transaction has not been included in a block yet.
      */
     getTransactionReceipt(hash: string): Promise<EvmTransactionReceipt | null>;
+    /**
+     * Returns the current allowance for the given token and spender.
+     * @param {string} token The token’s address.
+     * @param {string} spender The spender’s address.
+     * @returns {Promise<bigint>} The allowance.
+     */
+    getAllowance(token: string, spender: string): Promise<bigint>;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;

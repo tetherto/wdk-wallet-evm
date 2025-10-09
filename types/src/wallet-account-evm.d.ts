@@ -70,6 +70,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     transfer(options: TransferOptions): Promise<TransferResult>;
     /**
+     * Approves a specific amount of tokens to a spender.
+     *
+     * @param {ApproveOptions} options The approve options.
+     * @returns {Promise<TransactionResult>} The transaction’s result.
+     * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
+     */
+    approve(options: ApproveOptions): Promise<TransactionResult>;
+    /**
      * Returns a read-only copy of the account.
      *
      * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
@@ -88,4 +96,18 @@ export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTransaction;
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
+export type ApproveOptions = {
+    /**
+     * The address of the token to approve.
+     */
+    token: string;
+    /**
+     * The spender’s address.
+     */
+    spender: string;
+    /**
+     * The amount of tokens to approve to the spender.
+     */
+    amount: number | bigint;
+};
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js';

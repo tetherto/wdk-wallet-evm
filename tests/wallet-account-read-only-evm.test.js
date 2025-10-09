@@ -13,7 +13,7 @@ const ADDRESS = '0x405005C7c4422390F4B334F64Cf20E0b767131d0'
 const INITIAL_BALANCE = 1_000_000_000_000_000_000n
 const INITIAL_TOKEN_BALANCE = 1_000_000n
 
-async function deployTestToken () {
+async function deployTestToken() {
   const [signer] = await hre.ethers.getSigners()
 
   const factory = new ContractFactory(TestToken.abi, TestToken.bytecode, signer)
@@ -29,13 +29,13 @@ describe('WalletAccountReadOnlyEvm', () => {
   let testToken,
     account
 
-  async function sendEthersTo (to, value) {
+  async function sendEthersTo(to, value) {
     const [signer] = await hre.ethers.getSigners()
     const transaction = await signer.sendTransaction({ to, value })
     await transaction.wait()
   }
 
-  async function sendTestTokensTo (to, value) {
+  async function sendTestTokensTo(to, value) {
     const transaction = await testToken.transfer(to, value)
     await transaction.wait()
   }
@@ -117,7 +117,7 @@ describe('WalletAccountReadOnlyEvm', () => {
     test('should throw if the account is not connected to a provider', async () => {
       const account = new WalletAccountReadOnlyEvm(ADDRESS)
 
-      await expect(account.quoteSendTransaction({ }))
+      await expect(account.quoteSendTransaction({}))
         .rejects.toThrow('The wallet must be connected to a provider to quote send transaction operations.')
     })
   })
@@ -140,7 +140,7 @@ describe('WalletAccountReadOnlyEvm', () => {
     test('should throw if the account is not connected to a provider', async () => {
       const account = new WalletAccountReadOnlyEvm(ADDRESS)
 
-      await expect(account.quoteTransfer({ }))
+      await expect(account.quoteTransfer({}))
         .rejects.toThrow('The wallet must be connected to a provider to quote transfer operations.')
     })
   })
@@ -178,6 +178,40 @@ describe('WalletAccountReadOnlyEvm', () => {
 
       await expect(account.getTransactionReceipt(HASH))
         .rejects.toThrow('The wallet must be connected to a provider to fetch transaction receipts.')
+    })
+  })
+
+  describe('getAllowance', () => {
+    const SPENDER_ADDRESS = '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd'
+
+    test('should return 0n when no allowance has been set', async () => {
+      const allowance = await account.getAllowance(testToken.target, SPENDER_ADDRESS)
+
+      expect(allowance).toEqual(0n)
+    })
+
+    test('should return the correct allowance after it has been set', async () => {
+      const allowanceAmount = 500_000n
+
+      await hre.network.provider.request({
+        method: 'hardhat_impersonateAccount',
+        params: [ADDRESS]
+      })
+      const ownerSigner = await hre.ethers.getSigner(ADDRESS)
+
+      const approveTx = await testToken.connect(ownerSigner).approve(SPENDER_ADDRESS, allowanceAmount)
+      await approveTx.wait()
+
+      const allowance = await account.getAllowance(testToken.target, SPENDER_ADDRESS)
+
+      expect(allowance).toBe(allowanceAmount)
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const accountWithoutProvider = new WalletAccountReadOnlyEvm(ADDRESS)
+
+      await expect(accountWithoutProvider.getAllowance(testToken.target, SPENDER_ADDRESS))
+        .rejects.toThrow('The wallet must be connected to a provider to retrieve allowances.')
     })
   })
 })

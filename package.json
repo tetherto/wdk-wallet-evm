@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-wallet-evm",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "A simple package to manage BIP-32 wallets for evm blockchains.",
   "keywords": [
     "wdk",
@@ -31,7 +31,7 @@
     "@noble/hashes": "1.8.0",
     "@noble/secp256k1": "2.2.3",
     "@tetherto/wdk-wallet": "^1.0.0-beta.1",
-    "bare-wdk-runtime": "2.0.0",
+    "bare-node-runtime": "1.0.3",
     "bip39": "3.1.0",
     "ethers": "6.14.3",
     "sodium-universal": "5.0.1"
@@ -44,6 +44,10 @@
     "standard": "17.1.2",
     "typescript": "5.8.3"
   },
+  "overrides": {
+    "cookie": "1.0.2",
+    "tmp": "0.2.5"
+  },
   "exports": {
     ".": {
       "types": "./types/index.d.ts",
@@ -55,7 +59,7 @@
     }
   },
   "publishConfig": {
-    "access": "restricted",
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "standard": {

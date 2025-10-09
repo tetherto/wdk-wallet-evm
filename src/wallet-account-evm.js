@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { verifyMessage } from 'ethers'
+import { verifyMessage, Contract } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -34,7 +34,15 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
+/**
+ * @typedef {Object} ApproveOptions
+ * @property {string} token - The address of the token to approve.
+ * @property {string} spender - The spender’s address.
+ * @property {number | bigint} amount - The amount of tokens to approve to the spender.
+ */
+
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
+const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
@@ -178,6 +186,42 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const { hash } = await this._account.sendTransaction(tx)
 
     return { hash, fee }
+  }
+
+  /**
+   * Approves a specific amount of tokens to a spender.
+   *
+   * @param {ApproveOptions} options The approve options.
+   * @returns {Promise<TransactionResult>} The transaction’s result.
+   * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
+   */
+  async approve (options) {
+    if (!this._account.provider) {
+      throw new Error('The wallet must be connected to a provider to approve funds.')
+    }
+
+    const { token, spender, amount } = options
+    const { chainId } = await this._provider.getNetwork()
+
+    if (chainId === 1n && token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
+      const currentAllowance = await this.getAllowance(token, spender)
+      if (currentAllowance > 0n && BigInt(amount) > 0n) {
+        throw new Error(
+          'USDT requires the current allowance to be reset to 0 before setting a new non-zero value. Please send an "approve" transaction with an amount of 0 first.'
+        )
+      }
+    }
+
+    const abi = ['function approve(address spender, uint256 amount) returns (bool)']
+    const contract = new Contract(token, abi, this._provider)
+
+    const tx = {
+      to: token,
+      value: 0,
+      data: contract.interface.encodeFunctionData('approve', [spender, amount])
+    }
+
+    return await this.sendTransaction(tx)
   }
 
   /**

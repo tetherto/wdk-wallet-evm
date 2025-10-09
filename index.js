@@ -23,6 +23,7 @@
 
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('./src/wallet-account-evm.js').ApproveOptions} ApproveOptions */
 
 export { default } from './src/wallet-manager-evm.js'
 

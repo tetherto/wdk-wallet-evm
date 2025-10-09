@@ -167,6 +167,24 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Returns the current allowance for the given token and spender.
+   * @param {string} token The token’s address.
+   * @param {string} spender The spender’s address.
+   * @returns {Promise<bigint>} The allowance.
+   */
+  async getAllowance (token, spender) {
+    if (!this._provider) {
+      throw new Error('The wallet must be connected to a provider to retrieve allowances.')
+    }
+
+    const address = await this.getAddress()
+    const abi = ['function allowance(address owner, address spender) view returns (uint256)']
+    const contract = new Contract(token, abi, this._provider)
+    const allowance = await contract.allowance(address, spender)
+    return allowance
+  }
+
+  /**
    * Returns an evm transaction to execute the given token transfer.
    *
    * @protected
