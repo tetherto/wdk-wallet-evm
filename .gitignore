@@ -1,2 +1,5 @@
 node_modules
 coverage
+
+# Local env file (contains secrets for running testnet integration tests)
+.env
