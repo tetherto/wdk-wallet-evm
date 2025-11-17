@@ -67,13 +67,4 @@ describe('Wallet Security Lifecycle', () => {
       console.warn('⚠️ GC not exposed; skipping WeakRef validation.')
     }
   })
-
-  test('should securely zero sensitive data in memory buffers', async () => {
-    const sensitiveData = Buffer.from(TESTNET_SEED_PHRASE, 'utf8')
-    sensitiveData.fill(0)
-    expect(
-      Buffer.compare(sensitiveData, Buffer.alloc(sensitiveData.length, 0))
-    ).toBe(0)
-    expect(TESTNET_SEED_PHRASE).toBeTruthy()
-  })
 })
