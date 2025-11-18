@@ -1,2 +1,6 @@
 node_modules
 coverage
+.DS_Store
+cache
+# Local env file (contains secrets for running testnet integration tests)
+.env
