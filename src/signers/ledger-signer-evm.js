@@ -1,7 +1,5 @@
 'use strict'
 
-import { ISignerEvm } from './seed-signer-evm.js'
-
 import {
   DeviceActionStatus,
   DeviceManagementKitBuilder
@@ -15,6 +13,7 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
 /**
  * @typedef {import("@ledgerhq/device-management-kit").DeviceManagementKit} DeviceManagementKit
+ * @typedef {import("./seed-signer-evm.js").ISignerEvm} ISignerEvm
  */
 
 /**
@@ -61,7 +60,7 @@ export default class LedgerSignerEvm {
   }
 
   get address () {
-    if (!this._account) throw new Error('Ledger is not connected yet.')
+    if (!this._account) return undefined
     return this._address
   }
 
@@ -112,7 +111,7 @@ export default class LedgerSignerEvm {
       dmk: this._dmk
     }
 
-    return new LedgerSignerEvm(`${path}/${relPath}`, mergedCfg, mergedOpts)
+    return new LedgerSignerEvm(`${this._path}/${relPath}`, mergedCfg, mergedOpts)
   }
 
   async getAddress () {
