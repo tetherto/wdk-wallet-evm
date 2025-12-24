@@ -1,3 +1,16 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 'use strict'
 
 import {
@@ -8,7 +21,10 @@ import {
 import { webHidTransportFactory } from '@ledgerhq/device-transport-kit-web-hid'
 import { SignerEthBuilder } from '@ledgerhq/device-signer-kit-ethereum'
 import { filter, firstValueFrom, map } from 'rxjs'
-import { verifyMessage, Signature, Transaction, getBytes } from 'ethers'
+import { Signature, Transaction, getBytes } from 'ethers'
+
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
@@ -19,8 +35,16 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
 /**
  * @implements {ISignerEvm}
+ * Hardware-backed signer using Ledger DMK + Ethereum app.
+ * Handles device connection, reconnection and provides signing primitives compatible with the
+ * rest of the EVM wallet stack.
  */
 export default class LedgerSignerEvm {
+  /**
+   * @param {string} path - Relative BIP-44 path segment (e.g. "0'/0/0"). Prefixed internally.
+   * @param {EvmWalletConfig} [config]
+   * @param {{dmk?: DeviceManagementKit}} [opts]
+   */
   constructor (path, config = {}, opts = {}) {
     if (!path) {
       throw new Error('Path is required.')
@@ -191,7 +215,7 @@ export default class LedgerSignerEvm {
       sessionId: this._sessionId
     }).build()
 
-    // Get the extended pubkey
+    // Get the address
     try {
       const { observable } = this._account.getAddress(this._path)
       const { address } = await this._consumeDeviceAction(observable)
@@ -205,6 +229,13 @@ export default class LedgerSignerEvm {
     }
   }
 
+  /**
+   * Derive a new signer at the given relative path, reusing the current device session.
+   *
+   * @param {string} relPath - Relative BIP-44 path (e.g. "0'/0/1").
+   * @param {EvmWalletConfig} [cfg] - Optional configuration overrides for the derived signer.
+   * @returns {LedgerSignerEvm} A new hardware-backed signer bound to the derived path.
+   */
   derive (relPath, cfg = {}) {
     const mergedCfg = {
       ...this._config,
@@ -222,12 +253,19 @@ export default class LedgerSignerEvm {
     return new LedgerSignerEvm(`${relPath}`, mergedCfg, mergedOpts)
   }
 
+  /** @returns {Promise<string>} */
   async getAddress () {
     if (!this._account) await this._connect()
     await this._ensureDeviceReady('get address')
     return this._address
   }
 
+  /**
+   * Signs a message.
+   *
+   * @param {string} message - The message to sign.
+   * @returns {Promise<string>} The message's signature.
+   */
   async sign (message) {
     if (!this._account) await this._connect()
     await this._ensureDeviceReady('message signing')
@@ -253,12 +291,7 @@ export default class LedgerSignerEvm {
     return formatSignatureHex({ r, s, v })
   }
 
-  async verify (message, signature) {
-    if (!this._address) return false
-    const addr = verifyMessage(message, signature)
-    return addr.toLowerCase() === this._address.toLowerCase()
-  }
-
+  /** @param {UnsignedEvmTransaction} unsignedTx @returns {Promise<string>} */
   async signTransaction (unsignedTx) {
     if (!this._account) await this._connect()
     await this._ensureDeviceReady('transaction signing')
@@ -280,6 +313,13 @@ export default class LedgerSignerEvm {
     return tx.serialized
   }
 
+  /**
+   * EIP-712 typed data signing.
+   * @param {Record<string, any>} domain
+   * @param {Record<string, any>} types
+   * @param {Record<string, any>} message
+   * @returns {Promise<string>}
+   */
   async signTypedData (domain, types, message) {
     if (!this._account) await this._connect()
     await this._ensureDeviceReady('typed data signing')
@@ -310,6 +350,7 @@ export default class LedgerSignerEvm {
     )
   }
 
+  /** Clear device handles and local state. */
   dispose () {
     this._account = undefined
     this._dmk = undefined

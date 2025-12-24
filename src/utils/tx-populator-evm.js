@@ -1,5 +1,60 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 'use strict'
 
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
+
+/**
+ * A fully-populated unsigned EVM transaction suitable for signing.
+ * This shape is produced by `populateTransactionEvm` and consumed by signer implementations.
+ *
+ * - Exactly one of `gasPrice` or (`maxFeePerGas` + `maxPriorityFeePerGas`) is expected depending on `type`.
+ * - For type 3 (EIP-4844), `maxFeePerBlobGas` is required; optional `blobs` and `blobVersionedHashes` may be present.
+ *
+ * @typedef {Object} UnsignedEvmTransaction
+ * @property {number} chainId - Numeric chain id.
+ * @property {number} nonce - Account nonce for the `from` address (pending).
+ * @property {string} from - Sender address.
+ * @property {string|null} to - Recipient address or null for contract creation.
+ * @property {string} data - Hex-encoded call data (defaults to 0x).
+ * @property {number|bigint} value - Amount to send in wei (defaults to 0).
+ * @property {number} type - Transaction type: 0, 1, 2 (EIP-1559) or 3 (EIP-4844).
+ * @property {number|bigint} gasLimit - Estimated or provided gas limit.
+ * @property {number|bigint} [gasPrice] - Legacy gas price (type 0/1 only).
+ * @property {number|bigint} [maxFeePerGas] - EIP-1559 max fee per gas (type 2/3).
+ * @property {number|bigint} [maxPriorityFeePerGas] - EIP-1559 max priority fee per gas (type 2/3).
+ * @property {any[]} [accessList] - Optional access list (type 1/2/3).
+ * @property {number|bigint} [maxFeePerBlobGas] - EIP-4844 max fee per blob gas (type 3).
+ * @property {any[]} [blobs] - EIP-4844 blobs (type 3 optional).
+ * @property {string[]} [blobVersionedHashes] - EIP-4844 blob versioned hashes (type 3 optional).
+ */
+
+/**
+ * Populates a raw EVM transaction object with derived fields based on the connected network and
+ * user-provided parameters. It automatically chooses between legacy (type 0/1), EIP-1559 (type 2)
+ * and EIP-4844 (type 3) styles, validates incompatible fee fields, and fills in missing values
+ * like nonce, gas limit and fee parameters.
+ *
+ * - If `tx.type` is unspecified, the function detects support for EIP-1559/4844 using provider fee
+ *   data and the presence of blob fields.
+ * - When EIP-1559 fields are provided, legacy `gasPrice` is rejected and vice versa.
+ *
+ * @param {import('ethers').Provider} provider - The ethers provider.
+ * @param {string} from - The sender address.
+ * @param {EvmTransaction} tx - The partial transaction to populate.
+ * @returns {Promise<UnsignedEvmTransaction>} The fully populated transaction.
+ */
 export async function populateTransactionEvm (provider, from, tx) {
   const net = await provider.getNetwork()
   const chainId = Number(net.chainId)

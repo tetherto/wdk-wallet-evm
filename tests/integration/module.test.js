@@ -74,6 +74,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
   })
 
   afterEach(async () => {
+    wallet.dispose()
     await hre.network.provider.send('hardhat_reset')
   })
 

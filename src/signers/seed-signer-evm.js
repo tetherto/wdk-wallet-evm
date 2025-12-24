@@ -1,6 +1,18 @@
+// Copyright 2024 Tether Operations Limited
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 'use strict'
 
-import { verifyMessage } from 'ethers'
 import * as bip39 from 'bip39'
 
 import MemorySafeHDNodeWallet from '../memory-safe/hd-node-wallet.js'
@@ -8,58 +20,109 @@ import { NotImplementedError } from '@tetherto/wdk-wallet'
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+
 /** @implements {ISigner} */
 export class ISignerEvm {
+  /**
+   * True if the signer is currently active and usable.
+   * @type {boolean}
+   */
   get isActive () {
     throw new NotImplementedError('isActive')
   }
 
+  /**
+   * The last component index for the derivation path of this signer, when applicable.
+   * @type {number|undefined}
+   */
   get index () {
     throw new NotImplementedError('index')
   }
 
+  /**
+   * The full derivation path if this is a child signer.
+   * @type {string|undefined}
+   */
   get path () {
     throw new NotImplementedError('path')
   }
 
+  /** @returns {EvmWalletConfig} */
   get config () {
     throw new NotImplementedError('config')
   }
 
+  /** @returns {string|undefined} */
   get address () {
     throw new NotImplementedError('address')
   }
 
+  /**
+   * Derive a child signer from this signer using a relative path (e.g. "0'/0/0").
+   * @param {string} relPath
+    * @param {EvmWalletConfig} [cfg]
+   * @returns {ISignerEvm}
+   */
   derive (relPath, cfg = {}) {
     throw new NotImplementedError('derive(relPath, cfg = {})')
   }
 
+  /** @returns {Promise<string>} */
   async getAddress () {
     throw new NotImplementedError('getAddress(message)')
   }
 
+  /**
+   * Sign a plain message.
+   * @param {string} message
+   * @returns {Promise<string>}
+   */
   async sign (message) {
     throw new NotImplementedError('sign(message)')
   }
 
-  async verify (message, signature) {
-    throw new NotImplementedError('verify(message, signature)')
-  }
-
+  /**
+   * Sign a transaction-like object compatible with ethers Transaction.from.
+   * @param {Record<string, any>} unsignedTx
+   * @returns {Promise<string>} The serialized signed transaction hex.
+   */
   async signTransaction (unsignedTx) {
     throw new NotImplementedError('signTransaction(unsignedTx)')
   }
 
+  /**
+   * EIP-712 typed data signing.
+   * @param {Record<string, any>} domain
+   * @param {Record<string, any>} types
+   * @param {Record<string, any>} message
+   * @returns {Promise<string>}
+   */
   async signTypedData (domain, types, message) {
     throw new NotImplementedError('signTypedData(domain, types, message)')
   }
 
+  /** Clear any secret material from memory. */
   dispose () {
     throw new NotImplementedError('dispose()')
   }
 }
 
+/**
+ * @implements {ISignerEvm}
+ * Signer implementation that derives keys from a BIP-39 seed using the BIP-44 Ethereum path.
+ * Can represent either a root (no address, only derivation) or a child (derived account with address).
+ */
 export default class SeedSignerEvm {
+  /**
+   * Create a SeedSignerEvm.
+   * Provide either a mnemonic/seed or an existing root via opts.root.
+   *
+   * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
+   * @param {EvmWalletConfig} [config] - Signer configuration propagated to children.
+   * @param {{root?: import('../memory-safe/hd-node-wallet.js').default, path?: string}} [opts]
+   */
   constructor (seed, config = {}, opts = {}) {
     // If a root is provided, do not expect a seed
     if (opts.root && seed) {
@@ -132,6 +195,12 @@ export default class SeedSignerEvm {
     }
   }
 
+  /**
+   * Derive a child signer using the provided relative path (e.g. "0'/0/0").
+   * @param {string} relPath
+   * @param {EvmWalletConfig} [cfg]
+   * @returns {SeedSignerEvm}
+   */
   derive (relPath, cfg = {}) {
     const merged = {
       ...this._config,
@@ -142,6 +211,11 @@ export default class SeedSignerEvm {
     return new SeedSignerEvm(null, merged, { root: this._root, path: relPath })
   }
 
+  /**
+   * Sign a plain message string.
+   * @param {string} message
+   * @returns {Promise<string>}
+   */
   async sign (message) {
     if (!this._account) {
       throw new Error('Cannot sign from a root signer. Derive a child first.')
@@ -149,12 +223,11 @@ export default class SeedSignerEvm {
     return this._account.signMessage(message)
   }
 
-  async verify (message, signature) {
-    if (!this._address) return false
-    const addr = await verifyMessage(message, signature)
-    return addr.toLowerCase() === this._address.toLowerCase()
-  }
-
+  /**
+   * Sign a transaction object and return its serialized form.
+   * @param {UnsignedEvmTransaction} unsignedTx
+   * @returns {Promise<string>}
+   */
   async signTransaction (unsignedTx) {
     if (!this._account) {
       throw new Error(
@@ -164,6 +237,13 @@ export default class SeedSignerEvm {
     return this._account.signTransaction(unsignedTx)
   }
 
+  /**
+   * EIP-712 typed data signing.
+   * @param {Record<string, any>} domain
+   * @param {Record<string, any>} types
+   * @param {Record<string, any>} message
+   * @returns {Promise<string>}
+   */
   async signTypedData (domain, types, message) {
     if (!this._account) {
       throw new Error(
@@ -173,6 +253,7 @@ export default class SeedSignerEvm {
     return this._account.signTypedData(domain, types, message)
   }
 
+  /** Dispose secrets from memory. */
   dispose () {
     if (this._account) this._account.dispose()
     if (this._root) this._root.dispose()
