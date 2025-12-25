@@ -20,11 +20,14 @@ import { NotImplementedError } from '@tetherto/wdk-wallet'
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
-/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+/** @typedef {import('@tetherto/wdk-wallet/src/isigner.js').ISigner} ISigner */
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 /**
  * Interface for EVM signers.
+ * Follows the base `ISigner` from `@tetherto/wdk-wallet`. For interface compatibility,
+ * the second argument to `derive` is accepted but ignored by EVM signers.
  * @implements {ISigner}
  * @interface
  */
@@ -53,11 +56,6 @@ export class ISignerEvm {
     throw new NotImplementedError('path')
   }
 
-  /** @returns {EvmWalletConfig} */
-  get config () {
-    throw new NotImplementedError('config')
-  }
-
   /** @returns {string|undefined} */
   get address () {
     throw new NotImplementedError('address')
@@ -66,11 +64,11 @@ export class ISignerEvm {
   /**
    * Derive a child signer from this signer using a relative path (e.g. "0'/0/0").
    * @param {string} relPath
-    * @param {EvmWalletConfig} [cfg]
+   * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
    * @returns {ISignerEvm}
    */
-  derive (relPath, cfg = {}) {
-    throw new NotImplementedError('derive(relPath, cfg = {})')
+  derive (relPath, _cfg) {
+    throw new NotImplementedError('derive(relPath, cfg?)')
   }
 
   /** @returns {Promise<string>} */
@@ -124,10 +122,9 @@ export default class SeedSignerEvm {
    * Provide either a mnemonic/seed or an existing root via opts.root.
    *
    * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
-   * @param {EvmWalletConfig} [config] - Signer configuration propagated to children.
    * @param {{root?: import('../memory-safe/hd-node-wallet.js').default, path?: string}} [opts]
    */
-  constructor (seed, config = {}, opts = {}) {
+  constructor (seed, opts = {}) {
     // If a root is provided, do not expect a seed
     if (opts.root && seed) {
       throw new Error('Provide either a seed or a root, not both.')
@@ -144,7 +141,6 @@ export default class SeedSignerEvm {
       seed = bip39.mnemonicToSeedSync(seed)
     }
 
-    this._config = config
     this._isRoot = true
     this._root =
       opts.root || (seed ? MemorySafeHDNodeWallet.fromSeed(seed) : undefined)
@@ -184,10 +180,6 @@ export default class SeedSignerEvm {
     return this._path
   }
 
-  get config () {
-    return this._config
-  }
-
   get address () {
     return this._address
   }
@@ -202,17 +194,11 @@ export default class SeedSignerEvm {
   /**
    * Derive a child signer using the provided relative path (e.g. "0'/0/0").
    * @param {string} relPath
-   * @param {EvmWalletConfig} [cfg]
+   * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
    * @returns {SeedSignerEvm}
    */
-  derive (relPath, cfg = {}) {
-    const merged = {
-      ...this._config,
-      ...Object.fromEntries(
-        Object.entries(cfg || {}).filter(([, v]) => v !== undefined)
-      )
-    }
-    return new SeedSignerEvm(null, merged, { root: this._root, path: relPath })
+  derive (relPath, _cfg) {
+    return new SeedSignerEvm(null, { root: this._root, path: relPath })
   }
 
   /**

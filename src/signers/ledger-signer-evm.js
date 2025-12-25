@@ -23,8 +23,8 @@ import { SignerEthBuilder } from '@ledgerhq/device-signer-kit-ethereum'
 import { filter, firstValueFrom, map } from 'rxjs'
 import { Signature, Transaction, getBytes } from 'ethers'
 
-/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
@@ -42,15 +42,13 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 export default class LedgerSignerEvm {
   /**
    * @param {string} path - Relative BIP-44 path segment (e.g. "0'/0/0"). Prefixed internally.
-   * @param {EvmWalletConfig} [config]
    * @param {{dmk?: DeviceManagementKit}} [opts]
    */
-  constructor (path, config = {}, opts = {}) {
+  constructor (path, opts = {}) {
     if (!path) {
       throw new Error('Path is required.')
     }
 
-    this._config = config
     this._account = undefined
     this._address = undefined
     this._sessionId = ''
@@ -78,10 +76,6 @@ export default class LedgerSignerEvm {
 
   get path () {
     return this._path
-  }
-
-  get config () {
-    return this._config
   }
 
   get address () {
@@ -233,24 +227,16 @@ export default class LedgerSignerEvm {
    * Derive a new signer at the given relative path, reusing the current device session.
    *
    * @param {string} relPath - Relative BIP-44 path (e.g. "0'/0/1").
-   * @param {EvmWalletConfig} [cfg] - Optional configuration overrides for the derived signer.
+   * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
    * @returns {LedgerSignerEvm} A new hardware-backed signer bound to the derived path.
    */
-  derive (relPath, cfg = {}) {
-    const mergedCfg = {
-      ...this._config,
-      ...Object.fromEntries(
-        Object.entries(cfg || {}).filter(([, v]) => v !== undefined)
-      ),
-      dmk: this._dmk
-    }
-
+  derive (relPath, _cfg) {
     const mergedOpts = {
       ...this.opts,
       dmk: this._dmk
     }
 
-    return new LedgerSignerEvm(`${relPath}`, mergedCfg, mergedOpts)
+    return new LedgerSignerEvm(`${relPath}`, mergedOpts)
   }
 
   /** @returns {Promise<string>} */

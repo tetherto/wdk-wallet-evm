@@ -80,7 +80,7 @@ describe('WalletAccountEvm', () => {
 
   describe('constructor', () => {
     test('should successfully initialize an account for the given seed phrase and path', async () => {
-      const signer = new SeedSignerEvm(SEED_PHRASE, {}, {path: "0'/0/0"})
+      const signer = new SeedSignerEvm(SEED_PHRASE, {path: "0'/0/0"})
       const account = new WalletAccountEvm(signer)
 
       expect(account.index).toBe(ACCOUNT.index)

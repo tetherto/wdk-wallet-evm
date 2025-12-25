@@ -17,7 +17,6 @@ import { BaseWallet } from 'ethers'
 
 import MemorySafeSigningKey from '../memory-safe/signing-key.js'
 
-/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 
 /**
@@ -29,9 +28,8 @@ import MemorySafeSigningKey from '../memory-safe/signing-key.js'
 export default class PrivateKeySignerEvm {
   /**
    * @param {string|Uint8Array} privateKey - Hex string (with/without 0x) or raw key bytes.
-   * @param {EvmWalletConfig} [config]
    */
-  constructor (privateKey, config = {}) {
+  constructor (privateKey) {
     // Expect a Uint8Array buffer; accept hex string as convenience
     let privateKeyBuffer = privateKey
     if (typeof privateKey === 'string') {
@@ -39,7 +37,6 @@ export default class PrivateKeySignerEvm {
       privateKeyBuffer = new Uint8Array(Buffer.from(hex, 'hex'))
     }
 
-    this._config = config
     this._signingKey = new MemorySafeSigningKey(privateKeyBuffer)
     this._wallet = new BaseWallet(this._signingKey, null)
     this._address = this._wallet.address
@@ -52,7 +49,6 @@ export default class PrivateKeySignerEvm {
   get isPrivateKey () { return true }
   get index () { return 0 }
   get path () { return this._path }
-  get config () { return this._config }
   get address () { return this._address }
   get isActive () { return this._isActive }
   get keyPair () {
