@@ -7,6 +7,8 @@ import * as bip39 from 'bip39'
 import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globals'
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
+import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
+import PrivateKeySignerEvm from '../src/signers/private-key-signer-evm.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
 
@@ -65,9 +67,9 @@ describe('WalletAccountEvm', () => {
 
     await sendTestTokensTo(ACCOUNT.address, INITIAL_TOKEN_BALANCE)
 
-    account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-      provider: hre.network.provider
-    })
+    const root = new SeedSignerEvm(SEED_PHRASE)
+    const signer = root.derive("0'/0/0")
+    account = new WalletAccountEvm(signer, { provider: hre.network.provider })
   })
 
   afterEach(async () => {
@@ -78,7 +80,8 @@ describe('WalletAccountEvm', () => {
 
   describe('constructor', () => {
     test('should successfully initialize an account for the given seed phrase and path', async () => {
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+      const signer = new SeedSignerEvm(SEED_PHRASE, {path: "0'/0/0"})
+      const account = new WalletAccountEvm(signer)
 
       expect(account.index).toBe(ACCOUNT.index)
 
@@ -91,7 +94,8 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should successfully initialize an account for the given seed and path', async () => {
-      const account = new WalletAccountEvm(SEED, "0'/0/0")
+      const signer = new SeedSignerEvm(SEED).derive("0'/0/0")
+      const account = new WalletAccountEvm(signer)
 
       expect(account.index).toBe(ACCOUNT.index)
 
@@ -105,13 +109,13 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if the seed phrase is invalid', () => {
       // eslint-disable-next-line no-new
-      expect(() => { new WalletAccountEvm(INVALID_SEED_PHRASE, "0'/0/0") })
+      expect(() => { new SeedSignerEvm(INVALID_SEED_PHRASE).derive("0'/0/0") })
         .toThrow('The seed phrase is invalid.')
     })
 
     test('should throw if the path is invalid', () => {
       // eslint-disable-next-line no-new
-      expect(() => { new WalletAccountEvm(SEED_PHRASE, "a'/b/c") })
+      expect(() => { new SeedSignerEvm(SEED_PHRASE).derive("a'/b/c") })
         .toThrow('invalid path component')
     })
   })
@@ -125,6 +129,14 @@ describe('WalletAccountEvm', () => {
       const signature = await account.sign(MESSAGE)
 
       expect(signature).toBe(EXPECTED_SIGNATURE)
+    })
+
+    test('should return the correct signature with PrivateKeySignerEvm', async () => {
+      const pkSigner = new PrivateKeySignerEvm(ACCOUNT.keyPair.privateKey)
+      const pkAccount = new WalletAccountEvm(pkSigner)
+      const signature = await pkAccount.sign(MESSAGE)
+      expect(signature).toBe(EXPECTED_SIGNATURE)
+      pkAccount.dispose()
     })
   })
 
@@ -171,6 +183,23 @@ describe('WalletAccountEvm', () => {
       expect(fee).toBe(EXPECTED_FEE)
     })
 
+    test('should successfully send a transaction with PrivateKeySignerEvm', async () => {
+      const pkSigner = new PrivateKeySignerEvm(ACCOUNT.keyPair.privateKey)
+      const pkAccount = new WalletAccountEvm(pkSigner, { provider: hre.network.provider })
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+      const EXPECTED_FEE = 49_611_983_472_910n
+      const { hash, fee } = await pkAccount.sendTransaction(TRANSACTION)
+      const transaction = await hre.ethers.provider.getTransaction(hash)
+      expect(transaction.hash).toBe(hash)
+      expect(transaction.to).toBe(TRANSACTION.to)
+      expect(transaction.value).toBe(BigInt(TRANSACTION.value))
+      expect(fee).toBe(EXPECTED_FEE)
+      pkAccount.dispose()
+    })
+
     test('should successfully send a transaction with arbitrary data', async () => {
       const TRANSACTION_WITH_DATA = {
         to: testToken.target,
@@ -194,7 +223,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+      const account = new WalletAccountEvm(new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
 
       await expect(account.sendTransaction({ }))
         .rejects.toThrow('The wallet must be connected to a provider to send transactions.')
@@ -231,17 +260,17 @@ describe('WalletAccountEvm', () => {
         amount: 100
       }
 
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-        provider: hre.network.provider,
-        transferMaxFee: 0
-      })
+      const account = new WalletAccountEvm(
+        new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"),
+        { provider: hre.network.provider, transferMaxFee: 0 }
+      )
 
       await expect(account.transfer(TRANSFER))
         .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+      const account = new WalletAccountEvm(new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
 
       await expect(account.transfer({ }))
         .rejects.toThrow('The wallet must be connected to a provider to transfer tokens.')
@@ -286,7 +315,7 @@ describe('WalletAccountEvm', () => {
       await expect(account.approve(approveOptions))
         .rejects.toThrow('USDT requires the current allowance to be reset to 0 before setting a new non-zero value.')
     })
-    
+
     test('should successfully approve a non-zero amount for USDT on mainnet when allowance is zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(0n)
       jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
@@ -340,7 +369,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const accountWithoutProvider = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+      const accountWithoutProvider = new WalletAccountEvm(new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
       const approveOptions = {
         token: testToken.target,
         spender: SPENDER,
