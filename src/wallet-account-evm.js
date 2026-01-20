@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-'use strict'
+"use strict";
 
-import { verifyMessage, Contract } from 'ethers'
+import { verifyMessage, Contract } from "ethers";
 
-import * as bip39 from 'bip39'
+import * as bip39 from "bip39";
 
-import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
+import WalletAccountReadOnlyEvm from "./wallet-account-read-only-evm.js";
 
-import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
+import MemorySafeHDNodeWallet from "./memory-safe/hd-node-wallet.js";
 
 /** @typedef {import('ethers').HDNodeWallet} HDNodeWallet */
 
@@ -41,8 +41,8 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
  */
 
-const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
-const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'";
+const USDT_MAINNET_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
@@ -53,21 +53,20 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
-  constructor (seed, path, config = {}) {
-    if (typeof seed === 'string') {
+  constructor(seed, path, config = {}) {
+    if (typeof seed === "string") {
       if (!bip39.validateMnemonic(seed)) {
-        throw new Error('The seed phrase is invalid.')
+        throw new Error("The seed phrase is invalid.");
       }
 
-      seed = bip39.mnemonicToSeedSync(seed)
+      seed = bip39.mnemonicToSeedSync(seed);
     }
 
-    path = BIP_44_ETH_DERIVATION_PATH_PREFIX + '/' + path
+    path = BIP_44_ETH_DERIVATION_PATH_PREFIX + "/" + path;
 
-    const account = MemorySafeHDNodeWallet.fromSeed(seed)
-      .derivePath(path)
+    const account = MemorySafeHDNodeWallet.fromSeed(seed).derivePath(path);
 
-    super(account.address, config)
+    super(account.address, config);
 
     /**
      * The wallet account configuration.
@@ -75,7 +74,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
      * @protected
      * @type {EvmWalletConfig}
      */
-    this._config = config
+    this._config = config;
 
     /**
      * The account.
@@ -83,10 +82,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
      * @protected
      * @type {HDNodeWallet}
      */
-    this._account = account
+    this._account = account;
 
     if (this._provider) {
-      this._account = this._account.connect(this._provider)
+      this._account = this._account.connect(this._provider);
     }
   }
 
@@ -95,8 +94,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @type {number}
    */
-  get index () {
-    return this._account.index
+  get index() {
+    return this._account.index;
   }
 
   /**
@@ -104,8 +103,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @type {string}
    */
-  get path () {
-    return this._account.path
+  get path() {
+    return this._account.path;
   }
 
   /**
@@ -113,11 +112,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @type {KeyPair}
    */
-  get keyPair () {
+  get keyPair() {
     return {
       privateKey: this._account.privateKeyBuffer,
-      publicKey: this._account.publicKeyBuffer
-    }
+      publicKey: this._account.publicKeyBuffer,
+    };
   }
 
   /**
@@ -126,8 +125,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
    */
-  async sign (message) {
-    return await this._account.signMessage(message)
+  async sign(message) {
+    return await this._account.signMessage(message);
   }
 
   /**
@@ -137,10 +136,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {string} signature - The signature to verify.
    * @returns {Promise<boolean>} True if the signature is valid.
    */
-  async verify (message, signature) {
-    const address = await verifyMessage(message, signature)
+  async verify(message, signature) {
+    const address = await verifyMessage(message, signature);
 
-    return address.toLowerCase() === this._account.address.toLowerCase()
+    return address.toLowerCase() === this._account.address.toLowerCase();
   }
 
   /**
@@ -149,19 +148,21 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
-  async sendTransaction (tx) {
+  async sendTransaction(tx) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to send transactions.')
+      throw new Error(
+        "The wallet must be connected to a provider to send transactions."
+      );
     }
 
-    const { fee } = await this.quoteSendTransaction(tx)
+    const { fee } = await this.quoteSendTransaction(tx);
 
     const { hash } = await this._account.sendTransaction({
       from: await this.getAddress(),
-      ...tx
-    })
+      ...tx,
+    });
 
-    return { hash, fee }
+    return { hash, fee };
   }
 
   /**
@@ -170,22 +171,27 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
    */
-  async transfer (options) {
+  async transfer(options) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to transfer tokens.')
+      throw new Error(
+        "The wallet must be connected to a provider to transfer tokens."
+      );
     }
 
-    const tx = await WalletAccountEvm._getTransferTransaction(options)
+    const tx = await WalletAccountEvm._getTransferTransaction(options);
 
-    const { fee } = await this.quoteSendTransaction(tx)
+    const { fee } = await this.quoteSendTransaction(tx);
 
-    if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transfer operation.')
+    if (
+      this._config.transferMaxFee !== undefined &&
+      fee >= this._config.transferMaxFee
+    ) {
+      throw new Error("Exceeded maximum fee cost for transfer operation.");
     }
 
-    const { hash } = await this._account.sendTransaction(tx)
+    const { hash } = await this._account.sendTransaction(tx);
 
-    return { hash, fee }
+    return { hash, fee };
   }
 
   /**
@@ -195,33 +201,40 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction’s result.
    * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
    */
-  async approve (options) {
+  async approve(options) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to approve funds.')
+      throw new Error(
+        "The wallet must be connected to a provider to approve funds."
+      );
     }
 
-    const { token, spender, amount } = options
-    const { chainId } = await this._provider.getNetwork()
+    const { token, spender, amount } = options;
+    const { chainId } = await this._provider.getNetwork();
 
-    if (chainId === 1n && token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
-      const currentAllowance = await this.getAllowance(token, spender)
+    if (
+      chainId === 1n &&
+      token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()
+    ) {
+      const currentAllowance = await this.getAllowance(token, spender);
       if (currentAllowance > 0n && BigInt(amount) > 0n) {
         throw new Error(
           'USDT requires the current allowance to be reset to 0 before setting a new non-zero value. Please send an "approve" transaction with an amount of 0 first.'
-        )
+        );
       }
     }
 
-    const abi = ['function approve(address spender, uint256 amount) returns (bool)']
-    const contract = new Contract(token, abi, this._provider)
+    const abi = [
+      "function approve(address spender, uint256 amount) returns (bool)",
+    ];
+    const contract = new Contract(token, abi, this._provider);
 
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('approve', [spender, amount])
-    }
+      data: contract.interface.encodeFunctionData("approve", [spender, amount]),
+    };
 
-    return await this.sendTransaction(tx)
+    return await this.sendTransaction(tx);
   }
 
   /**
@@ -229,16 +242,19 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
    */
-  async toReadOnlyAccount () {
-    const readOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
+  async toReadOnlyAccount() {
+    const readOnlyAccount = new WalletAccountReadOnlyEvm(
+      this._account.address,
+      this._config
+    );
 
-    return readOnlyAccount
+    return readOnlyAccount;
   }
 
   /**
    * Disposes the wallet account, erasing the private key from the memory.
    */
-  dispose () {
-    this._account.dispose()
+  dispose() {
+    this._account.dispose();
   }
 }
