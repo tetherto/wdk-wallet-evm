@@ -1,3 +1,24 @@
+/** @typedef {import('ethers').Provider} Provider */
+/** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
+/** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
+/** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
+/** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/**
+ * @typedef {Object} EvmTransaction
+ * @property {string} to - The transaction's recipient.
+ * @property {number | bigint} value - The amount of ethers to send to the recipient (in weis).
+ * @property {string} [data] - The transaction's data in hex format.
+ * @property {number | bigint} [gasLimit] - The maximum amount of gas this transaction is permitted to use.
+ * @property {number | bigint} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
+ * @property {number | bigint} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
+ * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
+ */
+/**
+ * @typedef {Object} EvmWalletConfig
+ * @property {string | Eip1193Provider} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193.
+ * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
+ */
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Returns an evm transaction to execute the given token transfer.
@@ -29,32 +50,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     protected _provider: Provider | undefined;
     /**
-     * Returns the account's eth balance.
-     *
-     * @returns {Promise<bigint>} The eth balance (in weis).
-     */
-    getBalance(): Promise<bigint>;
-    /**
-     * Returns the account balance for a specific token.
-     *
-     * @param {string} tokenAddress - The smart contract address of the token.
-     * @returns {Promise<bigint>} The token balance (in base unit).
-     */
-    getTokenBalance(tokenAddress: string): Promise<bigint>;
-    /**
      * Quotes the costs of a send transaction operation.
      *
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
-    /**
-     * Quotes the costs of a transfer operation.
-     *
-     * @param {TransferOptions} options - The transfer's options.
-     * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
-     */
-    quoteTransfer(options: TransferOptions): Promise<Omit<TransferResult, "hash">>;
     /**
      * Returns a transaction's receipt.
      *

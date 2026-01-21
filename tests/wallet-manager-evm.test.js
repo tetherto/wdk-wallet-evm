@@ -3,6 +3,7 @@ import hre from 'hardhat'
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
+import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
@@ -10,9 +11,8 @@ describe('WalletManagerEvm', () => {
   let wallet
 
   beforeEach(async () => {
-    wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider
-    })
+    const root = new SeedSignerEvm(SEED_PHRASE)
+    wallet = new WalletManagerEvm(root, { provider: hre.network.provider })
   })
 
   afterEach(() => {
@@ -67,7 +67,7 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should throw if the wallet is not connected to a provider', async () => {
-      const wallet = new WalletManagerEvm(SEED_PHRASE)
+      const wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE))
 
       await expect(wallet.getFeeRates())
         .rejects.toThrow('The wallet must be connected to a provider to get fee rates.')
