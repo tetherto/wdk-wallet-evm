@@ -43,7 +43,8 @@ import FailoverProvider from "wdk-failover-provider";
 
 /**
  * @typedef {Object} EvmWalletConfig
- * @property {Array<string | Eip1193Provider>} [providers] - The url of the rpc provider, or an instance of a class that implements eip-1193.
+ * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. If it's a list of urls or instances, the provider failover strategy will be enabled.
+ * @property {number} [retries] - The number of retries in the failover mechanism.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
 
@@ -65,16 +66,16 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     this._config = config;
 
-    const { providers = [] } = config;
+    const { provider, retries = 3 } = config;
 
-    if (providers.length) {
+    if (Array.isArray(provider)) {
       /**
        * An ethers provider to interact with a node of the blockchain.
        *
        * @protected
        * @type {Provider | undefined}
        */
-      this._provider = providers
+      this._provider = provider
         .reduce(
           /**
            * @param {FailoverProvider<Provider>} failover
@@ -86,9 +87,14 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
                 ? new JsonRpcProvider(provider)
                 : new BrowserProvider(provider)
             ),
-          new FailoverProvider()
+          new FailoverProvider({ retries })
         )
         .initialize();
+    } else if (!!provider) {
+      this._provider =
+        typeof provider === "string"
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider);
     }
   }
 

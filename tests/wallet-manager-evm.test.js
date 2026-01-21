@@ -12,7 +12,7 @@ describe("WalletManagerEvm", () => {
 
   beforeEach(async () => {
     wallet = new WalletManagerEvm(SEED_PHRASE, {
-      providers: [hre.network.provider],
+      provider: [hre.network.provider],
     });
   });
 

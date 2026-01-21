@@ -65,16 +65,16 @@ export default class WalletManagerEvm extends WalletManager {
      */
     this._config = config;
 
-    const { providers = [] } = config;
+    const { provider, retries = 3 } = config;
 
-    if (providers.length) {
+    if (Array.isArray(provider)) {
       /**
        * An ethers provider to interact with a node of the blockchain.
        *
        * @protected
        * @type {Provider | undefined}
        */
-      this._provider = providers
+      this._provider = provider
         .reduce(
           /**
            * @param {FailoverProvider<Provider>} failover
@@ -86,9 +86,14 @@ export default class WalletManagerEvm extends WalletManager {
                 ? new JsonRpcProvider(provider)
                 : new BrowserProvider(provider)
             ),
-          new FailoverProvider()
+          new FailoverProvider({ retries })
         )
         .initialize();
+    } else if (!!provider) {
+      this._provider =
+        typeof provider === "string"
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider);
     }
   }
 

@@ -66,7 +66,7 @@ describe('WalletAccountEvm', () => {
     await sendTestTokensTo(ACCOUNT.address, INITIAL_TOKEN_BALANCE)
 
     account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-      providers: [hre.network.provider]
+      provider: [hre.network.provider]
     })
   })
 
@@ -232,7 +232,7 @@ describe('WalletAccountEvm', () => {
       }
 
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-        providers: [hre.network.provider],
+        provider: [hre.network.provider],
         transferMaxFee: 0
       })
 
