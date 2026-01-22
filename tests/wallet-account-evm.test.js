@@ -128,29 +128,6 @@ describe('WalletAccountEvm', () => {
     })
   })
 
-  describe('verify', () => {
-    const MESSAGE = 'Dummy message to sign.'
-
-    const SIGNATURE = '0xd130f94c52bf393206267278ac0b6009e14f11712578e5c1f7afe4a12685c5b96a77a0832692d96fc51f4bd403839572c55042ecbcc92d215879c5c8bb5778c51c'
-
-    test('should return true for a valid signature', async () => {
-      const result = await account.verify(MESSAGE, SIGNATURE)
-
-      expect(result).toBe(true)
-    })
-
-    test('should return false for an invalid signature', async () => {
-      const result = await account.verify('Another message.', SIGNATURE)
-
-      expect(result).toBe(false)
-    })
-
-    test('should throw on a malformed signature', async () => {
-      await expect(account.verify(MESSAGE, 'A bad signature'))
-        .rejects.toThrow('invalid BytesLike value')
-    })
-  })
-
   describe('sendTransaction', () => {
     test('should successfully send a transaction', async () => {
       const TRANSACTION = {

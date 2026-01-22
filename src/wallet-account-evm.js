@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { verifyMessage, Contract } from 'ethers'
+import { Contract } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -128,19 +128,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async sign (message) {
     return await this._account.signMessage(message)
-  }
-
-  /**
-   * Verifies a message's signature.
-   *
-   * @param {string} message - The original message.
-   * @param {string} signature - The signature to verify.
-   * @returns {Promise<boolean>} True if the signature is valid.
-   */
-  async verify (message, signature) {
-    const address = await verifyMessage(message, signature)
-
-    return address.toLowerCase() === this._account.address.toLowerCase()
   }
 
   /**

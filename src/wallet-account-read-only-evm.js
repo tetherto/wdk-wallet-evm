@@ -16,7 +16,7 @@
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
-import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
+import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage } from 'ethers'
 
 /** @typedef {import('ethers').Provider} Provider */
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
@@ -182,6 +182,20 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     const contract = new Contract(token, abi, this._provider)
     const allowance = await contract.allowance(address, spender)
     return allowance
+  }
+
+  /**
+   * Verifies a message's signature.
+   *
+   * @param {string} message - The original message.
+   * @param {string} signature - The signature to verify.
+   * @returns {Promise<boolean>} True if the signature is valid.
+   */
+  async verify (message, signature) {
+    const address = await verifyMessage(message, signature)
+    const accountAddress = await this.getAddress()
+
+    return address.toLowerCase() === accountAddress.toLowerCase()
   }
 
   /**

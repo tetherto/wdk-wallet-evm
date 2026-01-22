@@ -69,6 +69,14 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<bigint>} The allowance.
      */
     getAllowance(token: string, spender: string): Promise<bigint>;
+    /**
+     * Verifies a message's signature.
+     *
+     * @param {string} message - The original message.
+     * @param {string} signature - The signature to verify.
+     * @returns {Promise<boolean>} True if the signature is valid.
+     */
+    verify(message: string, signature: string): Promise<boolean>;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
