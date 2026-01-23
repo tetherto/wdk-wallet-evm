@@ -1,3 +1,8 @@
+/** @typedef {import('wdk-failover-provider').default} FailoverProvider */
+/** @typedef {import('ethers').AbstractProvider} Provider */
+/** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
+/** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
+/** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 export default class WalletManagerEvm extends WalletManager {
     /**
      * Multiplier for normal fee rate calculations (in %).
@@ -20,13 +25,6 @@ export default class WalletManagerEvm extends WalletManager {
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
     constructor(seed: string | Uint8Array, config?: EvmWalletConfig);
-    /**
-     * The evm wallet configuration.
-     *
-     * @protected
-     * @type {EvmWalletConfig}
-     */
-    protected _config: EvmWalletConfig;
     /**
      * An ethers provider to interact with a node of the blockchain.
      *
@@ -54,15 +52,12 @@ export default class WalletManagerEvm extends WalletManager {
      * @returns {Promise<WalletAccountEvm>} The account.
      */
     getAccountByPath(path: string): Promise<WalletAccountEvm>;
-    /**
-     * Returns the current fee rates.
-     *
-     * @returns {Promise<FeeRates>} The fee rates (in weis).
-     */
-    getFeeRates(): Promise<FeeRates>;
 }
-export type Provider = import("ethers").Provider;
+export type FailoverProvider = FailoverProvider<any>;
+export type Provider = import("ethers").AbstractProvider;
+export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
 export type EvmWalletConfig = import("./wallet-account-evm.js").EvmWalletConfig;
 import WalletManager from '@tetherto/wdk-wallet';
 import WalletAccountEvm from './wallet-account-evm.js';
+import FailoverProvider from 'wdk-failover-provider';
