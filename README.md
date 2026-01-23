@@ -193,7 +193,7 @@ console.log('Transfer fee estimate:', transferQuote.fee, 'wei')
 
 ### Message Signing and Verification
 
-Sign and verify messages using `WalletAccountEvm`.
+Sign messages using `WalletAccountEvm` and verify signatures using `WalletAccountReadOnlyEvm`.
 
 ```javascript
 // Sign a message
@@ -201,8 +201,8 @@ const message = 'Hello, Ethereum!'
 const signature = await account.sign(message)
 console.log('Signature:', signature)
 
-// Verify a signature
-const isValid = await account.verify(message, signature)
+// Verify a signature (can use read-only account)
+const isValid = await readOnlyAccount.verify(message, signature)
 console.log('Signature valid:', isValid)
 ```
 
@@ -298,7 +298,6 @@ new WalletAccountEvm(seed, path, config)
 |--------|-------------|---------|
 | `getAddress()` | Returns the account's address | `Promise<string>` |
 | `sign(message)` | Signs a message using the account's private key | `Promise<string>` |
-| `verify(message, signature)` | Verifies a message signature | `Promise<boolean>` |
 | `sendTransaction(tx)` | Sends an EVM transaction | `Promise<{hash: string, fee: bigint}>` |
 | `quoteSendTransaction(tx)` | Estimates the fee for an EVM transaction | `Promise<{fee: bigint}>` |
 | `transfer(options)` | Transfers ERC20 tokens to another address | `Promise<{hash: string, fee: bigint}>` |
@@ -355,6 +354,7 @@ new WalletAccountReadOnlyEvm(address, config)
 | `getTokenBalance(tokenAddress)` | Returns the balance of a specific ERC20 token | `Promise<bigint>` |
 | `quoteSendTransaction(tx)` | Estimates the fee for an EVM transaction | `Promise<{fee: bigint}>` |
 | `quoteTransfer(options)` | Estimates the fee for an ERC20 transfer | `Promise<{fee: bigint}>` |
+| `verify(message, signature)` | Verifies a message signature | `Promise<boolean>` |
 
 ## 🌐 Supported Networks
 

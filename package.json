@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-wallet-evm",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "A simple package to manage BIP-32 wallets for evm blockchains.",
   "keywords": [
     "wdk",
