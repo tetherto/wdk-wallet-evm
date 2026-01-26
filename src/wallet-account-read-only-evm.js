@@ -66,15 +66,17 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     this._config = config
 
+    /**
+     * An ethers provider to interact with a node of the blockchain.
+     *
+     * @protected
+     * @type {Provider | undefined}
+     */
+    this._provider = undefined
+
     const { provider, retries = 3 } = config
 
     if (Array.isArray(provider)) {
-      /**
-       * An ethers provider to interact with a node of the blockchain.
-       *
-       * @protected
-       * @type {Provider | undefined}
-       */
       this._provider = provider
         .reduce(
           /**
