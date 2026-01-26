@@ -97,6 +97,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
         typeof provider === 'string'
           ? new JsonRpcProvider(provider)
           : new BrowserProvider(provider)
+    } else {
+      this._provider = undefined
     }
   }
 

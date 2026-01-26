@@ -95,6 +95,8 @@ export default class WalletManagerEvm extends WalletManager {
         typeof provider === 'string'
           ? new JsonRpcProvider(provider)
           : new BrowserProvider(provider)
+    } else {
+      this._provider = undefined
     }
   }
 
