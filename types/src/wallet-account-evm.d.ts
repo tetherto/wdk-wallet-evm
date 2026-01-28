@@ -48,6 +48,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     sign(message: string): Promise<string>;
     /**
+     * Signs typed data according to EIP-712.
+     *
+     * @param {TypedDataDomain} domain - The domain separator.
+     * @param {Record<string, TypedDataField[]>} types - The type definitions.
+     * @param {Record<string, any>} value - The value to sign.
+     * @returns {Promise<string>} The typed data signature.
+     */
+    signTypedData(domain: TypedDataDomain, types: Record<string, TypedDataField[]>, value: Record<string, any>): Promise<string>;
+    /**
      * Sends a transaction.
      *
      * @param {EvmTransaction} tx - The transaction.
@@ -81,6 +90,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     dispose(): void;
 }
 export type HDNodeWallet = import("ethers").HDNodeWallet;
+export type TypedDataDomain = import("ethers").TypedDataDomain;
+export type TypedDataField = import("ethers").TypedDataField;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;

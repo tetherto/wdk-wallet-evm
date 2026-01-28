@@ -2,6 +2,8 @@ export { default } from "./src/wallet-manager-evm.js";
 export { default as WalletAccountReadOnlyEvm } from "./src/wallet-account-read-only-evm.js";
 export { default as WalletAccountEvm } from "./src/wallet-account-evm.js";
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
+export type TypedDataDomain = import("ethers").TypedDataDomain;
+export type TypedDataField = import("ethers").TypedDataField;
 export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
