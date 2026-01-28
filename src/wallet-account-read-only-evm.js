@@ -26,6 +26,9 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedD
 /** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
+/** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
+/** @typedef {import('ethers').TypedDataField} TypedDataField */
+
 /**
  * @typedef {Object} EvmTransaction
  * @property {string} to - The transaction's recipient.
@@ -201,8 +204,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Verifies a typed data signature.
    *
-   * @param {import('ethers').TypedDataDomain} domain - The domain separator.
-   * @param {Record<string, import('ethers').TypedDataField[]>} types - The type definitions.
+   * @param {TypedDataDomain} domain - The domain separator.
+   * @param {Record<string, TypedDataField[]>} types - The type definitions.
    * @param {Record<string, any>} value - The value to verify.
    * @param {string} signature - The signature to verify.
    * @returns {Promise<boolean>} True if the signature is valid.

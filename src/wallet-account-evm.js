@@ -34,6 +34,9 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
+/** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
+/** @typedef {import('ethers').TypedDataField} TypedDataField */
+
 /**
  * @typedef {Object} ApproveOptions
  * @property {string} token - The address of the token to approve.
@@ -133,8 +136,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Signs typed data according to EIP-712.
    *
-   * @param {import('ethers').TypedDataDomain} domain - The domain separator.
-   * @param {Record<string, import('ethers').TypedDataField[]>} types - The type definitions.
+   * @param {TypedDataDomain} domain - The domain separator.
+   * @param {Record<string, TypedDataField[]>} types - The type definitions.
    * @param {Record<string, any>} value - The value to sign.
    * @returns {Promise<string>} The typed data signature.
    */
