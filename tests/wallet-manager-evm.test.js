@@ -4,14 +4,15 @@ import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
 
-const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
+const SEED_PHRASE =
+  'cook voyage document eight skate token alien guide drink uncle term abuse'
 
 describe('WalletManagerEvm', () => {
   let wallet
 
   beforeEach(async () => {
     wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider
+      provider: [hre.network.provider]
     })
   })
 
@@ -37,8 +38,9 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should throw if the index is a negative number', async () => {
-      await expect(wallet.getAccount(-1))
-        .rejects.toThrow('invalid path component')
+      await expect(wallet.getAccount(-1)).rejects.toThrow(
+        'invalid path component'
+      )
     })
   })
 
@@ -52,8 +54,9 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should throw if the path is invalid', async () => {
-      await expect(wallet.getAccountByPath("a'/b/c"))
-        .rejects.toThrow('invalid path component')
+      await expect(wallet.getAccountByPath("a'/b/c")).rejects.toThrow(
+        'invalid path component'
+      )
     })
   })
 
@@ -69,8 +72,9 @@ describe('WalletManagerEvm', () => {
     test('should throw if the wallet is not connected to a provider', async () => {
       const wallet = new WalletManagerEvm(SEED_PHRASE)
 
-      await expect(wallet.getFeeRates())
-        .rejects.toThrow('The wallet must be connected to a provider to get fee rates.')
+      await expect(wallet.getFeeRates()).rejects.toThrow(
+        'The wallet must be connected to a provider to get fee rates.'
+      )
     })
   })
 })

@@ -70,7 +70,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
     }
 
     wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider
+      provider: [hre.network.provider]
     })
   })
 
@@ -264,7 +264,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
 
   test('should create a wallet with a low transfer max fee, derive an account, try to transfer some tokens and gracefully fail', async () => {
     const wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider,
+      provider: [hre.network.provider],
       transferMaxFee: 0
     })
 

@@ -66,7 +66,7 @@ describe('WalletAccountEvm', () => {
     await sendTestTokensTo(ACCOUNT.address, INITIAL_TOKEN_BALANCE)
 
     account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-      provider: hre.network.provider
+      provider: [hre.network.provider]
     })
   })
 
@@ -209,7 +209,7 @@ describe('WalletAccountEvm', () => {
       }
 
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-        provider: hre.network.provider,
+        provider: [hre.network.provider],
         transferMaxFee: 0
       })
 
@@ -252,7 +252,6 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if approving non-zero USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
 
       const approveOptions = {
         token: USDT_MAINNET_ADDRESS,
@@ -260,13 +259,15 @@ describe('WalletAccountEvm', () => {
         amount: AMOUNT
       }
 
-      await expect(account.approve(approveOptions))
+      await expect(async ()=>{
+        const re = await account.approve(approveOptions)
+        console.log(re)
+      })
         .rejects.toThrow('USDT requires the current allowance to be reset to 0 before setting a new non-zero value.')
     })
     
     test('should successfully approve a non-zero amount for USDT on mainnet when allowance is zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(0n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {
@@ -292,7 +293,6 @@ describe('WalletAccountEvm', () => {
 
     test('should successfully approve a zero amount for USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {

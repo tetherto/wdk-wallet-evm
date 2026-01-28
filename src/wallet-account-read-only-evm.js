@@ -18,7 +18,11 @@ import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
 import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage } from 'ethers'
 
-/** @typedef {import('ethers').Provider} Provider */
+import FailoverProvider from 'wdk-failover-provider'
+
+/** @typedef {import('wdk-failover-provider').default} FailoverProvider */
+
+/** @typedef {import('ethers').AbstractProvider} Provider */
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 
@@ -39,7 +43,8 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage } from 'ether
 
 /**
  * @typedef {Object} EvmWalletConfig
- * @property {string | Eip1193Provider} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193.
+ * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. If it's a list of urls or instances, the provider failover strategy will be enabled.
+ * @property {number} [retries] - The number of retries in the failover mechanism.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
 
@@ -50,7 +55,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {string} address - The account's address.
    * @param {Omit<EvmWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
    */
-  constructor (address, config = { }) {
+  constructor (address, config = {}) {
     super(address)
 
     /**
@@ -61,18 +66,39 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     this._config = config
 
-    const { provider } = config
+    /**
+     * An ethers provider to interact with a node of the blockchain.
+     *
+     * @protected
+     * @type {Provider | undefined}
+     */
+    this._provider = undefined
 
-    if (provider) {
-      /**
-       * An ethers provider to interact with a node of the blockchain.
-       *
-       * @protected
-       * @type {Provider | undefined}
-       */
-      this._provider = typeof provider === 'string'
-        ? new JsonRpcProvider(provider)
-        : new BrowserProvider(provider)
+    const { provider, retries = 3 } = config
+
+    if (Array.isArray(provider)) {
+      this._provider = provider
+        .reduce(
+          /**
+           * @param {FailoverProvider<Provider>} failover
+           * @param {string | Eip1193Provider} provider
+           */
+          (failover, provider) =>
+            failover.addProvider(
+              typeof provider === 'string'
+                ? new JsonRpcProvider(provider)
+                : new BrowserProvider(provider)
+            ),
+          new FailoverProvider({ retries })
+        )
+        .initialize()
+    } else if (provider) {
+      this._provider =
+        typeof provider === 'string'
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider)
+    } else {
+      this._provider = undefined
     }
   }
 
@@ -83,7 +109,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async getBalance () {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to retrieve balances.')
+      throw new Error(
+        'The wallet must be connected to a provider to retrieve balances.'
+      )
     }
 
     const address = await this.getAddress()
@@ -101,7 +129,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async getTokenBalance (tokenAddress) {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to retrieve token balances.')
+      throw new Error(
+        'The wallet must be connected to a provider to retrieve token balances.'
+      )
     }
 
     const address = await this.getAddress()
@@ -121,7 +151,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async quoteSendTransaction (tx) {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to quote send transaction operations.')
+      throw new Error(
+        'The wallet must be connected to a provider to quote send transaction operations.'
+      )
     }
 
     const gas = await this._provider.estimateGas({
@@ -142,7 +174,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async quoteTransfer (options) {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to quote transfer operations.')
+      throw new Error(
+        'The wallet must be connected to a provider to quote transfer operations.'
+      )
     }
 
     const tx = await WalletAccountReadOnlyEvm._getTransferTransaction(options)
@@ -160,7 +194,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async getTransactionReceipt (hash) {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to fetch transaction receipts.')
+      throw new Error(
+        'The wallet must be connected to a provider to fetch transaction receipts.'
+      )
     }
 
     return await this._provider.getTransactionReceipt(hash)
@@ -174,11 +210,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    */
   async getAllowance (token, spender) {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to retrieve allowances.')
+      throw new Error(
+        'The wallet must be connected to a provider to retrieve allowances.'
+      )
     }
 
     const address = await this.getAddress()
-    const abi = ['function allowance(address owner, address spender) view returns (uint256)']
+    const abi = [
+      'function allowance(address owner, address spender) view returns (uint256)'
+    ]
     const contract = new Contract(token, abi, this._provider)
     const allowance = await contract.allowance(address, spender)
     return allowance
@@ -208,14 +248,19 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   static async _getTransferTransaction (options) {
     const { token, recipient, amount } = options
 
-    const abi = ['function transfer(address to, uint256 amount) returns (bool)']
+    const abi = [
+      'function transfer(address to, uint256 amount) returns (bool)'
+    ]
 
     const contract = new Contract(token, abi)
 
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('transfer', [recipient, amount])
+      data: contract.interface.encodeFunctionData('transfer', [
+        recipient,
+        amount
+      ])
     }
 
     return tx

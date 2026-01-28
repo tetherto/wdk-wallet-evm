@@ -18,9 +18,14 @@ import WalletManager from '@tetherto/wdk-wallet'
 
 import { BrowserProvider, JsonRpcProvider } from 'ethers'
 
+import FailoverProvider from 'wdk-failover-provider'
+
 import WalletAccountEvm from './wallet-account-evm.js'
 
-/** @typedef {import('ethers').Provider} Provider */
+/** @typedef {import('wdk-failover-provider').default} FailoverProvider */
+
+/** @typedef {import('ethers').AbstractProvider} Provider */
+/** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
 
 /** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
 
@@ -59,19 +64,39 @@ export default class WalletManagerEvm extends WalletManager {
      * @type {EvmWalletConfig}
      */
     this._config = config
+    /**
+     * An ethers provider to interact with a node of the blockchain.
+     *
+     * @protected
+     * @type {Provider | undefined}
+     */
+    this._provider = undefined
 
-    const { provider } = config
+    const { provider, retries = 3 } = config
 
-    if (provider) {
-      /**
-       * An ethers provider to interact with a node of the blockchain.
-       *
-       * @protected
-       * @type {Provider | undefined}
-       */
-      this._provider = typeof provider === 'string'
-        ? new JsonRpcProvider(provider)
-        : new BrowserProvider(provider)
+    if (Array.isArray(provider)) {
+      this._provider = provider
+        .reduce(
+          /**
+           * @param {FailoverProvider<Provider>} failover
+           * @param {string | Eip1193Provider} provider
+           */
+          (failover, provider) =>
+            failover.addProvider(
+              typeof provider === 'string'
+                ? new JsonRpcProvider(provider)
+                : new BrowserProvider(provider)
+            ),
+          new FailoverProvider({ retries })
+        )
+        .initialize()
+    } else if (provider) {
+      this._provider =
+        typeof provider === 'string'
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider)
+    } else {
+      this._provider = undefined
     }
   }
 
@@ -114,14 +139,17 @@ export default class WalletManagerEvm extends WalletManager {
    */
   async getFeeRates () {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to get fee rates.')
+      throw new Error(
+        'The wallet must be connected to a provider to get fee rates.'
+      )
     }
 
     const { maxFeePerGas } = await this._provider.getFeeData()
 
     return {
-      normal: maxFeePerGas * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
-      fast: maxFeePerGas * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
+      normal:
+        (maxFeePerGas * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER) / 100n,
+      fast: (maxFeePerGas * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER) / 100n
     }
   }
 }

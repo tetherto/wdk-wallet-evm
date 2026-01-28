@@ -9,13 +9,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     constructor(seed: string | Uint8Array, path: string, config?: EvmWalletConfig);
     /**
-     * The wallet account configuration.
-     *
-     * @protected
-     * @type {EvmWalletConfig}
-     */
-    protected _config: EvmWalletConfig;
-    /**
      * The account.
      *
      * @protected
@@ -90,15 +83,15 @@ export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTran
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
 export type ApproveOptions = {
     /**
-     * The address of the token to approve.
+     * - The address of the token to approve.
      */
     token: string;
     /**
-     * The spender’s address.
+     * - The spender’s address.
      */
     spender: string;
     /**
-     * The amount of tokens to approve to the spender.
+     * - The amount of tokens to approve to the spender.
      */
     amount: number | bigint;
 };

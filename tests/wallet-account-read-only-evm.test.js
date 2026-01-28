@@ -48,7 +48,7 @@ describe('WalletAccountReadOnlyEvm', () => {
     await sendTestTokensTo(ADDRESS, INITIAL_TOKEN_BALANCE)
 
     account = new WalletAccountReadOnlyEvm(ADDRESS, {
-      provider: hre.network.provider
+      provider: [hre.network.provider]
     })
   })
 

@@ -4,8 +4,10 @@ require('@nomicfoundation/hardhat-ethers')
 module.exports = {
   networks: {
     hardhat: {
+      chainId: 1,
       accounts: {
-        mnemonic: 'anger burst story spy face pattern whale quit delay fiction ball solve',
+        mnemonic:
+          'anger burst story spy face pattern whale quit delay fiction ball solve',
         path: "m/44'/60'/0'/0",
         initialIndex: 0,
         count: 1,
