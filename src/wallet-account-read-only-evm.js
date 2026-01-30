@@ -212,10 +212,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Verifies a typed data signature.
    *
-   * @param {TypedData & { signature: string }} typedData - The typed data and signature to verify.
+   * @param {TypedData} typedData - The typed data to verify.
+   * @param {string} signature - The signature to verify.
    * @returns {Promise<boolean>} True if the signature is valid.
    */
-  async verifyTypedData ({ domain, types, primaryType, message, signature }) {
+  async verifyTypedData (typedData, signature) {
+    const { domain, types, message } = typedData
     const address = verifyTypedData(domain, types, message, signature)
     const accountAddress = await this.getAddress()
 

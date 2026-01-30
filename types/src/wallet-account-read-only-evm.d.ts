@@ -80,10 +80,11 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Verifies a typed data signature.
      *
-     * @param {TypedData & { signature: string }} typedData - The typed data and signature to verify.
+     * @param {TypedData} typedData - The typed data to verify.
+     * @param {string} signature - The signature to verify.
      * @returns {Promise<boolean>} True if the signature is valid.
      */
-    verifyTypedData(typedData: TypedData & { signature: `0x${string}` }): Promise<boolean>;
+    verifyTypedData(typedData: TypedData, signature: string): Promise<boolean>;
 }
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;

@@ -277,9 +277,8 @@ describe('WalletAccountReadOnlyEvm', () => {
         domain: DOMAIN,
         types: TYPES,
         primaryType: 'Mail',
-        message: MESSAGE,
-        signature: SIGNATURE
-      })
+        message: MESSAGE
+      }, SIGNATURE)
 
       expect(result).toBe(true)
     })
@@ -289,9 +288,8 @@ describe('WalletAccountReadOnlyEvm', () => {
         domain: DOMAIN,
         types: TYPES,
         primaryType: 'Mail',
-        message: { ...MESSAGE, contents: 'Hello, Alice!' },
-        signature: SIGNATURE
-      })
+        message: { ...MESSAGE, contents: 'Hello, Alice!' }
+      }, SIGNATURE)
 
       expect(result).toBe(false)
     })
@@ -301,9 +299,8 @@ describe('WalletAccountReadOnlyEvm', () => {
         domain: DOMAIN,
         types: TYPES,
         primaryType: 'Mail',
-        message: MESSAGE,
-        signature: 'A bad signature'
-      }))
+        message: MESSAGE
+      }, 'A bad signature'))
         .rejects.toThrow('invalid BytesLike value')
     })
   })
