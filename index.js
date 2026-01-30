@@ -14,8 +14,7 @@
 'use strict'
 
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
-/** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
-/** @typedef {import('ethers').TypedDataField} TypedDataField */
+/** @typedef {import('./src/wallet-account-read-only-evm.js').TypedData} TypedData */
 
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */

@@ -80,18 +80,31 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Verifies a typed data signature.
      *
-     * @param {Object} typedData - The typed data to verify.
-     * @param {Record<string, unknown>} typedData.domain - The domain separator.
-     * @param {Record<string, unknown>} typedData.types - The type definitions.
-     * @param {string} typedData.primaryType - The primary type.
-     * @param {Record<string, unknown>} typedData.message - The message to verify.
-     * @param {`0x${string}`} typedData.signature - The signature to verify.
+     * @param {TypedData & { signature: string }} typedData - The typed data and signature to verify.
      * @returns {Promise<boolean>} True if the signature is valid.
      */
-    verifyTypedData(typedData: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown>; signature: `0x${string}` }): Promise<boolean>;
+    verifyTypedData(typedData: TypedData & { signature: `0x${string}` }): Promise<boolean>;
 }
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
+export type TypedData = {
+    /**
+     * - The domain separator.
+     */
+    domain: Record<string, unknown>;
+    /**
+     * - The type definitions.
+     */
+    types: Record<string, unknown>;
+    /**
+     * - The primary type.
+     */
+    primaryType: string;
+    /**
+     * - The message data.
+     */
+    message: Record<string, unknown>;
+};
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;

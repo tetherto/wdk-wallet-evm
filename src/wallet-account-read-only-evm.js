@@ -30,6 +30,14 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedD
 /** @typedef {import('ethers').TypedDataField} TypedDataField */
 
 /**
+ * @typedef {Object} TypedData
+ * @property {Record<string, unknown>} domain - The domain separator.
+ * @property {Record<string, unknown>} types - The type definitions.
+ * @property {string} primaryType - The primary type.
+ * @property {Record<string, unknown>} message - The message data.
+ */
+
+/**
  * @typedef {Object} EvmTransaction
  * @property {string} to - The transaction's recipient.
  * @property {number | bigint} value - The amount of ethers to send to the recipient (in weis).
@@ -204,12 +212,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Verifies a typed data signature.
    *
-   * @param {Object} typedData - The typed data to verify.
-   * @param {Record<string, unknown>} typedData.domain - The domain separator.
-   * @param {Record<string, unknown>} typedData.types - The type definitions.
-   * @param {string} typedData.primaryType - The primary type.
-   * @param {Record<string, unknown>} typedData.message - The message to verify.
-   * @param {string} typedData.signature - The signature to verify.
+   * @param {TypedData & { signature: string }} typedData - The typed data and signature to verify.
    * @returns {Promise<boolean>} True if the signature is valid.
    */
   async verifyTypedData ({ domain, types, primaryType, message, signature }) {
