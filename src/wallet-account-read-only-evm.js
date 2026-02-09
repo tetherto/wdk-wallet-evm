@@ -129,9 +129,11 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
       ...tx
     })
 
-    const { maxFeePerGas } = await this._provider.getFeeData()
+    const data = await this._provider.getFeeData()
 
-    return { fee: gas * maxFeePerGas }
+    const feeRate = data.maxFeePerGas || data.gasPrice
+
+    return { fee: gas * feeRate }
   }
 
   /**
