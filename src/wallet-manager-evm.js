@@ -117,11 +117,13 @@ export default class WalletManagerEvm extends WalletManager {
       throw new Error('The wallet must be connected to a provider to get fee rates.')
     }
 
-    const { maxFeePerGas } = await this._provider.getFeeData()
+    const data = await this._provider.getFeeData()
+
+    const feeRate = data.maxFeePerGas || data.gasPrice
 
     return {
-      normal: maxFeePerGas * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
-      fast: maxFeePerGas * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
+      normal: feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
+      fast: feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
     }
   }
 }
