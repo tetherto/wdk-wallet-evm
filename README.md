@@ -299,6 +299,8 @@ new WalletAccountEvm(seed, path, config)
 | `getAddress()` | Returns the account's address | `Promise<string>` |
 | `sign(message)` | Signs a message using the account's private key | `Promise<string>` |
 | `signTypedData(typedData)` | Signs typed data according to EIP-712 | `Promise<string>` |
+| `verify(message, signature)` | Verifies a message signature | `Promise<boolean>` |
+| `verifyTypedData(typedData, signature)` | Verifies a typed data signature | `Promise<boolean>` |
 | `sendTransaction(tx)` | Sends an EVM transaction | `Promise<{hash: string, fee: bigint}>` |
 | `quoteSendTransaction(tx)` | Estimates the fee for an EVM transaction | `Promise<{fee: bigint}>` |
 | `transfer(options)` | Transfers ERC20 tokens to another address | `Promise<{hash: string, fee: bigint}>` |
