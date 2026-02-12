@@ -33,6 +33,7 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
 
 /**
  * @typedef {Object} ApproveOptions
@@ -128,6 +129,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async sign (message) {
     return await this._account.signMessage(message)
+  }
+
+  /**
+   * Signs typed data according to EIP-712.
+   *
+   * @param {TypedData} typedData - The typed data to sign.
+   * @returns {Promise<string>} The typed data signature.
+   */
+  async signTypedData ({ domain, types, message }) {
+    return await this._account.signTypedData(domain, types, message)
   }
 
   /**

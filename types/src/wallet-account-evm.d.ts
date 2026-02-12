@@ -48,6 +48,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     sign(message: string): Promise<string>;
     /**
+     * Signs typed data according to EIP-712.
+     *
+     * @param {TypedData} typedData - The typed data to sign.
+     * @returns {Promise<string>} The typed data signature.
+     */
+    signTypedData(typedData: TypedData): Promise<string>;
+    /**
      * Sends a transaction.
      *
      * @param {EvmTransaction} tx - The transaction.
@@ -81,6 +88,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     dispose(): void;
 }
 export type HDNodeWallet = import("ethers").HDNodeWallet;
+export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;

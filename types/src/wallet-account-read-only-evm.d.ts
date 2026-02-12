@@ -29,6 +29,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     protected _provider: Provider | undefined;
     /**
+     * The account's address.
+     *
+     * @type {string}
+     */
+    get address(): string;
+    /**
      * Returns the account's eth balance.
      *
      * @returns {Promise<bigint>} The eth balance (in weis).
@@ -77,7 +83,31 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<boolean>} True if the signature is valid.
      */
     verify(message: string, signature: string): Promise<boolean>;
+    /**
+     * Verifies a typed data signature.
+     *
+     * @param {TypedData} typedData - The typed data to verify.
+     * @param {string} signature - The signature to verify.
+     * @returns {Promise<boolean>} True if the signature is valid.
+     */
+    verifyTypedData(typedData: TypedData, signature: string): Promise<boolean>;
 }
+export type TypedDataDomain = import("ethers").TypedDataDomain;
+export type TypedDataField = import("ethers").TypedDataField;
+export type TypedData = {
+    /**
+     * - The domain separator.
+     */
+    domain: TypedDataDomain;
+    /**
+     * - The type definitions.
+     */
+    types: Record<string, TypedDataField[]>;
+    /**
+     * - The message data.
+     */
+    message: Record<string, unknown>;
+};
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;

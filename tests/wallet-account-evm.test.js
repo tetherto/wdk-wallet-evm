@@ -128,6 +128,52 @@ describe('WalletAccountEvm', () => {
     })
   })
 
+  describe('signTypedData', () => {
+    const DOMAIN = {
+      name: 'TestApp',
+      version: '1',
+      chainId: 1,
+      verifyingContract: '0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC'
+    }
+
+    const TYPES = {
+      Person: [
+        { name: 'name', type: 'string' },
+        { name: 'wallet', type: 'address' }
+      ],
+      Mail: [
+        { name: 'from', type: 'Person' },
+        { name: 'to', type: 'Person' },
+        { name: 'contents', type: 'string' }
+      ]
+    }
+
+    const MESSAGE = {
+      from: {
+        name: 'Alice',
+        wallet: '0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826'
+      },
+      to: {
+        name: 'Bob',
+        wallet: '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB'
+      },
+      contents: 'Hello, Bob!'
+    }
+
+    const EXPECTED_SIGNATURE = '0xd5d54d9a7fe501ab5dc1532a443a4f70bc8b6ad1c3f09caac9b891efa8701cac5ad1d4830c7bc7ed2688965ed6b04d25e8f55906a843689fdf79100aee3a5dc71c'
+
+    test('should return the correct signature', async () => {
+      const signature = await account.signTypedData({
+        domain: DOMAIN,
+        types: TYPES,
+        primaryType: 'Mail',
+        message: MESSAGE
+      })
+
+      expect(signature).toBe(EXPECTED_SIGNATURE)
+    })
+  })
+
   describe('sendTransaction', () => {
     test('should successfully send a transaction', async () => {
       const TRANSACTION = {
