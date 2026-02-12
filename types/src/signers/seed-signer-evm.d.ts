@@ -1,7 +1,10 @@
-/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+/** @typedef {import('@tetherto/wdk-wallet/src/isigner.js').ISigner} ISigner */
+/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /**
  * Interface for EVM signers.
+ * Follows the base `ISigner` from `@tetherto/wdk-wallet`. For interface compatibility,
+ * the second argument to `derive` is accepted but ignored by EVM signers.
  * @implements {ISigner}
  * @interface
  */
@@ -21,17 +24,15 @@ export class ISignerEvm implements ISigner {
      * @type {string|undefined}
      */
     get path(): string | undefined;
-    /** @returns {EvmWalletConfig} */
-    get config(): EvmWalletConfig;
     /** @returns {string|undefined} */
     get address(): string | undefined;
     /**
      * Derive a child signer from this signer using a relative path (e.g. "0'/0/0").
      * @param {string} relPath
-      * @param {EvmWalletConfig} [cfg]
+     * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
      * @returns {ISignerEvm}
      */
-    derive(relPath: string, cfg?: EvmWalletConfig): ISignerEvm;
+    derive(relPath: string, _cfg?: EvmWalletConfig): ISignerEvm;
     /** @returns {Promise<string>} */
     getAddress(): Promise<string>;
     /**
@@ -68,14 +69,12 @@ export default class SeedSignerEvm implements ISignerEvm {
      * Provide either a mnemonic/seed or an existing root via opts.root.
      *
      * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
-     * @param {EvmWalletConfig} [config] - Signer configuration propagated to children.
      * @param {{root?: import('../memory-safe/hd-node-wallet.js').default, path?: string}} [opts]
      */
-    constructor(seed: string | Uint8Array | null, config?: EvmWalletConfig, opts?: {
+    constructor(seed: string | Uint8Array | null, opts?: {
         root?: import("../memory-safe/hd-node-wallet.js").default;
         path?: string;
     });
-    _config: import("../wallet-account-read-only-evm.js").EvmWalletConfig;
     _isRoot: boolean;
     _root: MemorySafeHDNodeWallet;
     _account: any;
@@ -87,7 +86,6 @@ export default class SeedSignerEvm implements ISignerEvm {
     get isPrivateKey(): boolean;
     get index(): number;
     get path(): string;
-    get config(): import("../wallet-account-read-only-evm.js").EvmWalletConfig;
     get address(): any;
     get keyPair(): {
         privateKey: any;
@@ -96,10 +94,10 @@ export default class SeedSignerEvm implements ISignerEvm {
     /**
      * Derive a child signer using the provided relative path (e.g. "0'/0/0").
      * @param {string} relPath
-     * @param {EvmWalletConfig} [cfg]
+     * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
      * @returns {SeedSignerEvm}
      */
-    derive(relPath: string, cfg?: EvmWalletConfig): SeedSignerEvm;
+    derive(relPath: string, _cfg?: EvmWalletConfig): SeedSignerEvm;
     /**
      * Sign a plain message string.
      * @param {string} message
@@ -123,6 +121,7 @@ export default class SeedSignerEvm implements ISignerEvm {
     /** Dispose secrets from memory. */
     dispose(): void;
 }
-export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;
 export type UnsignedEvmTransaction = import("../utils/tx-populator-evm.js").UnsignedEvmTransaction;
+export type ISigner = any;
+export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;
 import MemorySafeHDNodeWallet from '../memory-safe/hd-node-wallet.js';

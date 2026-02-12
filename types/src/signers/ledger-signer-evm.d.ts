@@ -11,13 +11,11 @@
 export default class LedgerSignerEvm implements ISignerEvm {
     /**
      * @param {string} path - Relative BIP-44 path segment (e.g. "0'/0/0"). Prefixed internally.
-     * @param {EvmWalletConfig} [config]
      * @param {{dmk?: DeviceManagementKit}} [opts]
      */
-    constructor(path: string, config?: EvmWalletConfig, opts?: {
+    constructor(path: string, opts?: {
         dmk?: DeviceManagementKit;
     });
-    _config: import("../wallet-account-read-only-evm.js").EvmWalletConfig;
     _account: import("@ledgerhq/device-signer-kit-ethereum/internal/DefaultSignerEth.js").DefaultSignerEth;
     _address: any;
     _sessionId: string;
@@ -30,8 +28,13 @@ export default class LedgerSignerEvm implements ISignerEvm {
     get isActive(): boolean;
     get index(): number;
     get path(): string;
-    get config(): import("../wallet-account-read-only-evm.js").EvmWalletConfig;
     get address(): any;
+    /**
+     * Ledger-backed signers do not expose private keys; key pairs are not available.
+     *
+     * @throws {Error} Always throws to indicate unavailability on Ledger.
+     */
+    get keyPair(): void;
     /**
      * Disconnect current session if any.
      *
@@ -49,7 +52,6 @@ export default class LedgerSignerEvm implements ISignerEvm {
      * - If locked or busy: fail fast with a friendly error.
      * - If not connected: attempt reconnect.
      *
-     * @param {string} context
      * @private
      */
     private _ensureDeviceReady;
@@ -72,10 +74,10 @@ export default class LedgerSignerEvm implements ISignerEvm {
      * Derive a new signer at the given relative path, reusing the current device session.
      *
      * @param {string} relPath - Relative BIP-44 path (e.g. "0'/0/1").
-     * @param {EvmWalletConfig} [cfg] - Optional configuration overrides for the derived signer.
+     * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
      * @returns {LedgerSignerEvm} A new hardware-backed signer bound to the derived path.
      */
-    derive(relPath: string, cfg?: EvmWalletConfig): LedgerSignerEvm;
+    derive(relPath: string, _cfg?: EvmWalletConfig): LedgerSignerEvm;
     /** @returns {Promise<string>} */
     getAddress(): Promise<string>;
     /**
@@ -98,7 +100,7 @@ export default class LedgerSignerEvm implements ISignerEvm {
     /** Clear device handles and local state. */
     dispose(): void;
 }
-export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;
 export type UnsignedEvmTransaction = import("../utils/tx-populator-evm.js").UnsignedEvmTransaction;
+export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;
 export type DeviceManagementKit = import("@ledgerhq/device-management-kit").DeviceManagementKit;
 export type ISignerEvm = import("./seed-signer-evm.js").ISignerEvm;
