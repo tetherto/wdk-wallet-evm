@@ -122,7 +122,9 @@ export default class LedgerSignerEvm {
       return
     }
     try {
-      const device = this._dmk.getConnectedDevice({ sessionId: this._sessionId })
+      const device = this._dmk.getConnectedDevice({
+        sessionId: this._sessionId
+      })
       this._sessionId = await this._dmk.reconnect({
         device,
         sessionRefresherOptions: { isRefresherDisabled: true }
@@ -144,14 +146,15 @@ export default class LedgerSignerEvm {
    * - If locked or busy: fail fast with a friendly error.
    * - If not connected: attempt reconnect.
    *
-   * @param {string} context
    * @private
    */
-  async _ensureDeviceReady (context) {
+  async _ensureDeviceReady () {
     if (!this._dmk || !this._sessionId) return
     let state
     try {
-      state = await firstValueFrom(this._dmk.getDeviceSessionState({ sessionId: this._sessionId }))
+      state = await firstValueFrom(
+        this._dmk.getDeviceSessionState({ sessionId: this._sessionId })
+      )
     } catch (_) {
       // If state cannot be retrieved, try to reconnect; let subsequent action fail if still unavailable
       await this._reconnect()
@@ -245,7 +248,7 @@ export default class LedgerSignerEvm {
       dmk: this._dmk
     }
 
-    return new LedgerSignerEvm(`${relPath}`, mergedOpts)
+    return new LedgerSignerEvm(relPath, mergedOpts)
   }
 
   /** @returns {Promise<string>} */

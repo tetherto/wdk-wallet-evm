@@ -1,4 +1,3 @@
-/** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /**
  * * @implements {ISignerEvm}
@@ -9,10 +8,8 @@
 export default class PrivateKeySignerEvm implements ISignerEvm {
     /**
      * @param {string|Uint8Array} privateKey - Hex string (with/without 0x) or raw key bytes.
-     * @param {EvmWalletConfig} [config]
      */
-    constructor(privateKey: string | Uint8Array, config?: EvmWalletConfig);
-    _config: import("../wallet-account-read-only-evm.js").EvmWalletConfig;
+    constructor(privateKey: string | Uint8Array);
     _signingKey: MemorySafeSigningKey;
     _wallet: BaseWallet;
     _address: string;
@@ -23,7 +20,6 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     get isPrivateKey(): boolean;
     get index(): number;
     get path(): any;
-    get config(): import("../wallet-account-read-only-evm.js").EvmWalletConfig;
     get address(): string;
     get isActive(): boolean;
     get keyPair(): {
@@ -57,7 +53,6 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     /** Dispose secrets from memory. */
     dispose(): void;
 }
-export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;
 export type UnsignedEvmTransaction = import("../utils/tx-populator-evm.js").UnsignedEvmTransaction;
 import MemorySafeSigningKey from '../memory-safe/signing-key.js';
 import { BaseWallet } from 'ethers';
