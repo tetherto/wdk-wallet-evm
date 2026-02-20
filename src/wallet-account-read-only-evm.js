@@ -16,7 +16,8 @@
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
-import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedData } from 'ethers'
+import { BrowserProvider, Contract, Interface, JsonRpcProvider, verifyMessage, verifyTypedData } from 'ethers'
+import { multicall } from './multicall.js'
 
 /** @typedef {import('ethers').Provider} Provider */
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
@@ -130,6 +131,43 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     const balance = await contract.balanceOf(address)
 
     return balance
+  }
+
+  /**
+   * Returns the account balances for multiple tokens.
+   *
+   * @param {string[]} tokenAddresses - The smart contract addresses of the tokens.
+   * @returns {Promise<Record<string, bigint>>} A mapping of token addresses to their balances (in base units).
+   */
+  async getTokenBalances (tokenAddresses) {
+    if (!this._provider) {
+      throw new Error(
+        'The wallet must be connected to a provider to retrieve token balances.'
+      )
+    }
+
+    if (tokenAddresses.length === 0) {
+      return {}
+    }
+
+    const address = await this.getAddress()
+    const iface = new Interface(['function balanceOf(address owner) view returns (uint256)'])
+    const calldata = iface.encodeFunctionData('balanceOf', [address])
+
+    const calls = tokenAddresses.map(tokenAddress => ({
+      to: tokenAddress,
+      data: calldata
+    }))
+
+    const results = await multicall(this._provider, calls)
+
+    return tokenAddresses.reduce((acc, tokenAddress, index) => {
+      const result = results[index]
+      acc[tokenAddress] = result.status
+        ? iface.decodeFunctionResult('balanceOf', result.data)[0]
+        : 0n
+      return acc
+    }, {})
   }
 
   /**

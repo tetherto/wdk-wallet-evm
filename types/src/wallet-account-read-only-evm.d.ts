@@ -48,6 +48,13 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     getTokenBalance(tokenAddress: string): Promise<bigint>;
     /**
+     * Returns the account balances for multiple tokens.
+     *
+     * @param {string[]} tokenAddresses - The smart contract addresses of the tokens.
+     * @returns {Promise<Record<string, bigint>>} A mapping of token addresses to their balances (in base units).
+     */
+    getTokenBalances(tokenAddresses: string[]): Promise<Record<string, bigint>>;
+    /**
      * Quotes the costs of a send transaction operation.
      *
      * @param {EvmTransaction} tx - The transaction.

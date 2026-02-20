@@ -92,6 +92,48 @@ describe('WalletAccountReadOnlyEvm', () => {
     })
   })
 
+  describe('getTokenBalances', () => {
+    test('should return an empty object for an empty array', async () => {
+      const balances = await account.getTokenBalances([])
+
+      expect(balances).toEqual({})
+    })
+
+    test('should return the correct balance for a single token', async () => {
+      const balances = await account.getTokenBalances([testToken.target])
+
+      expect(balances).toEqual({
+        [testToken.target]: INITIAL_TOKEN_BALANCE
+      })
+    })
+
+    test('should return the correct token balances of the account', async () => {
+      const testToken2 = await deployTestToken()
+      const transaction = await testToken2.transfer(
+        ADDRESS,
+        INITIAL_TOKEN_BALANCE * 2n
+      )
+      await transaction.wait()
+
+      const balances = await account.getTokenBalances([
+        testToken.target,
+        testToken2.target
+      ])
+
+      expect(balances).toEqual({
+        [testToken.target]: INITIAL_TOKEN_BALANCE,
+        [testToken2.target]: INITIAL_TOKEN_BALANCE * 2n
+      })
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const account = new WalletAccountReadOnlyEvm(ADDRESS)
+
+      await expect(account.getTokenBalances([testToken.target]))
+        .rejects.toThrow('The wallet must be connected to a provider to retrieve token balances.')
+    })
+  })
+
   describe('quoteSendTransaction', () => {
     test('should successfully quote a transaction', async () => {
       const TRANSACTION = {
