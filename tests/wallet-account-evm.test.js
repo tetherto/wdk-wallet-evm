@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globa
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
+import SimpleDelegateContract from './artifacts/SimpleDelegateContract.json' with { type: 'json' }
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
@@ -30,6 +31,18 @@ const ACCOUNT = {
 
 const INITIAL_BALANCE = 1_000_000_000_000_000_000n
 const INITIAL_TOKEN_BALANCE = 1_000_000n
+
+async function deploySimpleDelegateContract () {
+  const [signer] = await hre.ethers.getSigners()
+
+  const factory = new ContractFactory(SimpleDelegateContract.abi, SimpleDelegateContract.bytecode, signer)
+  const contract = await factory.deploy()
+  const transaction = await contract.deploymentTransaction()
+
+  await transaction.wait()
+
+  return contract
+}
 
 async function deployTestToken () {
   const [signer] = await hre.ethers.getSigners()
@@ -382,6 +395,114 @@ describe('WalletAccountEvm', () => {
       expect(readOnlyAccount).toBeInstanceOf(WalletAccountReadOnlyEvm)
 
       expect(await readOnlyAccount.getAddress()).toBe(ACCOUNT.address)
+    })
+  })
+
+  describe('signAuthorization', () => {
+    let delegateContract
+
+    beforeEach(async () => {
+      delegateContract = await deploySimpleDelegateContract()
+    })
+
+    test('should produce a signed authorization', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      expect(auth).toHaveProperty('address')
+      expect(auth).toHaveProperty('nonce')
+      expect(auth).toHaveProperty('chainId')
+      expect(auth).toHaveProperty('signature')
+    })
+
+    test('should throw if address is missing', async () => {
+      await expect(account.signAuthorization({}))
+        .rejects.toThrow('The authorization must include an address.')
+    })
+
+    test('should throw if auth is null', async () => {
+      await expect(account.signAuthorization(null))
+        .rejects.toThrow('The authorization must include an address.')
+    })
+  })
+
+  describe('delegate', () => {
+    let delegateContract
+
+    beforeEach(async () => {
+      delegateContract = await deploySimpleDelegateContract()
+    })
+
+    test('should set delegation to a contract', async () => {
+      const { hash } = await account.delegate(delegateContract.target)
+
+      expect(typeof hash).toBe('string')
+      expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
+
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(true)
+      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const disconnected = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(disconnected.delegate(delegateContract.target))
+        .rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+  })
+
+  describe('revokeDelegation', () => {
+    let delegateContract
+
+    beforeEach(async () => {
+      delegateContract = await deploySimpleDelegateContract()
+    })
+
+    test('should revoke an active delegation', async () => {
+      await account.delegate(delegateContract.target)
+
+      const beforeRevoke = await account.getDelegation()
+      expect(beforeRevoke.isDelegated).toBe(true)
+
+      await account.revokeDelegation()
+
+      const afterRevoke = await account.getDelegation()
+      expect(afterRevoke.isDelegated).toBe(false)
+      expect(afterRevoke.delegateAddress).toBeNull()
+    })
+  })
+
+  describe('getDelegation', () => {
+    let delegateContract
+
+    beforeEach(async () => {
+      delegateContract = await deploySimpleDelegateContract()
+    })
+
+    test('should return false for a regular EOA', async () => {
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(false)
+      expect(delegation.delegateAddress).toBeNull()
+    })
+
+    test('should return true after delegation with correct address', async () => {
+      await account.delegate(delegateContract.target)
+
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(true)
+      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const disconnected = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(disconnected.getDelegation())
+        .rejects.toThrow('The wallet must be connected to a provider to check delegation.')
     })
   })
 })

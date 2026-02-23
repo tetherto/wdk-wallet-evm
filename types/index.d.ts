@@ -13,3 +13,7 @@ export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type EvmTransaction = import("./src/wallet-account-read-only-evm.js").EvmTransaction;
 export type EvmWalletConfig = import("./src/wallet-account-read-only-evm.js").EvmWalletConfig;
 export type ApproveOptions = import("./src/wallet-account-evm.js").ApproveOptions;
+export type EvmTransferOptions = import("./src/wallet-account-evm.js").EvmTransferOptions;
+export type Erc7702AuthorizationRequest = import("./src/wallet-account-read-only-evm.js").Erc7702AuthorizationRequest;
+export type Erc7702Authorization = import("./src/wallet-account-read-only-evm.js").Erc7702Authorization;
+export type DelegationInfo = import("./src/wallet-account-read-only-evm.js").DelegationInfo;

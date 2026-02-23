@@ -37,6 +37,27 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedD
  */
 
 /**
+ * @typedef {Object} Erc7702AuthorizationRequest
+ * @property {string} address - The address of the contract to delegate to.
+ * @property {number} [nonce] - The authorization nonce. If omitted, it is populated automatically.
+ * @property {number} [chainId] - The chain ID. Set to 0 for chain-agnostic authorizations.
+ */
+
+/**
+ * @typedef {Object} Erc7702Authorization
+ * @property {string} address - The address of the contract delegated to.
+ * @property {number} nonce - The authorization nonce.
+ * @property {number} chainId - The chain ID.
+ * @property {string} signature - The signed authorization.
+ */
+
+/**
+ * @typedef {Object} DelegationInfo
+ * @property {boolean} isDelegated - Whether the account has an active ERC-7702 delegation.
+ * @property {string | null} delegateAddress - The address of the delegate contract, or null if not delegated.
+ */
+
+/**
  * @typedef {Object} EvmTransaction
  * @property {string} to - The transaction's recipient.
  * @property {number | bigint} value - The amount of ethers to send to the recipient (in weis).
@@ -45,6 +66,7 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedD
  * @property {number | bigint} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
  * @property {number | bigint} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
+ * @property {Erc7702Authorization[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
 /**
@@ -52,6 +74,9 @@ import { BrowserProvider, Contract, JsonRpcProvider, verifyMessage, verifyTypedD
  * @property {string | Eip1193Provider} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
+
+const DELEGATION_DESIGNATOR_PREFIX = '0xef0100'
+const DELEGATION_DESIGNATOR_LENGTH = 48
 
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
@@ -232,6 +257,38 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     const accountAddress = await this.getAddress()
 
     return address.toLowerCase() === accountAddress.toLowerCase()
+  }
+
+  /**
+   * Checks if this account has an active ERC-7702 delegation.
+   *
+   * @returns {Promise<DelegationInfo>} The delegation info.
+   */
+  async getDelegation () {
+    if (!this._provider) {
+      throw new Error('The wallet must be connected to a provider to check delegation.')
+    }
+
+    const address = await this.getAddress()
+    const code = await this._provider.send('eth_getCode', [address, 'latest'])
+
+    if (
+      code &&
+      code.toLowerCase().startsWith(DELEGATION_DESIGNATOR_PREFIX) &&
+      code.length === DELEGATION_DESIGNATOR_LENGTH
+    ) {
+      const delegateAddress = '0x' + code.slice(DELEGATION_DESIGNATOR_PREFIX.length)
+
+      return {
+        isDelegated: true,
+        delegateAddress
+      }
+    }
+
+    return {
+      isDelegated: false,
+      delegateAddress: null
+    }
   }
 
   /**

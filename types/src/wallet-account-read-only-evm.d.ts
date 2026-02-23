@@ -91,6 +91,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<boolean>} True if the signature is valid.
      */
     verifyTypedData(typedData: TypedData, signature: string): Promise<boolean>;
+    /**
+     * Checks if this account has an active ERC-7702 delegation.
+     *
+     * @returns {Promise<DelegationInfo>} The delegation info.
+     */
+    getDelegation(): Promise<DelegationInfo>;
 }
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
@@ -108,12 +114,48 @@ export type TypedData = {
      */
     message: Record<string, unknown>;
 };
-export type Provider = import("ethers").Provider;
-export type Eip1193Provider = import("ethers").Eip1193Provider;
-export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
-export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
-export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
-export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type Erc7702AuthorizationRequest = {
+    /**
+     * - The address of the contract to delegate to.
+     */
+    address: string;
+    /**
+     * - The authorization nonce. If omitted, it is populated automatically.
+     */
+    nonce?: number;
+    /**
+     * - The chain ID. Set to 0 for chain-agnostic authorizations.
+     */
+    chainId?: number;
+};
+export type Erc7702Authorization = {
+    /**
+     * - The address of the contract delegated to.
+     */
+    address: string;
+    /**
+     * - The authorization nonce.
+     */
+    nonce: number;
+    /**
+     * - The chain ID.
+     */
+    chainId: number;
+    /**
+     * - The signed authorization.
+     */
+    signature: string;
+};
+export type DelegationInfo = {
+    /**
+     * - Whether the account has an active ERC-7702 delegation.
+     */
+    isDelegated: boolean;
+    /**
+     * - The address of the delegate contract, or null if not delegated.
+     */
+    delegateAddress: string | null;
+};
 export type EvmTransaction = {
     /**
      * - The transaction's recipient.
@@ -143,6 +185,10 @@ export type EvmTransaction = {
      * - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
      */
     maxPriorityFeePerGas?: number | bigint;
+    /**
+     * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
+     */
+    authorizationList?: Erc7702Authorization[];
 };
 export type EvmWalletConfig = {
     /**
