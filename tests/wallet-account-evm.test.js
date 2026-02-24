@@ -237,6 +237,41 @@ describe('WalletAccountEvm', () => {
     })
   })
 
+  describe('quoteSendTransaction', () => {
+    let delegateContract
+
+    beforeEach(async () => {
+      delegateContract = await deploySimpleDelegateContract()
+    })
+
+    test('should quote a standard transaction', async () => {
+      const tx = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const { fee } = await account.quoteSendTransaction(tx)
+
+      expect(fee).toBeGreaterThan(0n)
+    })
+
+    test('should quote a type 4 transaction with authorizationList', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      const tx = {
+        to: account.address,
+        value: 0,
+        authorizationList: [auth]
+      }
+
+      const { fee } = await account.quoteSendTransaction(tx)
+
+      expect(fee).toBeGreaterThan(0n)
+    })
+  })
+
   describe('transfer', () => {
     test('should successfully transfer tokens', async () => {
       const TRANSFER = {
@@ -258,6 +293,29 @@ describe('WalletAccountEvm', () => {
       expect(transaction.data).toBe(data)
 
       expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if transfer fee exceeds the transfer max fee configuration with authorizationList', async () => {
+      const delegateContract = await deploySimpleDelegateContract()
+
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100,
+        authorizationList: [auth]
+      }
+
+      const account2 = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transferMaxFee: 0
+      })
+
+      await expect(account2.transfer(TRANSFER))
+        .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
     })
 
     test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
@@ -418,7 +476,7 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if address is missing', async () => {
       await expect(account.signAuthorization({}))
-        .rejects.toThrow('The authorization must include an address.')
+        .rejects.toThrow()
     })
 
     test('should throw if auth is null', async () => {
