@@ -202,6 +202,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     if (options.authorizationList) {
       tx.authorizationList = options.authorizationList
+
+      const from = await this.getAddress()
+      const gas = await this._estimateGasWithAuthList({ from, ...tx })
+      const feeData = await this._provider.getFeeData()
+      const feeRate = feeData.maxFeePerGas || feeData.gasPrice
+      const fee = gas * feeRate
+
+      if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
+        throw new Error('Exceeded maximum fee cost for transfer operation.')
+      }
+
       return await this.sendTransaction(tx)
     }
 
