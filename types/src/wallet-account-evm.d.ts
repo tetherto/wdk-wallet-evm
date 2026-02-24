@@ -108,14 +108,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransactionResult>} The transaction result.
      */
     revokeDelegation(): Promise<TransactionResult>;
-    /**
-     * Estimates gas for a type 4 transaction by calling `eth_estimateGas`
-     * directly on the underlying provider, including the authorization list.
-     *
-     * @private
-     * @param {object} tx - The transaction with authorizationList.
-     * @returns {Promise<bigint>} The estimated gas.
-     */
+    /** @private */
     private _estimateGasWithAuthList;
     /**
      * Disposes the wallet account, erasing the private key from the memory.

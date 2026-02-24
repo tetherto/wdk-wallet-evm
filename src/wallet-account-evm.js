@@ -320,14 +320,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     return await this.delegate(ZeroAddress)
   }
 
-  /**
-   * Estimates gas for a type 4 transaction by calling `eth_estimateGas`
-   * directly on the underlying provider, including the authorization list.
-   *
-   * @private
-   * @param {object} tx - The transaction with authorizationList.
-   * @returns {Promise<bigint>} The estimated gas.
-   */
   async _estimateGasWithAuthList (tx) {
     const formatAuth = (auth) => ({
       chainId: toQuantity(auth.chainId ?? 0),
