@@ -150,6 +150,26 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
+   * Quotes the costs of a send transaction operation. Overrides the base
+   * implementation to support type 4 transactions with an authorization list.
+   *
+   * @param {EvmTransaction} tx - The transaction.
+   * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
+   */
+  async quoteSendTransaction (tx) {
+    if (tx.authorizationList) {
+      const from = await this.getAddress()
+      const gas = await this._estimateGasWithAuthList({ from, ...tx })
+      const feeData = await this._provider.getFeeData()
+      const feeRate = feeData.maxFeePerGas || feeData.gasPrice
+
+      return { fee: gas * feeRate }
+    }
+
+    return await super.quoteSendTransaction(tx)
+  }
+
+  /**
    * Sends a transaction. For type 4 (ERC-7702) transactions, gas estimation
    * is performed via raw RPC to include the authorization list, since the
    * provider's high-level `estimateGas` does not forward it.
@@ -202,18 +222,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     if (options.authorizationList) {
       tx.authorizationList = options.authorizationList
-
-      const from = await this.getAddress()
-      const gas = await this._estimateGasWithAuthList({ from, ...tx })
-      const feeData = await this._provider.getFeeData()
-      const feeRate = feeData.maxFeePerGas || feeData.gasPrice
-      const fee = gas * feeRate
-
-      if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
-        throw new Error('Exceeded maximum fee cost for transfer operation.')
-      }
-
-      return await this.sendTransaction(tx)
     }
 
     const { fee } = await this.quoteSendTransaction(tx)
@@ -222,9 +230,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
-    const { hash } = await this._account.sendTransaction(tx)
-
-    return { hash, fee }
+    return await this.sendTransaction(tx)
   }
 
   /**
