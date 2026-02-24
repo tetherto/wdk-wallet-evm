@@ -186,6 +186,14 @@ export type EvmTransaction = {
      */
     maxPriorityFeePerGas?: number | bigint;
     /**
+     * - The transaction type (e.g. 4 for ERC-7702).
+     */
+    type?: number;
+    /**
+     * - The transaction nonce.
+     */
+    nonce?: number;
+    /**
      * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
      */
     authorizationList?: Erc7702Authorization[];
