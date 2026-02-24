@@ -174,6 +174,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * is performed via raw RPC to include the authorization list, since the
    * provider's high-level `estimateGas` does not forward it.
    *
+   * When an `authorizationList` is present, the method waits for the
+   * transaction to be mined and returns the actual fee. Otherwise, it
+   * returns after broadcast with an estimated fee.
+   *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
