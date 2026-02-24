@@ -18,6 +18,7 @@ For detailed documentation about the complete WDK ecosystem, visit [docs.wallet.
 - **Multi-Account Management**: Create and manage multiple accounts from a single seed phrase
 - **Transaction Management**: Send transactions and get fee estimates with EIP-1559 support
 - **ERC20 Support**: Query native token and ERC20 token balances using smart contract interactions
+- **EIP-7702 Delegation**: Delegate EOAs to smart contracts, sign authorizations, and send type 4 transactions
 
 ## ⬇️ Installation
 
@@ -229,6 +230,58 @@ account.dispose()
 wallet.dispose()
 ```
 
+### EIP-7702 Delegation
+
+Delegate an EOA to a smart contract using [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702) type 4 transactions.
+
+#### Delegate and Revoke
+
+```javascript
+// Delegate the EOA to a smart contract
+const { hash, fee } = await account.delegate('0x...') // contract address
+
+// Check delegation status
+const delegation = await account.getDelegation()
+console.log('Is delegated:', delegation.isDelegated)
+console.log('Delegate address:', delegation.delegateAddress)
+
+// Revoke delegation
+await account.revokeDelegation()
+```
+
+#### Inline Delegation with Authorization List
+
+Sign an authorization and include it in a transaction. This sets the delegation and executes the transaction body in a single type 4 tx.
+
+```javascript
+// Sign an authorization for the delegate contract
+const auth = await account.signAuthorization({
+  address: '0x...' // contract address
+})
+
+// Send a type 4 transaction with the authorization list
+const result = await account.sendTransaction({
+  type: 4,
+  to: '0x...',
+  value: 0,
+  data: '0x...',
+  authorizationList: [auth]
+})
+```
+
+#### Check Delegation (Read-Only)
+
+```javascript
+import { WalletAccountReadOnlyEvm } from '@tetherto/wdk-wallet-evm'
+
+const readOnly = new WalletAccountReadOnlyEvm('0x...', {
+  provider: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key'
+})
+
+const delegation = await readOnly.getDelegation()
+console.log('Is delegated:', delegation.isDelegated)
+```
+
 ## 📚 API Reference
 
 ### Table of Contents
@@ -307,6 +360,10 @@ new WalletAccountEvm(seed, path, config)
 | `quoteTransfer(options)` | Estimates the fee for an ERC20 transfer | `Promise<{fee: bigint}>` |
 | `getBalance()` | Returns the native token balance (in wei) | `Promise<bigint>` |
 | `getTokenBalance(tokenAddress)` | Returns the balance of a specific ERC20 token | `Promise<bigint>` |
+| `signAuthorization(auth)` | Signs an ERC-7702 authorization tuple | `Promise<Erc7702Authorization>` |
+| `delegate(delegateAddress)` | Delegates this EOA to a smart contract via a type 4 transaction | `Promise<{hash: string, fee: bigint}>` |
+| `revokeDelegation()` | Revokes any active ERC-7702 delegation | `Promise<{hash: string, fee: bigint}>` |
+| `getDelegation()` | Checks if the account has an active ERC-7702 delegation | `Promise<{isDelegated: boolean, delegateAddress: string \| null}>` |
 | `dispose()` | Disposes the wallet account, clearing private keys from memory | `void` |
 
 ##### `sendTransaction(tx)`
@@ -321,8 +378,13 @@ Sends an EVM transaction.
   - `gasPrice` (number | bigint, optional): Legacy gas price in wei
   - `maxFeePerGas` (number | bigint, optional): EIP-1559 max fee per gas in wei
   - `maxPriorityFeePerGas` (number | bigint, optional): EIP-1559 max priority fee per gas in wei
+  - `type` (number, optional): Transaction type (e.g. 4 for ERC-7702)
+  - `nonce` (number, optional): Transaction nonce
+  - `authorizationList` (Erc7702Authorization[], optional): Signed ERC-7702 authorizations for type 4 transactions
 
 **Returns:** `Promise<{hash: string, fee: bigint}>` - Object containing hash and fee (in wei)
+
+> When `authorizationList` is present, the method waits for the transaction to be mined and returns the actual fee. Otherwise, it returns after broadcast with an estimated fee.
 
 #### Properties
 
@@ -359,6 +421,7 @@ new WalletAccountReadOnlyEvm(address, config)
 | `quoteTransfer(options)` | Estimates the fee for an ERC20 transfer | `Promise<{fee: bigint}>` |
 | `verify(message, signature)` | Verifies a message signature | `Promise<boolean>` |
 | `verifyTypedData(typedData, signature)` | Verifies a typed data signature | `Promise<boolean>` |
+| `getDelegation()` | Checks if the account has an active ERC-7702 delegation | `Promise<{isDelegated: boolean, delegateAddress: string \| null}>` |
 
 #### Properties
 
