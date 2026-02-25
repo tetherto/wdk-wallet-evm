@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-"use strict";
+'use strict'
 
 import {
   assert,
@@ -27,24 +27,24 @@ import {
   hexlify,
   isBytesLike,
   ripemd160,
-  sha256,
-} from "ethers";
+  sha256
+} from 'ethers'
 
-import * as secp256k1 from "@noble/secp256k1";
+import * as secp256k1 from '@noble/secp256k1'
 
-import MemorySafeSigningKey from "./signing-key.js";
+import MemorySafeSigningKey from './signing-key.js'
 
 /** @typedef {import("ethers").SigningKey} SigningKey */
 /** @typedef {import("ethers").Provider} Provider */
 /** @typedef {import("ethers").BytesLike} BytesLike */
 
 const MasterSecret = new Uint8Array([
-  66, 105, 116, 99, 111, 105, 110, 32, 115, 101, 101, 100,
-]);
+  66, 105, 116, 99, 111, 105, 110, 32, 115, 101, 101, 100
+])
 
-const HardenedBit = 0x80000000;
+const HardenedBit = 0x80000000
 
-const _guard = {};
+const _guard = {}
 
 /**
  * Serializes input and computes HMAC-SHA512 for BIP-32 child key derivation (IL, IR split).
@@ -55,30 +55,30 @@ const _guard = {};
  * @param {Uint8Array | null} privateKeyBuffer 32-byte private key buffer (required for hardened).
  * @returns {{ IL: Uint8Array, IR: Uint8Array }} Object with left (IL) and right (IR) 32-byte buffers from HMAC output.
  */
-function serI(index, chainCode, publicKey, privateKeyBuffer) {
-  const data = new Uint8Array(37);
+function serI (index, chainCode, publicKey, privateKeyBuffer) {
+  const data = new Uint8Array(37)
 
   if (index & HardenedBit) {
     assert(
       privateKeyBuffer != null,
-      "cannot derive child of neutered node",
-      "UNSUPPORTED_OPERATION",
+      'cannot derive child of neutered node',
+      'UNSUPPORTED_OPERATION',
       {
-        operation: "deriveChild",
-      },
-    );
+        operation: 'deriveChild'
+      }
+    )
 
-    data.set(getBytes(privateKeyBuffer), 1);
+    data.set(getBytes(privateKeyBuffer), 1)
   } else {
-    data.set(getBytes(publicKey));
+    data.set(getBytes(publicKey))
   }
 
   for (let i = 24; i >= 0; i -= 8) {
-    data[33 + (i >> 3)] = (index >> (24 - i)) & 0xff;
+    data[33 + (i >> 3)] = (index >> (24 - i)) & 0xff
   }
-  const I = getBytes(computeHmac("sha512", chainCode, data));
+  const I = getBytes(computeHmac('sha512', chainCode, data))
 
-  return { IL: I.slice(0, 32), IR: I.slice(32) };
+  return { IL: I.slice(0, 32), IR: I.slice(32) }
 }
 
 /**
@@ -88,49 +88,49 @@ function serI(index, chainCode, publicKey, privateKeyBuffer) {
  * @param {string} path BIP-32 derivation path (e.g. "m/44'/60'/0'/0/0").
  * @returns {MemorySafeHDNodeWallet} Derived HD wallet node.
  */
-function derivePath(node, path) {
-  const components = path.split("/");
+function derivePath (node, path) {
+  const components = path.split('/')
 
-  assertArgument(components.length > 0, "invalid path", "path", path);
+  assertArgument(components.length > 0, 'invalid path', 'path', path)
 
-  if (components[0] === "m") {
+  if (components[0] === 'm') {
     assertArgument(
       node.depth === 0,
       `cannot derive root path (i.e. path starting with "m/") for a node at non-zero depth ${node.depth}`,
-      "path",
-      path,
-    );
-    components.shift();
+      'path',
+      path
+    )
+    components.shift()
   }
 
-  let result = node;
+  let result = node
   for (let i = 0; i < components.length; i++) {
-    const component = components[i];
+    const component = components[i]
 
     if (component.match(/^[0-9]+'$/)) {
-      const index = parseInt(component.substring(0, component.length - 1));
+      const index = parseInt(component.substring(0, component.length - 1))
       assertArgument(
         index < HardenedBit,
-        "invalid path index",
+        'invalid path index',
         `path[${i}]`,
-        component,
-      );
-      result = result.deriveChild(HardenedBit + index);
+        component
+      )
+      result = result.deriveChild(HardenedBit + index)
     } else if (component.match(/^[0-9]+$/)) {
-      const index = parseInt(component);
+      const index = parseInt(component)
       assertArgument(
         index < HardenedBit,
-        "invalid path index",
+        'invalid path index',
         `path[${i}]`,
-        component,
-      );
-      result = result.deriveChild(index);
+        component
+      )
+      result = result.deriveChild(index)
     } else {
-      assertArgument(false, "invalid path component", `path[${i}]`, component);
+      assertArgument(false, 'invalid path component', `path[${i}]`, component)
     }
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -140,16 +140,16 @@ function derivePath(node, path) {
  * @param {Uint8Array} x 32-byte buffer to add to privateKey.
  * @returns {boolean} `true` if there was an overflow (carry out), `false` otherwise.
  */
-function addToPrivateKey(privateKey, x) {
-  let carry = 0;
+function addToPrivateKey (privateKey, x) {
+  let carry = 0
 
   for (let i = 31; i >= 0; i--) {
-    const sum = privateKey[i] + x[i] + carry;
-    privateKey[i] = sum & 0xff;
-    carry = sum >> 8;
+    const sum = privateKey[i] + x[i] + carry
+    privateKey[i] = sum & 0xff
+    carry = sum >> 8
   }
 
-  return carry > 0;
+  return carry > 0
 }
 
 /**
@@ -157,16 +157,16 @@ function addToPrivateKey(privateKey, x) {
  *
  * @param {Uint8Array} privateKey 32-byte private key buffer to modify.
  */
-function subtractCurveOrderFromPrivateKey(privateKey) {
-  let carry = 0;
+function subtractCurveOrderFromPrivateKey (privateKey) {
+  let carry = 0
 
   for (let i = 31; i >= 0; i--) {
     const curveOrderByte = Number(
-      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn,
-    );
-    const diff = privateKey[i] - curveOrderByte - carry;
-    privateKey[i] = diff < 0 ? diff + 256 : diff;
-    carry = diff < 0 ? 1 : 0;
+      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn
+    )
+    const diff = privateKey[i] - curveOrderByte - carry
+    privateKey[i] = diff < 0 ? diff + 256 : diff
+    carry = diff < 0 ? 1 : 0
   }
 }
 
@@ -177,30 +177,30 @@ function subtractCurveOrderFromPrivateKey(privateKey) {
  * @param {number} [offset=0] Optional offset into the buffer.
  * @returns {number} 1 if buffer > curve order, -1 if buffer < curve order, 0 if equal.
  */
-function compareWithCurveOrder(buffer, offset = 0) {
+function compareWithCurveOrder (buffer, offset = 0) {
   for (let i = 0; i < 32; i++) {
     const curveOrderByte = Number(
-      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn,
-    );
-    if (buffer[offset + i] > curveOrderByte) return 1;
-    if (buffer[offset + i] < curveOrderByte) return -1;
+      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn
+    )
+    if (buffer[offset + i] > curveOrderByte) return 1
+    if (buffer[offset + i] < curveOrderByte) return -1
   }
 
-  return 0;
+  return 0
 }
 
 /**
  * @internal
  */
 export default class MemorySafeHDNodeWallet extends BaseWallet {
-  /** @type {string} */ publicKey;
-  /** @type {string} */ parentFingerprint;
-  /** @type {string} */ fingerprint;
-  /** @type {string} */ chainCode;
-  /** @type {string} */ path;
-  /** @type {number} */ index;
-  /** @type {number} */ depth;
-  /** @type {string} */ mnemonic;
+  /** @type {string} */ publicKey
+  /** @type {string} */ parentFingerprint
+  /** @type {string} */ fingerprint
+  /** @type {string} */ chainCode
+  /** @type {string} */ path
+  /** @type {number} */ index
+  /** @type {number} */ depth
+  /** @type {string} */ mnemonic
 
   /**
    * Constructor for hierarchical deterministic (HD) wallet node with memory-safe signing.
@@ -215,7 +215,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {string} mnemonic
    * @param {null | Provider} [provider]
    */
-  constructor(
+  constructor (
     guard,
     signingKey,
     parentFingerprint,
@@ -224,31 +224,31 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     index,
     depth,
     mnemonic,
-    provider,
+    provider
   ) {
-    super(signingKey, provider);
-    assertPrivate(guard, _guard, "MemorySafeHDNodeWallet");
+    super(signingKey, provider)
+    assertPrivate(guard, _guard, 'MemorySafeHDNodeWallet')
 
     /**
      * @type {MemorySafeHDNodeWallet}
      */
-    const self = this;
+    const self = this
 
     defineProperties(self, {
-      publicKey: signingKey.compressedPublicKey,
-    });
+      publicKey: signingKey.compressedPublicKey
+    })
 
-    const fingerprint = dataSlice(ripemd160(sha256(this.publicKey)), 0, 4);
+    const fingerprint = dataSlice(ripemd160(sha256(this.publicKey)), 0, 4)
     defineProperties(self, {
       parentFingerprint,
       fingerprint,
       chainCode,
       path,
       index,
-      depth,
-    });
+      depth
+    })
 
-    defineProperties(self, { mnemonic });
+    defineProperties(self, { mnemonic })
   }
 
   /**
@@ -257,7 +257,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {Provider | null} provider Provider instance to connect the wallet instance to a network.
    * @returns {MemorySafeHDNodeWallet} New wallet instance connected to the provider.
    */
-  connect(provider) {
+  connect (provider) {
     return new MemorySafeHDNodeWallet(
       _guard,
       /** @type {MemorySafeSigningKey} */ (this.signingKey),
@@ -267,18 +267,18 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       this.index,
       this.depth,
       this.mnemonic,
-      provider,
-    );
+      provider
+    )
   }
 
-  get privateKeyBuffer() {
+  get privateKeyBuffer () {
     return /** @type {MemorySafeSigningKey} */ (this.signingKey)
-      .privateKeyBuffer;
+      .privateKeyBuffer
   }
 
-  get publicKeyBuffer() {
+  get publicKeyBuffer () {
     return /** @type {MemorySafeSigningKey} */ (this.signingKey)
-      .publicKeyBuffer;
+      .publicKeyBuffer
   }
 
   /**
@@ -287,15 +287,15 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {number} _index Child index (BIP-32, 0..2^32-1; plus HardenedBit=0x80000000 for hardened).
    * @returns {MemorySafeHDNodeWallet} Derived child HD wallet node.
    */
-  deriveChild(_index) {
-    const index = getNumber(_index, "index");
-    assertArgument(index <= 0xffffffff, "invalid index", "index", index);
+  deriveChild (_index) {
+    const index = getNumber(_index, 'index')
+    assertArgument(index <= 0xffffffff, 'invalid index', 'index', index)
 
-    let path = this.path;
+    let path = this.path
     if (path) {
-      path += "/" + (index & ~HardenedBit);
+      path += '/' + (index & ~HardenedBit)
       if (index & HardenedBit) {
-        path += "'";
+        path += "'"
       }
     }
 
@@ -303,16 +303,16 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       index,
       this.chainCode,
       this.publicKey,
-      this.privateKeyBuffer,
-    );
+      this.privateKeyBuffer
+    )
 
-    const overflow = addToPrivateKey(this.privateKeyBuffer, IL);
+    const overflow = addToPrivateKey(this.privateKeyBuffer, IL)
 
     if (overflow || compareWithCurveOrder(this.privateKeyBuffer) >= 0) {
-      subtractCurveOrderFromPrivateKey(this.privateKeyBuffer);
+      subtractCurveOrderFromPrivateKey(this.privateKeyBuffer)
     }
 
-    const ki = new MemorySafeSigningKey(this.privateKeyBuffer);
+    const ki = new MemorySafeSigningKey(this.privateKeyBuffer)
 
     return new MemorySafeHDNodeWallet(
       _guard,
@@ -323,8 +323,8 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       index,
       this.depth + 1,
       this.mnemonic,
-      this.provider,
-    );
+      this.provider
+    )
   }
 
   /**
@@ -333,15 +333,15 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {string} path BIP-32 derivation path (e.g. "m/44'/60'/0'/0/0")
    * @returns {MemorySafeHDNodeWallet} Derived HD wallet node
    */
-  derivePath(path) {
-    return derivePath(this, path);
+  derivePath (path) {
+    return derivePath(this, path)
   }
 
   /**
    * Securely wipes sensitive key material from this wallet.
    */
-  dispose() {
-    /** @type {MemorySafeSigningKey} */ (this.signingKey).dispose();
+  dispose () {
+    /** @type {MemorySafeSigningKey} */ (this.signingKey).dispose()
   }
 
   /**
@@ -350,8 +350,8 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {BytesLike} seed BIP-32 seed (16-64 bytes, hex or Uint8Array)
    * @returns {MemorySafeHDNodeWallet} New HD wallet instance
    */
-  static fromSeed(seed) {
-    return MemorySafeHDNodeWallet._fromSeed(seed, null);
+  static fromSeed (seed) {
+    return MemorySafeHDNodeWallet._fromSeed(seed, null)
   }
 
   /**
@@ -362,30 +362,30 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * @param {string} mnemonic BIP-39 mnemonic or object.
    * @returns {MemorySafeHDNodeWallet} New HD wallet instance.
    */
-  static _fromSeed(_seed, mnemonic) {
-    assertArgument(isBytesLike(_seed), "invalid seed", "seed", "[REDACTED]");
+  static _fromSeed (_seed, mnemonic) {
+    assertArgument(isBytesLike(_seed), 'invalid seed', 'seed', '[REDACTED]')
 
-    const seed = getBytes(_seed, "seed");
+    const seed = getBytes(_seed, 'seed')
     assertArgument(
       seed.length >= 16 && seed.length <= 64,
-      "invalid seed",
-      "seed",
-      "[REDACTED]",
-    );
+      'invalid seed',
+      'seed',
+      '[REDACTED]'
+    )
 
-    const I = getBytes(computeHmac("sha512", MasterSecret, seed));
-    const signingKey = new MemorySafeSigningKey(I.slice(0, 32));
+    const I = getBytes(computeHmac('sha512', MasterSecret, seed))
+    const signingKey = new MemorySafeSigningKey(I.slice(0, 32))
 
     return new MemorySafeHDNodeWallet(
       _guard,
       signingKey,
-      "0x00000000",
+      '0x00000000',
       hexlify(I.slice(32)),
-      "m",
+      'm',
       0,
       0,
       mnemonic,
-      null,
-    );
+      null
+    )
   }
 }
