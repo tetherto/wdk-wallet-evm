@@ -65,8 +65,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     path = BIP_44_ETH_DERIVATION_PATH_PREFIX + '/' + path
 
-    const account = MemorySafeHDNodeWallet.fromSeed(seed)
-      .derivePath(path)
+    const account = MemorySafeHDNodeWallet.fromSeed(seed).derivePath(path)
 
     super(account.address, config)
 
@@ -82,7 +81,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
      * The account.
      *
      * @protected
-     * @type {HDNodeWallet}
+     * @type {MemorySafeHDNodeWallet}
      */
     this._account = account
 
@@ -149,7 +148,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async sendTransaction (tx) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to send transactions.')
+      throw new Error(
+        'The wallet must be connected to a provider to send transactions.'
+      )
     }
 
     const { fee } = await this.quoteSendTransaction(tx)
@@ -170,14 +171,19 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async transfer (options) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to transfer tokens.')
+      throw new Error(
+        'The wallet must be connected to a provider to transfer tokens.'
+      )
     }
 
     const tx = await WalletAccountEvm._getTransferTransaction(options)
 
     const { fee } = await this.quoteSendTransaction(tx)
 
-    if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
+    if (
+      this._config.transferMaxFee !== undefined &&
+      fee >= this._config.transferMaxFee
+    ) {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
@@ -195,13 +201,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async approve (options) {
     if (!this._account.provider) {
-      throw new Error('The wallet must be connected to a provider to approve funds.')
+      throw new Error(
+        'The wallet must be connected to a provider to approve funds.'
+      )
     }
 
     const { token, spender, amount } = options
     const { chainId } = await this._provider.getNetwork()
 
-    if (chainId === 1n && token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()) {
+    if (
+      chainId === 1n &&
+      token.toLowerCase() === USDT_MAINNET_ADDRESS.toLowerCase()
+    ) {
       const currentAllowance = await this.getAllowance(token, spender)
       if (currentAllowance > 0n && BigInt(amount) > 0n) {
         throw new Error(
@@ -210,7 +221,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       }
     }
 
-    const abi = ['function approve(address spender, uint256 amount) returns (bool)']
+    const abi = [
+      'function approve(address spender, uint256 amount) returns (bool)'
+    ]
     const contract = new Contract(token, abi, this._provider)
 
     const tx = {
@@ -228,7 +241,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
    */
   async toReadOnlyAccount () {
-    const readOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
+    const readOnlyAccount = new WalletAccountReadOnlyEvm(
+      this._account.address,
+      this._config
+    )
 
     return readOnlyAccount
   }

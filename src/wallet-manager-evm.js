@@ -28,6 +28,13 @@ import WalletAccountEvm from './wallet-account-evm.js'
 
 export default class WalletManagerEvm extends WalletManager {
   /**
+   * Overrides the base class `_accounts` property type.
+   *
+   * @type {{ [path: string]: WalletAccountEvm }}
+   */
+  _accounts = {}
+
+  /**
    * Multiplier for normal fee rate calculations (in %).
    *
    * @protected
@@ -69,9 +76,10 @@ export default class WalletManagerEvm extends WalletManager {
        * @protected
        * @type {Provider | undefined}
        */
-      this._provider = typeof provider === 'string'
-        ? new JsonRpcProvider(provider)
-        : new BrowserProvider(provider)
+      this._provider =
+        typeof provider === 'string'
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider)
     }
   }
 
@@ -81,6 +89,7 @@ export default class WalletManagerEvm extends WalletManager {
    * @example
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccount(1);
+   *
    * @param {number} [index] - The index of the account to get (default: 0).
    * @returns {Promise<WalletAccountEvm>} The account.
    */
@@ -94,6 +103,7 @@ export default class WalletManagerEvm extends WalletManager {
    * @example
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccountByPath("0'/0/1");
+   *
    * @param {string} path - The derivation path (e.g. "0'/0/0").
    * @returns {Promise<WalletAccountEvm>} The account.
    */
@@ -114,7 +124,9 @@ export default class WalletManagerEvm extends WalletManager {
    */
   async getFeeRates () {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to get fee rates.')
+      throw new Error(
+        'The wallet must be connected to a provider to get fee rates.'
+      )
     }
 
     const data = await this._provider.getFeeData()
@@ -122,8 +134,8 @@ export default class WalletManagerEvm extends WalletManager {
     const feeRate = data.maxFeePerGas || data.gasPrice
 
     return {
-      normal: feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
-      fast: feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
+      normal: (feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER) / 100n,
+      fast: (feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER) / 100n
     }
   }
 }
