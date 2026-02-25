@@ -19,9 +19,7 @@ jobs:
       
       - name: Install dependencies
         run: npm clean-install
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
+
       - name: Lint code with standard
         run: npm run lint
       
@@ -45,8 +43,6 @@ jobs:
       
       - name: Install dependencies
         run: npm clean-install
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm
         run: npm publish
