@@ -27,6 +27,8 @@ import WalletAccountEvm from './wallet-account-evm.js'
 /** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 export default class WalletManagerEvm extends WalletManager {
+  /**  @type {{ [path: string]: WalletAccountEvm }} */ _accounts
+
   /**
    * Multiplier for normal fee rate calculations (in %).
    *
@@ -69,9 +71,10 @@ export default class WalletManagerEvm extends WalletManager {
        * @protected
        * @type {Provider | undefined}
        */
-      this._provider = typeof provider === 'string'
-        ? new JsonRpcProvider(provider)
-        : new BrowserProvider(provider)
+      this._provider =
+        typeof provider === 'string'
+          ? new JsonRpcProvider(provider)
+          : new BrowserProvider(provider)
     }
   }
 
@@ -114,7 +117,9 @@ export default class WalletManagerEvm extends WalletManager {
    */
   async getFeeRates () {
     if (!this._provider) {
-      throw new Error('The wallet must be connected to a provider to get fee rates.')
+      throw new Error(
+        'The wallet must be connected to a provider to get fee rates.'
+      )
     }
 
     const data = await this._provider.getFeeData()
@@ -122,8 +127,8 @@ export default class WalletManagerEvm extends WalletManager {
     const feeRate = data.maxFeePerGas || data.gasPrice
 
     return {
-      normal: feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
-      fast: feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
+      normal: (feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER) / 100n,
+      fast: (feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER) / 100n
     }
   }
 }
