@@ -38,9 +38,7 @@ import MemorySafeSigningKey from './signing-key.js'
 /** @typedef {import("ethers").Provider} Provider */
 /** @typedef {import("ethers").BytesLike} BytesLike */
 
-const MasterSecret = new Uint8Array([
-  66, 105, 116, 99, 111, 105, 110, 32, 115, 101, 101, 100
-])
+const MasterSecret = new Uint8Array([66, 105, 116, 99, 111, 105, 110, 32, 115, 101, 101, 100])
 
 const HardenedBit = 0x80000000
 
@@ -109,21 +107,11 @@ function derivePath (node, path) {
 
     if (component.match(/^[0-9]+'$/)) {
       const index = parseInt(component.substring(0, component.length - 1))
-      assertArgument(
-        index < HardenedBit,
-        'invalid path index',
-        `path[${i}]`,
-        component
-      )
+      assertArgument(index < HardenedBit, 'invalid path index', `path[${i}]`, component)
       result = result.deriveChild(HardenedBit + index)
     } else if (component.match(/^[0-9]+$/)) {
       const index = parseInt(component)
-      assertArgument(
-        index < HardenedBit,
-        'invalid path index',
-        `path[${i}]`,
-        component
-      )
+      assertArgument(index < HardenedBit, 'invalid path index', `path[${i}]`, component)
       result = result.deriveChild(index)
     } else {
       assertArgument(false, 'invalid path component', `path[${i}]`, component)
@@ -161,9 +149,7 @@ function subtractCurveOrderFromPrivateKey (privateKey) {
   let carry = 0
 
   for (let i = 31; i >= 0; i--) {
-    const curveOrderByte = Number(
-      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn
-    )
+    const curveOrderByte = Number((secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn)
     const diff = privateKey[i] - curveOrderByte - carry
     privateKey[i] = diff < 0 ? diff + 256 : diff
     carry = diff < 0 ? 1 : 0
@@ -179,9 +165,7 @@ function subtractCurveOrderFromPrivateKey (privateKey) {
  */
 function compareWithCurveOrder (buffer, offset = 0) {
   for (let i = 0; i < 32; i++) {
-    const curveOrderByte = Number(
-      (secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn
-    )
+    const curveOrderByte = Number((secp256k1.CURVE.n >> BigInt(8 * (31 - i))) & 0xffn)
     if (buffer[offset + i] > curveOrderByte) return 1
     if (buffer[offset + i] < curveOrderByte) return -1
   }
@@ -260,7 +244,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
   connect (provider) {
     return new MemorySafeHDNodeWallet(
       _guard,
-      /** @type {MemorySafeSigningKey} */ (this.signingKey),
+      this.signingKey,
       this.parentFingerprint,
       this.chainCode,
       this.path,
@@ -271,14 +255,21 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     )
   }
 
+  /**
+   * Override the base Wallet signingKey type with MemorySafeSigningKey.
+   *
+   * @type {MemorySafeSigningKey}
+   */
+  get signingKey () {
+    return /** @type {MemorySafeSigningKey} */ (super.signingKey)
+  }
+
   get privateKeyBuffer () {
-    return /** @type {MemorySafeSigningKey} */ (this.signingKey)
-      .privateKeyBuffer
+    return this.signingKey.privateKeyBuffer
   }
 
   get publicKeyBuffer () {
-    return /** @type {MemorySafeSigningKey} */ (this.signingKey)
-      .publicKeyBuffer
+    return this.signingKey.publicKeyBuffer
   }
 
   /**
@@ -299,12 +290,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
       }
     }
 
-    const { IR, IL } = serI(
-      index,
-      this.chainCode,
-      this.publicKey,
-      this.privateKeyBuffer
-    )
+    const { IR, IL } = serI(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
 
     const overflow = addToPrivateKey(this.privateKeyBuffer, IL)
 
@@ -341,7 +327,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
    * Securely wipes sensitive key material from this wallet.
    */
   dispose () {
-    /** @type {MemorySafeSigningKey} */ (this.signingKey).dispose()
+    this.signingKey.dispose()
   }
 
   /**
@@ -366,12 +352,7 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     assertArgument(isBytesLike(_seed), 'invalid seed', 'seed', '[REDACTED]')
 
     const seed = getBytes(_seed, 'seed')
-    assertArgument(
-      seed.length >= 16 && seed.length <= 64,
-      'invalid seed',
-      'seed',
-      '[REDACTED]'
-    )
+    assertArgument(seed.length >= 16 && seed.length <= 64, 'invalid seed', 'seed', '[REDACTED]')
 
     const I = getBytes(computeHmac('sha512', MasterSecret, seed))
     const signingKey = new MemorySafeSigningKey(I.slice(0, 32))
