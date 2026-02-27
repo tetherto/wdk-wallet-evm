@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globa
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
+import SimpleDelegateContract from './artifacts/SimpleDelegateContract.json' with { type: 'json' }
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
@@ -31,6 +32,18 @@ const ACCOUNT = {
 const INITIAL_BALANCE = 1_000_000_000_000_000_000n
 const INITIAL_TOKEN_BALANCE = 1_000_000n
 
+async function deploySimpleDelegateContract () {
+  const [signer] = await hre.ethers.getSigners()
+
+  const factory = new ContractFactory(SimpleDelegateContract.abi, SimpleDelegateContract.bytecode, signer)
+  const contract = await factory.deploy()
+  const transaction = await contract.deploymentTransaction()
+
+  await transaction.wait()
+
+  return contract
+}
+
 async function deployTestToken () {
   const [signer] = await hre.ethers.getSigners()
 
@@ -45,6 +58,7 @@ async function deployTestToken () {
 
 describe('WalletAccountEvm', () => {
   let testToken,
+    delegateContract,
     account
 
   async function sendEthersTo (to, value) {
@@ -60,6 +74,7 @@ describe('WalletAccountEvm', () => {
 
   beforeEach(async () => {
     testToken = await deployTestToken()
+    delegateContract = await deploySimpleDelegateContract()
 
     await sendEthersTo(ACCOUNT.address, INITIAL_BALANCE)
 
@@ -181,7 +196,7 @@ describe('WalletAccountEvm', () => {
         value: 1_000
       }
 
-      const EXPECTED_FEE = 49_611_983_472_910n
+      const EXPECTED_FEE = 46_114_898_254_972n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION)
 
@@ -201,7 +216,7 @@ describe('WalletAccountEvm', () => {
         data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
       }
 
-      const EXPECTED_FEE = 57_395_969_261_360n
+      const EXPECTED_FEE = 53_350_200_847_712n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION_WITH_DATA)
 
@@ -224,6 +239,35 @@ describe('WalletAccountEvm', () => {
     })
   })
 
+  describe('quoteSendTransaction', () => {
+    test('should quote a standard transaction', async () => {
+      const tx = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const { fee } = await account.quoteSendTransaction(tx)
+
+      expect(fee).toBeGreaterThan(0n)
+    })
+
+    test('should quote a type 4 transaction with authorizationList', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      const tx = {
+        to: account.address,
+        value: 0,
+        authorizationList: [auth]
+      }
+
+      const { fee } = await account.quoteSendTransaction(tx)
+
+      expect(fee).toBeGreaterThan(0n)
+    })
+  })
+
   describe('transfer', () => {
     test('should successfully transfer tokens', async () => {
       const TRANSFER = {
@@ -232,7 +276,7 @@ describe('WalletAccountEvm', () => {
         amount: 100
       }
 
-      const EXPECTED_FEE = 123_145_253_772_480n
+      const EXPECTED_FEE = 114_464_902_444_416n
 
       const { hash, fee } = await account.transfer(TRANSFER)
       const transaction = await hre.ethers.provider.getTransaction(hash)
@@ -260,6 +304,27 @@ describe('WalletAccountEvm', () => {
       })
 
       await expect(account.transfer(TRANSFER))
+        .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+    })
+
+    test('should throw if transfer fee exceeds the transfer max fee configuration with authorizationList', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100,
+        authorizationList: [auth]
+      }
+
+      const accountWithMaxFee = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transferMaxFee: 0
+      })
+
+      await expect(accountWithMaxFee.transfer(TRANSFER))
         .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
     })
 
@@ -382,6 +447,90 @@ describe('WalletAccountEvm', () => {
       expect(readOnlyAccount).toBeInstanceOf(WalletAccountReadOnlyEvm)
 
       expect(await readOnlyAccount.getAddress()).toBe(ACCOUNT.address)
+    })
+  })
+
+  describe('signAuthorization', () => {
+    test('should produce a signed authorization', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      expect(auth).toHaveProperty('address')
+      expect(auth).toHaveProperty('nonce')
+      expect(auth).toHaveProperty('chainId')
+      expect(auth).toHaveProperty('signature')
+    })
+
+    test('should throw if address is missing', async () => {
+      await expect(account.signAuthorization({}))
+        .rejects.toThrow()
+    })
+
+    test('should throw if auth is null', async () => {
+      await expect(account.signAuthorization(null))
+        .rejects.toThrow('The authorization must include an address.')
+    })
+  })
+
+  describe('delegate', () => {
+    test('should set delegation to a contract', async () => {
+      const { hash } = await account.delegate(delegateContract.target)
+
+      expect(typeof hash).toBe('string')
+      expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
+
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(true)
+      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const disconnected = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(disconnected.delegate(delegateContract.target))
+        .rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+  })
+
+  describe('revokeDelegation', () => {
+    test('should revoke an active delegation', async () => {
+      await account.delegate(delegateContract.target)
+
+      const beforeRevoke = await account.getDelegation()
+      expect(beforeRevoke.isDelegated).toBe(true)
+
+      await account.revokeDelegation()
+
+      const afterRevoke = await account.getDelegation()
+      expect(afterRevoke.isDelegated).toBe(false)
+      expect(afterRevoke.delegateAddress).toBeNull()
+    })
+  })
+
+  describe('getDelegation', () => {
+    test('should return false for a regular EOA', async () => {
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(false)
+      expect(delegation.delegateAddress).toBeNull()
+    })
+
+    test('should return true after delegation with correct address', async () => {
+      await account.delegate(delegateContract.target)
+
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(true)
+      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const disconnected = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(disconnected.getDelegation())
+        .rejects.toThrow('The wallet must be connected to a provider to check delegation.')
     })
   })
 })

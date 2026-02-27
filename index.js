@@ -27,6 +27,10 @@
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('./src/wallet-account-evm.js').ApproveOptions} ApproveOptions */
+/** @typedef {import('./src/wallet-account-evm.js').EvmTransferOptions} EvmTransferOptions */
+/** @typedef {import('./src/wallet-account-read-only-evm.js').Erc7702AuthorizationRequest} Erc7702AuthorizationRequest */
+/** @typedef {import('./src/wallet-account-read-only-evm.js').Erc7702Authorization} Erc7702Authorization */
+/** @typedef {import('./src/wallet-account-read-only-evm.js').DelegationInfo} DelegationInfo */
 
 export { default } from './src/wallet-manager-evm.js'
 

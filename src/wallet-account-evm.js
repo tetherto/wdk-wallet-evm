@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { Contract } from 'ethers'
+import { Contract, toQuantity, ZeroAddress } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -34,6 +34,9 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
+/** @typedef {import('./wallet-account-read-only-evm.js').Erc7702AuthorizationRequest} Erc7702AuthorizationRequest */
+/** @typedef {import('./wallet-account-read-only-evm.js').Erc7702Authorization} Erc7702Authorization */
+/** @typedef {import('./wallet-account-read-only-evm.js').DelegationInfo} DelegationInfo */
 
 /**
  * @typedef {Object} ApproveOptions
@@ -42,7 +45,12 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
  */
 
+/**
+ * @typedef {TransferOptions & { authorizationList?: Erc7702Authorization[] }} EvmTransferOptions
+ */
+
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
+const DELEGATION_TX_GAS_LIMIT = 100_000
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
 /** @implements {IWalletAccount} */
@@ -142,7 +150,33 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * Sends a transaction.
+   * Quotes the costs of a send transaction operation. Overrides the base
+   * implementation to support type 4 transactions with an authorization list.
+   *
+   * @param {EvmTransaction} tx - The transaction.
+   * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
+   */
+  async quoteSendTransaction (tx) {
+    if (tx.authorizationList) {
+      const from = await this.getAddress()
+      const gas = await this._estimateGasWithAuthList({ from, ...tx })
+      const feeData = await this._provider.getFeeData()
+      const feeRate = feeData.maxFeePerGas || feeData.gasPrice
+
+      return { fee: gas * feeRate }
+    }
+
+    return await super.quoteSendTransaction(tx)
+  }
+
+  /**
+   * Sends a transaction. For type 4 (ERC-7702) transactions, gas estimation
+   * is performed via raw RPC to include the authorization list, since the
+   * provider's high-level `estimateGas` does not forward it.
+   *
+   * When an `authorizationList` is present, the method waits for the
+   * transaction to be mined and returns the actual fee. Otherwise, it
+   * returns after broadcast with an estimated fee.
    *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
@@ -150,6 +184,21 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   async sendTransaction (tx) {
     if (!this._account.provider) {
       throw new Error('The wallet must be connected to a provider to send transactions.')
+    }
+
+    if (tx.authorizationList) {
+      const from = await this.getAddress()
+      const fullTx = { from, ...tx }
+
+      if (!fullTx.gasLimit) {
+        fullTx.gasLimit = await this._estimateGasWithAuthList(fullTx)
+      }
+
+      const response = await this._account.sendTransaction(fullTx)
+      const receipt = await response.wait()
+      const fee = receipt.gasUsed * receipt.gasPrice
+
+      return { hash: response.hash, fee }
     }
 
     const { fee } = await this.quoteSendTransaction(tx)
@@ -165,7 +214,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Transfers a token to another address.
    *
-   * @param {TransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
    */
   async transfer (options) {
@@ -175,15 +224,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const tx = await WalletAccountEvm._getTransferTransaction(options)
 
+    if (options.authorizationList) {
+      tx.authorizationList = options.authorizationList
+    }
+
     const { fee } = await this.quoteSendTransaction(tx)
 
     if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
-    const { hash } = await this._account.sendTransaction(tx)
-
-    return { hash, fee }
+    return await this.sendTransaction(tx)
   }
 
   /**
@@ -231,6 +282,91 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const readOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
 
     return readOnlyAccount
+  }
+
+  /**
+   * Signs an ERC-7702 authorization tuple.
+   *
+   * @param {Erc7702AuthorizationRequest} auth - The authorization request.
+   * @returns {Promise<Erc7702Authorization>} The signed authorization.
+   */
+  async signAuthorization (auth) {
+    if (!auth) {
+      throw new Error('The authorization must include an address.')
+    }
+
+    return await this._account.authorize(auth)
+  }
+
+  /**
+   * Delegates this EOA to a smart contract via an ERC-7702 type 4 transaction.
+   *
+   * The transaction is sent to the EOA itself with zero value and no data.
+   * A fixed gas limit is used because `eth_estimateGas` may revert when
+   * the delegate contract lacks a `receive`/`fallback` function.
+   *
+   * @param {string} delegateAddress - The address of the contract to delegate to.
+   * @returns {Promise<TransactionResult>} The transaction result.
+   */
+  async delegate (delegateAddress) {
+    if (!this._account.provider) {
+      throw new Error('The wallet must be connected to a provider to delegate.')
+    }
+
+    const address = await this.getAddress()
+    const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'latest'])
+    const nonce = Number(nonceHex)
+
+    const auth = await this.signAuthorization({
+      address: delegateAddress,
+      nonce: nonce + 1
+    })
+
+    return await this.sendTransaction({
+      type: 4,
+      nonce,
+      to: address,
+      value: 0,
+      gasLimit: DELEGATION_TX_GAS_LIMIT,
+      authorizationList: [auth]
+    })
+  }
+
+  /**
+   * Revokes any active ERC-7702 delegation by delegating to the zero address.
+   *
+   * @returns {Promise<TransactionResult>} The transaction result.
+   */
+  async revokeDelegation () {
+    return await this.delegate(ZeroAddress)
+  }
+
+  async _estimateGasWithAuthList (tx) {
+    const formatAuth = (auth) => ({
+      chainId: toQuantity(auth.chainId ?? 0),
+      address: auth.address,
+      nonce: toQuantity(auth.nonce ?? 0),
+      ...(auth.signature
+        ? {
+            yParity: toQuantity(auth.signature.yParity),
+            r: auth.signature.r,
+            s: auth.signature.s
+          }
+        : {})
+    })
+
+    const rpcTx = {
+      type: '0x04',
+      from: tx.from,
+      to: tx.to,
+      value: toQuantity(tx.value ?? 0),
+      data: tx.data ?? '0x',
+      authorizationList: tx.authorizationList.map(formatAuth)
+    }
+
+    const result = await this._provider.send('eth_estimateGas', [rpcTx])
+
+    return BigInt(result)
   }
 
   /**

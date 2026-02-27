@@ -286,6 +286,22 @@ describe('WalletAccountReadOnlyEvm', () => {
     })
   })
 
+  describe('getDelegation', () => {
+    test('should return false for a regular EOA', async () => {
+      const delegation = await account.getDelegation()
+
+      expect(delegation.isDelegated).toBe(false)
+      expect(delegation.delegateAddress).toBeNull()
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const accountWithoutProvider = new WalletAccountReadOnlyEvm(ADDRESS)
+
+      await expect(accountWithoutProvider.getDelegation())
+        .rejects.toThrow('The wallet must be connected to a provider to check delegation.')
+    })
+  })
+
   describe('verifyTypedData', () => {
     const DOMAIN = {
       name: 'TestApp',
