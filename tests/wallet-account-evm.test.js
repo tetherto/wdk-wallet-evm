@@ -58,6 +58,7 @@ async function deployTestToken () {
 
 describe('WalletAccountEvm', () => {
   let testToken,
+    delegateContract,
     account
 
   async function sendEthersTo (to, value) {
@@ -73,6 +74,7 @@ describe('WalletAccountEvm', () => {
 
   beforeEach(async () => {
     testToken = await deployTestToken()
+    delegateContract = await deploySimpleDelegateContract()
 
     await sendEthersTo(ACCOUNT.address, INITIAL_BALANCE)
 
@@ -194,7 +196,7 @@ describe('WalletAccountEvm', () => {
         value: 1_000
       }
 
-      const EXPECTED_FEE = 49_611_983_472_910n
+      const EXPECTED_FEE = 46_114_898_254_972n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION)
 
@@ -214,7 +216,7 @@ describe('WalletAccountEvm', () => {
         data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
       }
 
-      const EXPECTED_FEE = 57_395_969_261_360n
+      const EXPECTED_FEE = 53_350_200_847_712n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION_WITH_DATA)
 
@@ -238,12 +240,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('quoteSendTransaction', () => {
-    let delegateContract
-
-    beforeEach(async () => {
-      delegateContract = await deploySimpleDelegateContract()
-    })
-
     test('should quote a standard transaction', async () => {
       const tx = {
         to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
@@ -280,7 +276,7 @@ describe('WalletAccountEvm', () => {
         amount: 100
       }
 
-      const EXPECTED_FEE = 123_145_253_772_480n
+      const EXPECTED_FEE = 114_464_902_444_416n
 
       const { hash, fee } = await account.transfer(TRANSFER)
       const transaction = await hre.ethers.provider.getTransaction(hash)
@@ -293,29 +289,6 @@ describe('WalletAccountEvm', () => {
       expect(transaction.data).toBe(data)
 
       expect(fee).toBe(EXPECTED_FEE)
-    })
-
-    test('should throw if transfer fee exceeds the transfer max fee configuration with authorizationList', async () => {
-      const delegateContract = await deploySimpleDelegateContract()
-
-      const auth = await account.signAuthorization({
-        address: delegateContract.target
-      })
-
-      const TRANSFER = {
-        token: testToken.target,
-        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
-        amount: 100,
-        authorizationList: [auth]
-      }
-
-      const account2 = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
-        provider: hre.network.provider,
-        transferMaxFee: 0
-      })
-
-      await expect(account2.transfer(TRANSFER))
-        .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
     })
 
     test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
@@ -331,6 +304,27 @@ describe('WalletAccountEvm', () => {
       })
 
       await expect(account.transfer(TRANSFER))
+        .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+    })
+
+    test('should throw if transfer fee exceeds the transfer max fee configuration with authorizationList', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100,
+        authorizationList: [auth]
+      }
+
+      const accountWithMaxFee = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transferMaxFee: 0
+      })
+
+      await expect(accountWithMaxFee.transfer(TRANSFER))
         .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
     })
 
@@ -457,12 +451,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('signAuthorization', () => {
-    let delegateContract
-
-    beforeEach(async () => {
-      delegateContract = await deploySimpleDelegateContract()
-    })
-
     test('should produce a signed authorization', async () => {
       const auth = await account.signAuthorization({
         address: delegateContract.target
@@ -486,12 +474,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('delegate', () => {
-    let delegateContract
-
-    beforeEach(async () => {
-      delegateContract = await deploySimpleDelegateContract()
-    })
-
     test('should set delegation to a contract', async () => {
       const { hash } = await account.delegate(delegateContract.target)
 
@@ -513,12 +495,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('revokeDelegation', () => {
-    let delegateContract
-
-    beforeEach(async () => {
-      delegateContract = await deploySimpleDelegateContract()
-    })
-
     test('should revoke an active delegation', async () => {
       await account.delegate(delegateContract.target)
 
@@ -534,12 +510,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('getDelegation', () => {
-    let delegateContract
-
-    beforeEach(async () => {
-      delegateContract = await deploySimpleDelegateContract()
-    })
-
     test('should return false for a regular EOA', async () => {
       const delegation = await account.getDelegation()
 
