@@ -168,10 +168,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const from = await this.getAddress()
     const fullTx = { from, ...tx }
 
-    if (fullTx.authorizationList && !fullTx.gasLimit) {
-      fullTx.gasLimit = await this._estimateGasWithAuthList(fullTx)
-    }
-
     const { fee } = await this.quoteSendTransaction(tx)
 
     const { hash } = await this._account.sendTransaction(fullTx)

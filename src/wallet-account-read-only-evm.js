@@ -321,13 +321,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
   }
 
-  /**
-   * Returns an evm transaction to execute the given token transfer.
-   *
-   * @protected
-   * @param {TransferOptions} options - The transfer's options.
-   * @returns {Promise<EvmTransaction>} The evm transaction.
-   */
+  /** @private */
   async _estimateGasWithAuthList (tx) {
     const formatAuth = (auth) => ({
       chainId: toQuantity(auth.chainId ?? 0),

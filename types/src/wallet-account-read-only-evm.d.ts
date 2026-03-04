@@ -104,8 +104,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<DelegationInfo>} The delegation info.
      */
     getDelegation(): Promise<DelegationInfo>;
-    /** @protected */
-    protected _estimateGasWithAuthList;
+    /** @private */
+    private _estimateGasWithAuthList;
 }
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
