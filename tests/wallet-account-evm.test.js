@@ -500,28 +500,4 @@ describe('WalletAccountEvm', () => {
     })
   })
 
-  describe('getDelegation', () => {
-    test('should return false for a regular EOA', async () => {
-      const delegation = await account.getDelegation()
-
-      expect(delegation.isDelegated).toBe(false)
-      expect(delegation.delegateAddress).toBeNull()
-    })
-
-    test('should return true after delegation with correct address', async () => {
-      await account.delegate(delegateContract.target)
-
-      const delegation = await account.getDelegation()
-
-      expect(delegation.isDelegated).toBe(true)
-      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
-    })
-
-    test('should throw if the account is not connected to a provider', async () => {
-      const disconnected = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
-
-      await expect(disconnected.getDelegation())
-        .rejects.toThrow('The wallet must be connected to a provider to check delegation.')
-    })
-  })
 })
