@@ -294,6 +294,40 @@ describe('WalletAccountReadOnlyEvm', () => {
       expect(delegation.delegateAddress).toBeNull()
     })
 
+    test('should return true for a delegated EOA', async () => {
+      const [signer] = await hre.ethers.getSigners()
+
+      const deployTx = await signer.sendTransaction({ data: '0x60006000f3' })
+      const receipt = await deployTx.wait()
+      const delegateAddress = receipt.contractAddress
+
+      const nonce = await signer.getNonce()
+
+      const auth = await signer.authorize({
+        address: delegateAddress,
+        nonce: nonce + 1
+      })
+
+      const tx = await signer.sendTransaction({
+        type: 4,
+        nonce,
+        to: signer.address,
+        value: 0,
+        gasLimit: 100_000,
+        authorizationList: [auth]
+      })
+      await tx.wait()
+
+      const signerAccount = new WalletAccountReadOnlyEvm(signer.address, {
+        provider: hre.network.provider
+      })
+
+      const delegation = await signerAccount.getDelegation()
+
+      expect(delegation.isDelegated).toBe(true)
+      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateAddress.toLowerCase())
+    })
+
     test('should throw if the account is not connected to a provider', async () => {
       const accountWithoutProvider = new WalletAccountReadOnlyEvm(ADDRESS)
 
