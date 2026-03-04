@@ -155,13 +155,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * Sends a transaction. For type 4 (ERC-7702) transactions, gas estimation
-   * is performed via raw RPC to include the authorization list, since the
-   * provider's high-level `estimateGas` does not forward it.
-   *
-   * When an `authorizationList` is present, the method waits for the
-   * transaction to be mined and returns the actual fee. Otherwise, it
-   * returns after broadcast with an estimated fee.
+   * Sends a transaction.
    *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
@@ -171,27 +165,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       throw new Error('The wallet must be connected to a provider to send transactions.')
     }
 
-    if (tx.authorizationList) {
-      const from = await this.getAddress()
-      const fullTx = { from, ...tx }
+    const from = await this.getAddress()
+    const fullTx = { from, ...tx }
 
-      if (!fullTx.gasLimit) {
-        fullTx.gasLimit = await this._estimateGasWithAuthList(fullTx)
-      }
-
-      const response = await this._account.sendTransaction(fullTx)
-      const receipt = await response.wait()
-      const fee = receipt.gasUsed * receipt.gasPrice
-
-      return { hash: response.hash, fee }
+    if (fullTx.authorizationList && !fullTx.gasLimit) {
+      fullTx.gasLimit = await this._estimateGasWithAuthList(fullTx)
     }
 
     const { fee } = await this.quoteSendTransaction(tx)
 
-    const { hash } = await this._account.sendTransaction({
-      from: await this.getAddress(),
-      ...tx
-    })
+    const { hash } = await this._account.sendTransaction(fullTx)
 
     return { hash, fee }
   }
