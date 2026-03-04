@@ -34,14 +34,14 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
-/** @typedef {import(‘ethers’).AuthorizationRequest} AuthorizationRequest */
-/** @typedef {import(‘ethers’).Authorization} Authorization */
-/** @typedef {import(‘ethers’).AuthorizationLike} AuthorizationLike */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
+/** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 
 /**
  * @typedef {Object} ApproveOptions
  * @property {string} token - The address of the token to approve.
- * @property {string} spender - The spender’s address.
+ * @property {string} spender - The spender's address.
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
  */
 
@@ -202,7 +202,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * Approves a specific amount of tokens to a spender.
    *
    * @param {ApproveOptions} options The approve options.
-   * @returns {Promise<TransactionResult>} The transaction’s result.
+   * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
    */
   async approve (options) {

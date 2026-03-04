@@ -241,8 +241,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
   /**
    * Returns the current allowance for the given token and spender.
-   * @param {string} token The token’s address.
-   * @param {string} spender The spender’s address.
+   * @param {string} token The token's address.
+   * @param {string} spender The spender's address.
    * @returns {Promise<bigint>} The allowance.
    */
   async getAllowance (token, spender) {
