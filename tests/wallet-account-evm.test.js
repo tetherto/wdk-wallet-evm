@@ -467,15 +467,18 @@ describe('WalletAccountEvm', () => {
 
   describe('delegate', () => {
     test('should set delegation to a contract', async () => {
-      const { hash } = await account.delegate(delegateContract.target)
+      const { hash, fee } = await account.delegate(delegateContract.target)
 
-      expect(typeof hash).toBe('string')
-      expect(hash).toMatch(/^0x[0-9a-f]{64}$/)
+      expect(hash).toBe('0x531060c8da26faf00c2b6ac596c9e7b62e6b7172aa7f0ee2344ad9afce204e92')
+      expect(fee).toBe(101_404_028_446_960n)
 
-      const delegation = await account.getDelegation()
+      const tx = await hre.ethers.provider.getTransaction(hash)
 
-      expect(delegation.isDelegated).toBe(true)
-      expect(delegation.delegateAddress.toLowerCase()).toBe(delegateContract.target.toLowerCase())
+      expect(tx.type).toBe(4)
+      expect(tx.to).toBe(account.address)
+      expect(tx.value).toBe(0n)
+      expect(tx.authorizationList).toHaveLength(1)
+      expect(tx.authorizationList[0].address).toBe(delegateContract.target.toLowerCase())
     })
 
     test('should throw if the account is not connected to a provider', async () => {
