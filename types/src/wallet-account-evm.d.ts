@@ -72,7 +72,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Approves a specific amount of tokens to a spender.
      *
      * @param {ApproveOptions} options The approve options.
-     * @returns {Promise<TransactionResult>} The transaction’s result.
+     * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
      */
     approve(options: ApproveOptions): Promise<TransactionResult>;
@@ -111,9 +111,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     dispose(): void;
 }
-export type AuthorizationRequest = import("ethers").AuthorizationRequest;
-export type Authorization = import("ethers").Authorization;
-export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type HDNodeWallet = import("ethers").HDNodeWallet;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
@@ -123,36 +120,39 @@ export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTransaction;
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
 export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
-export type EvmTransferOptions = {
-    /**
-     * The address of the token to transfer.
-     */
-    token: string;
-    /**
-     * The address of the recipient.
-     */
-    recipient: string;
-    /**
-     * The amount of tokens to transfer to the recipient (in base units).
-     */
-    amount: number | bigint;
-    /**
-     * An optional list of ERC-7702 signed authorizations.
-     */
-    authorizationList?: AuthorizationLike[];
-};
+export type AuthorizationRequest = import("ethers").AuthorizationRequest;
+export type Authorization = import("ethers").Authorization;
+export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type ApproveOptions = {
     /**
-     * The address of the token to approve.
+     * - The address of the token to approve.
      */
     token: string;
     /**
-     * The spender’s address.
+     * - The spender's address.
      */
     spender: string;
     /**
-     * The amount of tokens to approve to the spender.
+     * - The amount of tokens to approve to the spender.
      */
     amount: number | bigint;
+};
+export type EvmTransferOptions = {
+    /**
+     * - The address of the token to transfer.
+     */
+    token: string;
+    /**
+     * - The address of the recipient.
+     */
+    recipient: string;
+    /**
+     * - The amount of tokens to transfer to the recipient (in base units).
+     */
+    amount: number | bigint;
+    /**
+     * - An optional list of ERC-7702 signed authorizations.
+     */
+    authorizationList?: AuthorizationLike[];
 };
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js';

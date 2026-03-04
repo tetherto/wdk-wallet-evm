@@ -77,8 +77,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     getTransactionReceipt(hash: string): Promise<EvmTransactionReceipt | null>;
     /**
      * Returns the current allowance for the given token and spender.
-     * @param {string} token The token’s address.
-     * @param {string} spender The spender’s address.
+     * @param {string} token The token's address.
+     * @param {string} spender The spender's address.
      * @returns {Promise<bigint>} The allowance.
      */
     getAllowance(token: string, spender: string): Promise<bigint>;
@@ -107,9 +107,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /** @private */
     private _estimateGasWithAuthList;
 }
+export type Provider = import("ethers").Provider;
+export type Eip1193Provider = import("ethers").Eip1193Provider;
+export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
+export type AuthorizationLike = import("ethers").AuthorizationLike;
+export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
+export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
-export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type TypedData = {
     /**
      * - The domain separator.
