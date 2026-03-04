@@ -456,12 +456,13 @@ describe('WalletAccountEvm', () => {
         address: delegateContract.target
       })
 
-      expect(auth).toHaveProperty('address')
-      expect(auth).toHaveProperty('nonce')
-      expect(auth).toHaveProperty('chainId')
-      expect(auth).toHaveProperty('signature')
+      expect(auth.address).toBe(delegateContract.target)
+      expect(auth.nonce).toBe(0n)
+      expect(auth.chainId).toBe(31337n)
+      expect(auth.signature.r).toBe('0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324')
+      expect(auth.signature.s).toBe('0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783')
+      expect(auth.signature.v).toBe(27)
     })
-
   })
 
   describe('delegate', () => {
