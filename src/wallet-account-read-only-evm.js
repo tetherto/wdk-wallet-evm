@@ -330,8 +330,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
       ...(auth.signature
         ? {
             yParity: toQuantity(auth.signature.yParity),
-            r: auth.signature.r,
-            s: auth.signature.s
+            r: toQuantity(auth.signature.r),
+            s: toQuantity(auth.signature.s)
           }
         : {})
     })
