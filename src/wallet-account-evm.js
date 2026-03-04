@@ -47,7 +47,11 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
  */
 
 /**
- * @typedef {TransferOptions & { authorizationList?: AuthorizationLike[] }} EvmTransferOptions
+ * @typedef {Object} EvmTransferOptions
+ * @property {string} token - The address of the token to transfer.
+ * @property {string} recipient - The address of the recipient.
+ * @property {number | bigint} amount - The amount of tokens to transfer to the recipient (in base units).
+ * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations.
  */
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"

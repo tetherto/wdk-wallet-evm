@@ -140,7 +140,22 @@ export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTransaction;
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
 export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
-export type EvmTransferOptions = TransferOptions & {
+export type EvmTransferOptions = {
+    /**
+     * The address of the token to transfer.
+     */
+    token: string;
+    /**
+     * The address of the recipient.
+     */
+    recipient: string;
+    /**
+     * The amount of tokens to transfer to the recipient (in base units).
+     */
+    amount: number | bigint;
+    /**
+     * An optional list of ERC-7702 signed authorizations.
+     */
     authorizationList?: AuthorizationLike[];
 };
 export type ApproveOptions = {
