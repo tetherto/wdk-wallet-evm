@@ -16,7 +16,7 @@
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
-import { BrowserProvider, Contract, Interface, JsonRpcProvider, verifyMessage, verifyTypedData } from 'ethers'
+import { BrowserProvider, Contract, Interface, JsonRpcProvider, toQuantity, verifyMessage, verifyTypedData } from 'ethers'
 import { multicall } from './multicall.js'
 
 /** @typedef {import('ethers').Provider} Provider */
@@ -197,10 +197,11 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
       throw new Error('The wallet must be connected to a provider to quote send transaction operations.')
     }
 
-    const gas = await this._provider.estimateGas({
-      from: await this.getAddress(),
-      ...tx
-    })
+    const from = await this.getAddress()
+
+    const gas = tx.authorizationList
+      ? await this._estimateGasWithAuthList({ from, ...tx })
+      : await this._provider.estimateGas({ from, ...tx })
 
     const data = await this._provider.getFeeData()
 
@@ -327,6 +328,34 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<EvmTransaction>} The evm transaction.
    */
+  async _estimateGasWithAuthList (tx) {
+    const formatAuth = (auth) => ({
+      chainId: toQuantity(auth.chainId ?? 0),
+      address: auth.address,
+      nonce: toQuantity(auth.nonce ?? 0),
+      ...(auth.signature
+        ? {
+            yParity: toQuantity(auth.signature.yParity),
+            r: auth.signature.r,
+            s: auth.signature.s
+          }
+        : {})
+    })
+
+    const rpcTx = {
+      type: '0x04',
+      from: tx.from,
+      to: tx.to,
+      value: toQuantity(tx.value ?? 0),
+      data: tx.data ?? '0x',
+      authorizationList: tx.authorizationList.map(formatAuth)
+    }
+
+    const result = await this._provider.send('eth_estimateGas', [rpcTx])
+
+    return BigInt(result)
+  }
+
   static async _getTransferTransaction (options) {
     const { token, recipient, amount } = options
 

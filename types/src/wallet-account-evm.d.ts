@@ -55,14 +55,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
-     * Quotes the costs of a send transaction operation. Overrides the base
-     * implementation to support type 4 transactions with an authorization list.
-     *
-     * @param {EvmTransaction} tx - The transaction.
-     * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
-     */
-    quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
-    /**
      * Sends a transaction. For type 4 (ERC-7702) transactions, gas estimation
      * is performed via raw RPC to include the authorization list, since the
      * provider's high-level `estimateGas` does not forward it.
@@ -120,8 +112,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransactionResult>} The transaction result.
      */
     revokeDelegation(): Promise<TransactionResult>;
-    /** @private */
-    private _estimateGasWithAuthList;
     /**
      * Disposes the wallet account, erasing the private key from the memory.
      */

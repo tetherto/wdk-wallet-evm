@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { Contract, toQuantity, ZeroAddress } from 'ethers'
+import { Contract, ZeroAddress } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -152,26 +152,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async signTypedData ({ domain, types, message }) {
     return await this._account.signTypedData(domain, types, message)
-  }
-
-  /**
-   * Quotes the costs of a send transaction operation. Overrides the base
-   * implementation to support type 4 transactions with an authorization list.
-   *
-   * @param {EvmTransaction} tx - The transaction.
-   * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
-   */
-  async quoteSendTransaction (tx) {
-    if (tx.authorizationList) {
-      const from = await this.getAddress()
-      const gas = await this._estimateGasWithAuthList({ from, ...tx })
-      const feeData = await this._provider.getFeeData()
-      const feeRate = feeData.maxFeePerGas || feeData.gasPrice
-
-      return { fee: gas * feeRate }
-    }
-
-    return await super.quoteSendTransaction(tx)
   }
 
   /**
@@ -344,34 +324,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   async revokeDelegation () {
     return await this.delegate(ZeroAddress)
-  }
-
-  async _estimateGasWithAuthList (tx) {
-    const formatAuth = (auth) => ({
-      chainId: toQuantity(auth.chainId ?? 0),
-      address: auth.address,
-      nonce: toQuantity(auth.nonce ?? 0),
-      ...(auth.signature
-        ? {
-            yParity: toQuantity(auth.signature.yParity),
-            r: auth.signature.r,
-            s: auth.signature.s
-          }
-        : {})
-    })
-
-    const rpcTx = {
-      type: '0x04',
-      from: tx.from,
-      to: tx.to,
-      value: toQuantity(tx.value ?? 0),
-      data: tx.data ?? '0x',
-      authorizationList: tx.authorizationList.map(formatAuth)
-    }
-
-    const result = await this._provider.send('eth_estimateGas', [rpcTx])
-
-    return BigInt(result)
   }
 
   /**
