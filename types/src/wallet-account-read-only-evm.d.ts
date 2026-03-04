@@ -109,9 +109,6 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 }
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
-export type Signature = import("ethers").Signature;
-export type AuthorizationRequest = import("ethers").AuthorizationRequest;
-export type Authorization = import("ethers").Authorization;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type TypedData = {
     /**

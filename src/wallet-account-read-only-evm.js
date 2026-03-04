@@ -22,9 +22,6 @@ import { multicall } from './multicall.js'
 /** @typedef {import('ethers').Provider} Provider */
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
-/** @typedef {import('ethers').Signature} Signature */
-/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
-/** @typedef {import('ethers').Authorization} Authorization */
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
