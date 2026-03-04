@@ -37,7 +37,6 @@ import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
 /** @typedef {import(‘./wallet-account-read-only-evm.js’).AuthorizationRequest} AuthorizationRequest */
 /** @typedef {import(‘./wallet-account-read-only-evm.js’).Authorization} Authorization */
 /** @typedef {import(‘./wallet-account-read-only-evm.js’).AuthorizationLike} AuthorizationLike */
-/** @typedef {import(‘./wallet-account-read-only-evm.js’).DelegationInfo} DelegationInfo */
 
 /**
  * @typedef {Object} ApproveOptions

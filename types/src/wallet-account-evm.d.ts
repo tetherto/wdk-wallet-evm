@@ -114,7 +114,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
 export type AuthorizationRequest = import("./wallet-account-read-only-evm.js").AuthorizationRequest;
 export type Authorization = import("./wallet-account-read-only-evm.js").Authorization;
 export type AuthorizationLike = import("./wallet-account-read-only-evm.js").AuthorizationLike;
-export type DelegationInfo = import("./wallet-account-read-only-evm.js").DelegationInfo;
 export type HDNodeWallet = import("ethers").HDNodeWallet;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
