@@ -8,6 +8,8 @@ import { WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
 
+const PRIVATE_KEY = '260905feebf1ec684f36f1599128b85f3a26c2b817f2065a2fc278398449c41f'
+
 const ADDRESS = '0x405005C7c4422390F4B334F64Cf20E0b767131d0'
 
 const INITIAL_BALANCE = 1_000_000_000_000_000_000n
@@ -163,16 +165,15 @@ describe('WalletAccountReadOnlyEvm', () => {
     })
 
     test('should successfully quote a transaction with an authorization list', async () => {
-      const [signer] = await hre.ethers.getSigners()
-
-      const auth = await signer.authorize({
-        address: testToken.target
-      })
-
       const TRANSACTION_WITH_AUTHORIZATION_LIST = {
         to: ADDRESS,
         value: 0,
-        authorizationList: [auth]
+        authorizationList: [{
+          address: testToken.target,
+          nonce: 0n,
+          chainId: 31_337n,
+          signature: '0x8350369e5b5aad1a0feade6d6549fe5494cfc6e4368dcebfbeb2ca7c684dfe33566860606b1c76dbaf823db90ad4d1cd79f97a486140fa9af801cb7f315ad4761c'
+        }]
       }
 
       const EXPECTED_FEE = 108_671_056_222_910n

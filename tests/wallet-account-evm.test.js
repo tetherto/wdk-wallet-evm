@@ -256,7 +256,7 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 0n,
-        chainId: 31337n,
+        chainId: 31_337n,
         signature: expect.objectContaining({
           r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
           s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
@@ -322,7 +322,7 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 0n,
-        chainId: 31337n,
+        chainId: 31_337n,
         signature: expect.objectContaining({
           r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
           s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
@@ -480,7 +480,7 @@ describe('WalletAccountEvm', () => {
       expect(auth).toEqual({
         address: delegateContract.target,
         nonce: 0n,
-        chainId: 31337n,
+        chainId: 31_337n,
         signature: expect.objectContaining({
           r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
           s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
@@ -505,7 +505,7 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 1n,
-        chainId: 31337n,
+        chainId: 31_337n,
         signature: expect.objectContaining({
           r: '0x7dc08507592858aced1689ea3d58a4e3b482dd3ace313b33a5cd53c90d895a6e',
           s: '0x4e3b748e3d9d4d55231f64b389bd1890b598150328f4e15a24baa35e39ed7e00',
@@ -539,7 +539,7 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: '0x0000000000000000000000000000000000000000',
         nonce: 1n,
-        chainId: 31337n,
+        chainId: 31_337n,
         signature: expect.objectContaining({
           r: '0x6ec7aaa669f7ffe72dccf910d7f6d8282649660747f3ce8a1218de8ab5710899',
           s: '0x4bf4e7983a6f1e1db3d275f02e18bfc4408732e49ac3465dc8cd3150e9ac9240',
