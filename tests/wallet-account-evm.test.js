@@ -516,6 +516,7 @@ describe('WalletAccountEvm', () => {
 
       const tx = await hre.ethers.provider.getTransaction(hash)
 
+      expect(tx.hash).toBe(hash)
       expect(tx.type).toBe(4)
       expect(tx.to).toBe(account.address)
       expect(tx.value).toBe(0n)
@@ -546,6 +547,7 @@ describe('WalletAccountEvm', () => {
 
       const tx = await hre.ethers.provider.getTransaction(hash)
 
+      expect(tx.hash).toBe(hash)
       expect(tx.type).toBe(4)
       expect(tx.to).toBe(account.address)
       expect(tx.value).toBe(0n)
