@@ -153,9 +153,13 @@ export type EvmTransaction = {
 };
 export type EvmWalletConfig = {
     /**
-     * - The url of the rpc provider, or an instance of a class that implements eip-1193.
+     * - The url of the rpc provider, or an instance of a class that implements eip-1193. If it's a list of urls or instances, the provider failover strategy will be enabled.
      */
-    provider?: string | Eip1193Provider;
+    provider?: string | Eip1193Provider | Array<string | Eip1193Provider>;
+    /**
+     * - The number of retries in the failover mechanism.
+     */
+    retries?: number;
     /**
      * - The maximum fee amount for transfer operations.
      */
