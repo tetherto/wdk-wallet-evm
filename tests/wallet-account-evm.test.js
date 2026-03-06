@@ -298,7 +298,6 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if approving non-zero USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
 
       const approveOptions = {
         token: USDT_MAINNET_ADDRESS,
@@ -312,7 +311,6 @@ describe('WalletAccountEvm', () => {
     
     test('should successfully approve a non-zero amount for USDT on mainnet when allowance is zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(0n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {
@@ -338,7 +336,6 @@ describe('WalletAccountEvm', () => {
 
     test('should successfully approve a zero amount for USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {
