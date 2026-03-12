@@ -6,11 +6,11 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     reviewers:
-      - "quocle108"
+      - "jonathunne"
     assignees:
-      - "quocle108"
+      - "jonathunne"
     labels:
-      - "dependencies"
+      - "security"
     # Ignore for version updates
     ignore:
       - dependency-name: "*"
