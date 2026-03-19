@@ -1,6 +1,6 @@
 import hre from 'hardhat'
 
-import { ContractFactory, Contract } from 'ethers'
+import { ContractFactory, Contract, Signature } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -10,7 +10,10 @@ import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
 
+import SimpleDelegateContract from './artifacts/SimpleDelegateContract.json' with { type: 'json' }
+
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+const DELEGATE_CONTRACT_ADDRESS = '0xbe08d4d81ebea77f6aa54b2067ea5f56005f98de'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 
@@ -31,6 +34,18 @@ const ACCOUNT = {
 const INITIAL_BALANCE = 1_000_000_000_000_000_000n
 const INITIAL_TOKEN_BALANCE = 1_000_000n
 
+async function deploySimpleDelegateContract () {
+  const [signer] = await hre.ethers.getSigners()
+
+  const factory = new ContractFactory(SimpleDelegateContract.abi, SimpleDelegateContract.bytecode, signer)
+  const contract = await factory.deploy()
+  const transaction = await contract.deploymentTransaction()
+
+  await transaction.wait()
+
+  return contract
+}
+
 async function deployTestToken () {
   const [signer] = await hre.ethers.getSigners()
 
@@ -45,6 +60,7 @@ async function deployTestToken () {
 
 describe('WalletAccountEvm', () => {
   let testToken,
+    delegateContract,
     account
 
   async function sendEthersTo (to, value) {
@@ -60,6 +76,7 @@ describe('WalletAccountEvm', () => {
 
   beforeEach(async () => {
     testToken = await deployTestToken()
+    delegateContract = await deploySimpleDelegateContract()
 
     await sendEthersTo(ACCOUNT.address, INITIAL_BALANCE)
 
@@ -181,13 +198,12 @@ describe('WalletAccountEvm', () => {
         value: 1_000
       }
 
-      const EXPECTED_FEE = 49_611_983_472_910n
+      const EXPECTED_FEE = 46_114_898_254_972n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION)
 
       const transaction = await hre.ethers.provider.getTransaction(hash)
 
-      expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSACTION.to)
       expect(transaction.value).toBe(BigInt(TRANSACTION.value))
 
@@ -201,17 +217,52 @@ describe('WalletAccountEvm', () => {
         data: testToken.interface.encodeFunctionData('balanceOf', ['0x636e9c21f27d9401ac180666bf8DC0D3FcEb0D24'])
       }
 
-      const EXPECTED_FEE = 57_395_969_261_360n
+      const EXPECTED_FEE = 53_350_200_847_712n
 
       const { hash, fee } = await account.sendTransaction(TRANSACTION_WITH_DATA)
 
       const transaction = await hre.ethers.provider.getTransaction(hash)
 
-      expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSACTION_WITH_DATA.to)
       expect(transaction.value).toBe(BigInt(TRANSACTION_WITH_DATA.value))
-
       expect(transaction.data).toBe(TRANSACTION_WITH_DATA.data)
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should successfully send a transaction with an authorization list', async () => {
+      const auth = await account.signAuthorization({
+        address: DELEGATE_CONTRACT_ADDRESS
+      })
+
+      const TRANSACTION_WITH_AUTHORIZATION_LIST = {
+        type: 4,
+        to: account.address,
+        value: 0,
+        gasLimit: 100_000,
+        authorizationList: [auth]
+      }
+
+      const EXPECTED_FEE = 101_010_972_554_972n
+
+      const { hash, fee } = await account.sendTransaction(TRANSACTION_WITH_AUTHORIZATION_LIST)
+
+      const transaction = await hre.ethers.provider.getTransaction(hash)
+
+      expect(transaction.to).toBe(account.address)
+      expect(transaction.value).toBe(0n)
+      expect(transaction.type).toBe(4)
+
+      expect(transaction.authorizationList).toEqual([{
+        address: DELEGATE_CONTRACT_ADDRESS,
+        nonce: 0n,
+        chainId: 31_337n,
+        signature: expect.objectContaining({
+          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
+          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          v: 27
+        })
+      }])
 
       expect(fee).toBe(EXPECTED_FEE)
     })
@@ -232,17 +283,52 @@ describe('WalletAccountEvm', () => {
         amount: 100
       }
 
-      const EXPECTED_FEE = 123_145_253_772_480n
+      const EXPECTED_FEE = 114_464_902_444_416n
 
       const { hash, fee } = await account.transfer(TRANSFER)
       const transaction = await hre.ethers.provider.getTransaction(hash)
       const data = testToken.interface.encodeFunctionData('transfer', [TRANSFER.recipient, TRANSFER.amount])
 
-      expect(transaction.hash).toBe(hash)
       expect(transaction.to).toBe(TRANSFER.token)
       expect(transaction.value).toBe(0n)
-
       expect(transaction.data).toBe(data)
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should successfully transfer tokens with an authorization list', async () => {
+      const auth = await account.signAuthorization({
+        address: DELEGATE_CONTRACT_ADDRESS
+      })
+
+      const TRANSFER = {
+        token: testToken.target,
+        recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        amount: 100,
+        authorizationList: [auth]
+      }
+
+      const EXPECTED_FEE = 169_360_976_744_416n
+
+      const { hash, fee } = await account.transfer(TRANSFER)
+      const transaction = await hre.ethers.provider.getTransaction(hash)
+      const data = testToken.interface.encodeFunctionData('transfer', [TRANSFER.recipient, TRANSFER.amount])
+
+      expect(transaction.to).toBe(TRANSFER.token)
+      expect(transaction.value).toBe(0n)
+      expect(transaction.data).toBe(data)
+      expect(transaction.type).toBe(4)
+
+      expect(transaction.authorizationList).toEqual([{
+        address: DELEGATE_CONTRACT_ADDRESS,
+        nonce: 0n,
+        chainId: 31_337n,
+        signature: expect.objectContaining({
+          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
+          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          v: 27
+        })
+      }])
 
       expect(fee).toBe(EXPECTED_FEE)
     })
@@ -309,7 +395,7 @@ describe('WalletAccountEvm', () => {
       await expect(account.approve(approveOptions))
         .rejects.toThrow('USDT requires the current allowance to be reset to 0 before setting a new non-zero value.')
     })
-    
+
     test('should successfully approve a non-zero amount for USDT on mainnet when allowance is zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(0n)
       jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
@@ -384,4 +470,92 @@ describe('WalletAccountEvm', () => {
       expect(await readOnlyAccount.getAddress()).toBe(ACCOUNT.address)
     })
   })
+
+  describe('signAuthorization', () => {
+    test('should succesfully sign an authorization', async () => {
+      const auth = await account.signAuthorization({
+        address: delegateContract.target
+      })
+
+      expect(auth).toEqual({
+        address: delegateContract.target,
+        nonce: 0n,
+        chainId: 31_337n,
+        signature: expect.objectContaining({
+          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
+          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          v: 27
+        })
+      })
+    })
+  })
+
+  describe('delegate', () => {
+    test('should succesfully set delegation to a contract', async () => {
+      const EXPECTED_FEE = 101_404_028_446_960n
+
+      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS)
+
+      const transaction = await hre.ethers.provider.getTransaction(hash)
+
+      expect(transaction.to).toBe(account.address)
+      expect(transaction.value).toBe(0n)
+      expect(transaction.type).toBe(4)
+
+      expect(transaction.authorizationList).toEqual([{
+        address: DELEGATE_CONTRACT_ADDRESS,
+        nonce: 1n,
+        chainId: 31_337n,
+        signature: expect.objectContaining({
+          r: '0x7dc08507592858aced1689ea3d58a4e3b482dd3ace313b33a5cd53c90d895a6e',
+          s: '0x4e3b748e3d9d4d55231f64b389bd1890b598150328f4e15a24baa35e39ed7e00',
+          v: 28
+        })
+      }])
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(account.delegate(delegateContract.target))
+        .rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+  })
+
+  describe('revokeDelegation', () => {
+    test('should successfully set a delegation to the zero address', async () => {
+      const EXPECTED_FEE = 101_010_972_554_972n
+
+      const { hash, fee } = await account.revokeDelegation()
+
+      const transaction = await hre.ethers.provider.getTransaction(hash)
+
+      expect(transaction.to).toBe(account.address)
+      expect(transaction.value).toBe(0n)
+      expect(transaction.type).toBe(4)
+
+      expect(transaction.authorizationList).toEqual([{
+        address: '0x0000000000000000000000000000000000000000',
+        nonce: 1n,
+        chainId: 31_337n,
+        signature: expect.objectContaining({
+          r: '0x6ec7aaa669f7ffe72dccf910d7f6d8282649660747f3ce8a1218de8ab5710899',
+          s: '0x4bf4e7983a6f1e1db3d275f02e18bfc4408732e49ac3465dc8cd3150e9ac9240',
+          v: 28
+        })
+      }])
+
+      expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if the account is not connected to a provider', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(account.revokeDelegation())
+        .rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+  })
+
 })
