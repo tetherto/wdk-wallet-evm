@@ -53,7 +53,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
      */
-    signTypedData(typedData: TypedData): Promise<string>;
+    signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
      * Sends a transaction.
      *
@@ -64,15 +64,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Transfers a token to another address.
      *
-     * @param {TransferOptions} options - The transfer's options.
+     * @param {EvmTransferOptions} options - The transfer's options.
      * @returns {Promise<TransferResult>} The transfer's result.
      */
-    transfer(options: TransferOptions): Promise<TransferResult>;
+    transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**
      * Approves a specific amount of tokens to a spender.
      *
      * @param {ApproveOptions} options The approve options.
-     * @returns {Promise<TransactionResult>} The transaction’s result.
+     * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
      */
     approve(options: ApproveOptions): Promise<TransactionResult>;
@@ -83,30 +83,57 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     toReadOnlyAccount(): Promise<WalletAccountReadOnlyEvm>;
     /**
+     * Signs an ERC-7702 authorization tuple.
+     *
+     * @param {AuthorizationRequest} auth - The authorization request.
+     * @returns {Promise<Authorization>} The signed authorization.
+     */
+    signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
+    /**
+     * Delegates this EOA to a smart contract via an ERC-7702 type 4 transaction.
+     *
+     * The transaction is sent to the EOA itself with zero value and no data.
+     * A fixed gas limit is used because `eth_estimateGas` may revert when
+     * the delegate contract lacks a `receive`/`fallback` function.
+     *
+     * @param {string} delegateAddress - The address of the contract to delegate to.
+     * @returns {Promise<TransactionResult>} The transaction result.
+     */
+    delegate(delegateAddress: string): Promise<TransactionResult>;
+    /**
+     * Revokes any active ERC-7702 delegation by delegating to the zero address.
+     *
+     * @returns {Promise<TransactionResult>} The transaction result.
+     */
+    revokeDelegation(): Promise<TransactionResult>;
+    /**
      * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;
 }
 export type HDNodeWallet = import("ethers").HDNodeWallet;
-export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
+export type AuthorizationRequest = import("ethers").AuthorizationRequest;
+export type Authorization = import("ethers").Authorization;
+export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
-export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
 export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTransaction;
+export type EvmTransferOptions = import("./wallet-account-read-only-evm.js").EvmTransferOptions;
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
 export type ApproveOptions = {
     /**
-     * The address of the token to approve.
+     * - The address of the token to approve.
      */
     token: string;
     /**
-     * The spender’s address.
+     * - The spender's address.
      */
     spender: string;
     /**
-     * The amount of tokens to approve to the spender.
+     * - The amount of tokens to approve to the spender.
      */
     amount: number | bigint;
 };

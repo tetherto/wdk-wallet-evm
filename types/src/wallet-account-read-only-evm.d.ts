@@ -3,10 +3,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * Returns an evm transaction to execute the given token transfer.
      *
      * @protected
-     * @param {TransferOptions} options - The transfer's options.
+     * @param {EvmTransferOptions} options - The transfer's options.
      * @returns {Promise<EvmTransaction>} The evm transaction.
      */
-    protected static _getTransferTransaction(options: TransferOptions): Promise<EvmTransaction>;
+    protected static _getTransferTransaction(options: EvmTransferOptions): Promise<EvmTransaction>;
     /**
      * Creates a new evm read-only wallet account.
      *
@@ -64,10 +64,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a transfer operation.
      *
-     * @param {TransferOptions} options - The transfer's options.
+     * @param {EvmTransferOptions} options - The transfer's options.
      * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
      */
-    quoteTransfer(options: TransferOptions): Promise<Omit<TransferResult, "hash">>;
+    quoteTransfer(options: EvmTransferOptions): Promise<Omit<TransferResult, "hash">>;
     /**
      * Returns a transaction's receipt.
      *
@@ -77,8 +77,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     getTransactionReceipt(hash: string): Promise<EvmTransactionReceipt | null>;
     /**
      * Returns the current allowance for the given token and spender.
-     * @param {string} token The token’s address.
-     * @param {string} spender The spender’s address.
+     * @param {string} token The token's address.
+     * @param {string} spender The spender's address.
      * @returns {Promise<bigint>} The allowance.
      */
     getAllowance(token: string, spender: string): Promise<bigint>;
@@ -98,9 +98,23 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @returns {Promise<boolean>} True if the signature is valid.
      */
     verifyTypedData(typedData: TypedData, signature: string): Promise<boolean>;
+    /**
+     * Checks if this account has an active ERC-7702 delegation.
+     *
+     * @returns {Promise<DelegationInfo>} The delegation info.
+     */
+    getDelegation(): Promise<DelegationInfo>;
+    /** @private */
+    private _estimateGasWithAuthList;
 }
+export type Provider = import("ethers").Provider;
+export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
+export type AuthorizationLike = import("ethers").AuthorizationLike;
+export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
+export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
+export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TypedData = {
     /**
      * - The domain separator.
@@ -115,12 +129,16 @@ export type TypedData = {
      */
     message: Record<string, unknown>;
 };
-export type Provider = import("ethers").Provider;
-export type Eip1193Provider = import("ethers").Eip1193Provider;
-export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
-export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
-export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
-export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
+export type DelegationInfo = {
+    /**
+     * - Whether the account has an active ERC-7702 delegation.
+     */
+    isDelegated: boolean;
+    /**
+     * - The address of the delegate contract, or null if not delegated.
+     */
+    delegateAddress: string | null;
+};
 export type EvmTransaction = {
     /**
      * - The transaction's recipient.
@@ -150,6 +168,36 @@ export type EvmTransaction = {
      * - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
      */
     maxPriorityFeePerGas?: number | bigint;
+    /**
+     * - The transaction type (e.g. 4 for ERC-7702).
+     */
+    type?: number;
+    /**
+     * - The transaction nonce.
+     */
+    nonce?: number;
+    /**
+     * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
+     */
+    authorizationList?: AuthorizationLike[];
+};
+export type EvmTransferOptions = {
+    /**
+     * - The address of the token to transfer.
+     */
+    token: string;
+    /**
+     * - The address of the recipient.
+     */
+    recipient: string;
+    /**
+     * - The amount of tokens to transfer to the recipient (in base units).
+     */
+    amount: number | bigint;
+    /**
+     * - An optional list of ERC-7702 signed authorizations.
+     */
+    authorizationList?: AuthorizationLike[];
 };
 export type EvmWalletConfig = {
     /**
