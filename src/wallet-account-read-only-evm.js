@@ -69,7 +69,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 
 /**
  * @typedef {Object} EvmWalletConfig
- * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. If it's a list of urls or instances, the provider failover strategy will be enabled.
+ * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. 
  * @property {number} [retries] - The number of retries in the failover mechanism.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
