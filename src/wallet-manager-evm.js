@@ -72,15 +72,15 @@ export default class WalletManagerEvm extends WalletManager {
 
     const { provider, retries = 3 } = config
 
-    if (Array.isArray(provider)) {
+    if (Array.isArray(provider) && provider.length > 0) {
       this._provider = provider
         .reduce(
-          (failover, candidate) =>
-            failover.addProvider(
-              typeof candidate === 'string'
-                ? new JsonRpcProvider(candidate)
-                : new BrowserProvider(candidate)
-            ),
+          (failover, entry) => {
+            const option = typeof entry === 'string'
+              ? new JsonRpcProvider(entry)
+              : new BrowserProvider(entry)
+            return failover.addProvider(option)
+          },
           new FailoverProvider({ retries })
         )
         .initialize()
@@ -89,8 +89,6 @@ export default class WalletManagerEvm extends WalletManager {
         typeof provider === 'string'
           ? new JsonRpcProvider(provider)
           : new BrowserProvider(provider)
-    } else {
-      this._provider = undefined
     }
   }
 
