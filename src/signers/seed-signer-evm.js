@@ -33,14 +33,6 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
  */
 export class ISignerEvm {
   /**
-   * True if the signer is currently active and usable.
-   * @type {boolean}
-   */
-  get isActive () {
-    throw new NotImplementedError('isActive')
-  }
-
-  /**
    * The last component index for the derivation path of this signer, when applicable.
    * @type {number|undefined}
    */
@@ -147,7 +139,6 @@ export default class SeedSignerEvm {
     this._account = undefined
     this._address = undefined
     this._path = undefined
-    this._isActive = true
 
     if (opts.path) {
       const fullPath = `${BIP_44_ETH_DERIVATION_PATH_PREFIX}/${opts.path}`
@@ -157,10 +148,6 @@ export default class SeedSignerEvm {
       this._path = fullPath
       this._isRoot = false
     }
-  }
-
-  get isActive () {
-    return this._isActive
   }
 
   get isRoot () {
@@ -248,6 +235,5 @@ export default class SeedSignerEvm {
     if (this._account) this._account.dispose()
     if (this._root) this._root.dispose()
     this._root = undefined
-    this._isActive = false
   }
 }

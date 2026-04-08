@@ -53,7 +53,6 @@ export default class LedgerSignerEvm {
     this._address = undefined
     this._sessionId = ''
     this._path = `${BIP_44_ETH_DERIVATION_PATH_PREFIX}/${path}`
-    this._isActive = false
 
     /**
      * @type {DeviceManagementKit}
@@ -63,10 +62,6 @@ export default class LedgerSignerEvm {
       new DeviceManagementKitBuilder()
         .addTransport(webHidTransportFactory)
         .build()
-  }
-
-  get isActive () {
-    return this._isActive
   }
 
   get index () {
@@ -107,7 +102,6 @@ export default class LedgerSignerEvm {
     } finally {
       this._account = undefined
       this._sessionId = ''
-      this._isActive = false
     }
   }
 
@@ -228,7 +222,6 @@ export default class LedgerSignerEvm {
 
       // Active
       this._address = address
-      this._isActive = true
     } catch (err) {
       await this._disconnect()
       throw err
@@ -350,9 +343,7 @@ export default class LedgerSignerEvm {
 
   /** Clear device handles and local state. */
   dispose () {
-    this._account = undefined
+    this._disconnect()
     this._dmk = undefined
-    this._sessionId = ''
-    this._isActive = false
   }
 }

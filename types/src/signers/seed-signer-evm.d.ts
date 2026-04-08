@@ -10,11 +10,6 @@
  */
 export class ISignerEvm implements ISigner {
     /**
-     * True if the signer is currently active and usable.
-     * @type {boolean}
-     */
-    get isActive(): boolean;
-    /**
      * The last component index for the derivation path of this signer, when applicable.
      * @type {number|undefined}
      */
@@ -80,8 +75,6 @@ export default class SeedSignerEvm implements ISignerEvm {
     _account: any;
     _address: any;
     _path: string;
-    _isActive: boolean;
-    get isActive(): boolean;
     get isRoot(): boolean;
     get isPrivateKey(): boolean;
     get index(): number;

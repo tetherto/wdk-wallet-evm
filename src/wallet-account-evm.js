@@ -70,10 +70,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     /** @private */
     this._signer = signer
-    this._isActive = true
   }
-
-  get isActive () { return this._isActive }
 
   /**
    * The derivation path's index of this account.
@@ -252,6 +249,5 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   dispose () {
     this._signer.dispose()
-    this._isActive = false
   }
 }

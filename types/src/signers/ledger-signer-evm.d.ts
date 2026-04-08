@@ -20,12 +20,10 @@ export default class LedgerSignerEvm implements ISignerEvm {
     _address: any;
     _sessionId: string;
     _path: string;
-    _isActive: boolean;
     /**
      * @type {DeviceManagementKit}
      */
     _dmk: DeviceManagementKit;
-    get isActive(): boolean;
     get index(): number;
     get path(): string;
     get address(): any;

@@ -15,13 +15,11 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     _address: string;
     _isRoot: boolean;
     _path: any;
-    _isActive: boolean;
     get isRoot(): boolean;
     get isPrivateKey(): boolean;
     get index(): number;
     get path(): any;
     get address(): string;
-    get isActive(): boolean;
     get keyPair(): {
         privateKey: any;
         publicKey: import("@noble/secp256k1").Bytes;

@@ -19,8 +19,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     constructor(signer: object, config?: EvmWalletConfig);
     /** @private */
     private _signer;
-    _isActive: boolean;
-    get isActive(): boolean;
     /**
      * The derivation path's index of this account.
      *

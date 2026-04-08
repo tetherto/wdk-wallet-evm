@@ -42,7 +42,6 @@ export default class PrivateKeySignerEvm {
     this._address = this._wallet.address
     this._isRoot = false
     this._path = undefined
-    this._isActive = true
   }
 
   get isRoot () { return this._isRoot }
@@ -50,7 +49,6 @@ export default class PrivateKeySignerEvm {
   get index () { return 0 }
   get path () { return this._path }
   get address () { return this._address }
-  get isActive () { return this._isActive }
   get keyPair () {
     return {
       privateKey: this._signingKey.privateKeyBuffer,
@@ -101,6 +99,5 @@ export default class PrivateKeySignerEvm {
   dispose () {
     this._signingKey.dispose()
     this._wallet = undefined
-    this._isActive = false
   }
 }
