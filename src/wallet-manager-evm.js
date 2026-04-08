@@ -91,7 +91,7 @@ export default class WalletManagerEvm extends WalletManager {
     if (signer?.isPrivateKey) {
       throw new Error('Private key signers are not supported for wallet managers.')
     }
-    this._signers.set(signerName, signer)
+    this._signers[signerName] = signer
   }
 
   /**
@@ -123,7 +123,7 @@ export default class WalletManagerEvm extends WalletManager {
     if (this._accounts[key]) {
       return this._accounts[key]
     }
-    const signer = this._signers.get(signerName)
+    const signer = this._signers[signerName]
     if (!signer) {
       throw new Error(`Signer ${signerName} not found.`)
     }
