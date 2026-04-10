@@ -16,15 +16,32 @@
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
-import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
+import { BrowserProvider, Contract, Interface, JsonRpcProvider, Signature, toQuantity, verifyMessage, verifyTypedData } from 'ethers'
+
+import { multicall } from './multicall.js'
 
 /** @typedef {import('ethers').Provider} Provider */
 /** @typedef {import('ethers').Eip1193Provider} Eip1193Provider */
+/** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
+/** @typedef {import('ethers').TypedDataField} TypedDataField */
+/** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+
+/**
+ * @typedef {Object} TypedData
+ * @property {TypedDataDomain} domain - The domain separator.
+ * @property {Record<string, TypedDataField[]>} types - The type definitions.
+ * @property {Record<string, unknown>} message - The message data.
+ */
+
+/**
+ * @typedef {Object} DelegationInfo
+ * @property {boolean} isDelegated - Whether the account has an active ERC-7702 delegation.
+ * @property {string | null} delegateAddress - The address of the delegate contract, or null if not delegated.
+ */
 
 /**
  * @typedef {Object} EvmTransaction
@@ -35,6 +52,17 @@ import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
  * @property {number | bigint} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
  * @property {number | bigint} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
+ * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
+ * @property {number} [nonce] - The transaction nonce.
+ * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
+ */
+
+/**
+ * @typedef {Object} EvmTransferOptions
+ * @property {string} token - The address of the token to transfer.
+ * @property {string} recipient - The address of the recipient.
+ * @property {number | bigint} amount - The amount of tokens to transfer to the recipient (in base units).
+ * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations.
  */
 
 /**
@@ -42,6 +70,10 @@ import { BrowserProvider, Contract, JsonRpcProvider } from 'ethers'
  * @property {string | Eip1193Provider} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
+
+const DELEGATION_DESIGNATOR_PREFIX = '0xef0100'
+
+const DELEGATION_DESIGNATOR_LENGTH = 48
 
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
@@ -74,6 +106,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
         ? new JsonRpcProvider(provider)
         : new BrowserProvider(provider)
     }
+  }
+
+  /**
+   * The account's address.
+   *
+   * @type {string}
+   */
+  get address () {
+    return this._address
   }
 
   /**
@@ -114,6 +155,43 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Returns the account balances for multiple tokens.
+   *
+   * @param {string[]} tokenAddresses - The smart contract addresses of the tokens.
+   * @returns {Promise<Record<string, bigint>>} A mapping of token addresses to their balances (in base units).
+   */
+  async getTokenBalances (tokenAddresses) {
+    if (!this._provider) {
+      throw new Error(
+        'The wallet must be connected to a provider to retrieve token balances.'
+      )
+    }
+
+    if (tokenAddresses.length === 0) {
+      return {}
+    }
+
+    const address = await this.getAddress()
+    const iface = new Interface(['function balanceOf(address owner) view returns (uint256)'])
+    const calldata = iface.encodeFunctionData('balanceOf', [address])
+
+    const calls = tokenAddresses.map(tokenAddress => ({
+      to: tokenAddress,
+      data: calldata
+    }))
+
+    const results = await multicall(this._provider, calls)
+
+    return tokenAddresses.reduce((acc, tokenAddress, index) => {
+      const result = results[index]
+      acc[tokenAddress] = result.status
+        ? iface.decodeFunctionResult('balanceOf', result.data)[0]
+        : 0n
+      return acc
+    }, {})
+  }
+
+  /**
    * Quotes the costs of a send transaction operation.
    *
    * @param {EvmTransaction} tx - The transaction.
@@ -124,20 +202,23 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
       throw new Error('The wallet must be connected to a provider to quote send transaction operations.')
     }
 
-    const gas = await this._provider.estimateGas({
-      from: await this.getAddress(),
-      ...tx
-    })
+    const from = await this.getAddress()
 
-    const { maxFeePerGas } = await this._provider.getFeeData()
+    const gas = tx.authorizationList
+      ? await this._estimateGasWithAuthList({ from, ...tx })
+      : await this._provider.estimateGas({ from, ...tx })
 
-    return { fee: gas * maxFeePerGas }
+    const data = await this._provider.getFeeData()
+
+    const feeRate = data.maxFeePerGas || data.gasPrice
+
+    return { fee: gas * feeRate }
   }
 
   /**
    * Quotes the costs of a transfer operation.
    *
-   * @param {TransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    */
   async quoteTransfer (options) {
@@ -168,8 +249,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
   /**
    * Returns the current allowance for the given token and spender.
-   * @param {string} token The token’s address.
-   * @param {string} spender The spender’s address.
+   * @param {string} token The token's address.
+   * @param {string} spender The spender's address.
    * @returns {Promise<bigint>} The allowance.
    */
   async getAllowance (token, spender) {
@@ -185,14 +266,108 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Verifies a message's signature.
+   *
+   * @param {string} message - The original message.
+   * @param {string} signature - The signature to verify.
+   * @returns {Promise<boolean>} True if the signature is valid.
+   */
+  async verify (message, signature) {
+    const address = await verifyMessage(message, signature)
+    const accountAddress = await this.getAddress()
+
+    return address.toLowerCase() === accountAddress.toLowerCase()
+  }
+
+  /**
+   * Verifies a typed data signature.
+   *
+   * @param {TypedData} typedData - The typed data to verify.
+   * @param {string} signature - The signature to verify.
+   * @returns {Promise<boolean>} True if the signature is valid.
+   */
+  async verifyTypedData (typedData, signature) {
+    const { domain, types, message } = typedData
+    const address = verifyTypedData(domain, types, message, signature)
+    const accountAddress = await this.getAddress()
+
+    return address.toLowerCase() === accountAddress.toLowerCase()
+  }
+
+  /**
+   * Checks if this account has an active ERC-7702 delegation.
+   *
+   * @returns {Promise<DelegationInfo>} The delegation info.
+   */
+  async getDelegation () {
+    if (!this._provider) {
+      throw new Error('The wallet must be connected to a provider to check delegation.')
+    }
+
+    const address = await this.getAddress()
+    const code = await this._provider.send('eth_getCode', [address, 'latest'])
+
+    if (
+      code &&
+      code.toLowerCase().startsWith(DELEGATION_DESIGNATOR_PREFIX) &&
+      code.length === DELEGATION_DESIGNATOR_LENGTH
+    ) {
+      const delegateAddress = '0x' + code.slice(DELEGATION_DESIGNATOR_PREFIX.length)
+
+      return {
+        isDelegated: true,
+        delegateAddress
+      }
+    }
+
+    return {
+      isDelegated: false,
+      delegateAddress: null
+    }
+  }
+
+  /** @private */
+  async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
+    const formatAuth = (auth) => {
+      const { address, nonce, chainId } = auth
+
+      const signature = auth.signature instanceof Signature
+        ? auth.signature
+        : Signature.from(auth.signature)
+
+      return {
+        address,
+        nonce: toQuantity(nonce),
+        chainId: toQuantity(chainId),
+        r: toQuantity(signature.r),
+        s: toQuantity(signature.s),
+        yParity: toQuantity(signature.yParity)
+      }
+    }
+
+    const rpcTx = {
+      from,
+      to,
+      value: toQuantity(value),
+      data: data ?? '0x',
+      type: '0x04',
+      authorizationList: authorizationList.map(formatAuth)
+    }
+
+    const result = await this._provider.send('eth_estimateGas', [rpcTx])
+
+    return BigInt(result)
+  }
+
+  /**
    * Returns an evm transaction to execute the given token transfer.
    *
    * @protected
-   * @param {TransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options.
    * @returns {Promise<EvmTransaction>} The evm transaction.
    */
   static async _getTransferTransaction (options) {
-    const { token, recipient, amount } = options
+    const { token, recipient, amount, authorizationList } = options
 
     const abi = ['function transfer(address to, uint256 amount) returns (bool)']
 
@@ -201,7 +376,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('transfer', [recipient, amount])
+      data: contract.interface.encodeFunctionData('transfer', [recipient, amount]),
+      authorizationList
     }
 
     return tx

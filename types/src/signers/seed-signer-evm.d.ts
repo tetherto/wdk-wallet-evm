@@ -50,6 +50,12 @@ export class ISignerEvm implements ISigner {
      * @returns {Promise<string>}
      */
     signTypedData(domain: Record<string, any>, types: Record<string, any>, message: Record<string, any>): Promise<string>;
+    /**
+     * Sign an ERC-7702 authorization tuple.
+     * @param {import('ethers').AuthorizationRequest} auth
+     * @returns {Promise<import('ethers').Authorization>}
+     */
+    signAuthorization(auth: import('ethers').AuthorizationRequest): Promise<import('ethers').Authorization>;
     /** Clear any secret material from memory. */
     dispose(): void;
 }
@@ -111,6 +117,12 @@ export default class SeedSignerEvm implements ISignerEvm {
      * @returns {Promise<string>}
      */
     signTypedData(domain: Record<string, any>, types: Record<string, any>, message: Record<string, any>): Promise<string>;
+    /**
+     * Sign an ERC-7702 authorization tuple.
+     * @param {import('ethers').AuthorizationRequest} auth
+     * @returns {Promise<import('ethers').Authorization>}
+     */
+    signAuthorization(auth: import('ethers').AuthorizationRequest): Promise<import('ethers').Authorization>;
     /** Dispose secrets from memory. */
     dispose(): void;
 }

@@ -13,6 +13,8 @@
 // limitations under the License.
 'use strict'
 
+import { Signature, toQuantity } from 'ethers'
+
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 
 /**
@@ -63,6 +65,7 @@ export async function populateTransactionEvm (provider, from, tx) {
   const hasLegacy = (tx.gasPrice != null)
   const hasAccessList = (tx.accessList != null && Array.isArray(tx.accessList))
   const hasBlobs = (tx.blobs != null || tx.blobVersionedHashes != null || tx.maxFeePerBlobGas != null)
+  const hasAuthList = (tx.authorizationList != null && Array.isArray(tx.authorizationList))
 
   const explicitType = (tx.type != null) ? Number(tx.type) : null
 
@@ -80,13 +83,24 @@ export async function populateTransactionEvm (provider, from, tx) {
 
   let type = explicitType
   if (type == null) {
-    if (hasBlobs) {
+    if (hasAuthList) {
+      type = 4
+    } else if (hasBlobs) {
       type = 3
     } else if (feeData.maxFeePerGas != null && feeData.maxPriorityFeePerGas != null) {
       type = 2
     } else {
       type = 0
     }
+  }
+
+  let gasLimit
+  if (tx.gasLimit != null) {
+    gasLimit = tx.gasLimit
+  } else if (hasAuthList) {
+    gasLimit = await _estimateGasWithAuthList(provider, { from, ...tx })
+  } else {
+    gasLimit = await provider.estimateGas({ from, to: tx.to ?? null, data: tx.data ?? '0x', value: tx.value ?? 0 })
   }
 
   const populated = {
@@ -96,9 +110,7 @@ export async function populateTransactionEvm (provider, from, tx) {
     value: tx.value ?? 0,
     chainId,
     nonce: (tx.nonce != null) ? Number(tx.nonce) : Number(await provider.getTransactionCount(from, 'pending')),
-    gasLimit: (tx.gasLimit != null)
-      ? tx.gasLimit
-      : await provider.estimateGas({ from, to: tx.to ?? null, data: tx.data ?? '0x', value: tx.value ?? 0 })
+    gasLimit
   }
 
   if (type === 0 || type === 1) {
@@ -133,19 +145,49 @@ export async function populateTransactionEvm (provider, from, tx) {
     return populated
   }
 
-  // Future types; pass-through
+  // Type 4 (EIP-7702) and future types; pass-through
   populated.type = type
   if (hasAccessList) populated.accessList = tx.accessList
-  if (hasLegacy) populated.gasPrice = tx.gasPrice
-  if (has1559) {
-    populated.maxFeePerGas = tx.maxFeePerGas
-    populated.maxPriorityFeePerGas = tx.maxPriorityFeePerGas
+  if (hasLegacy) {
+    populated.gasPrice = tx.gasPrice
+  } else {
+    populated.maxFeePerGas = tx.maxFeePerGas ?? feeData.maxFeePerGas
+    populated.maxPriorityFeePerGas = tx.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas
   }
   if (hasBlobs) {
     populated.maxFeePerBlobGas = tx.maxFeePerBlobGas
     if (tx.blobs != null) populated.blobs = tx.blobs
     if (tx.blobVersionedHashes != null) populated.blobVersionedHashes = tx.blobVersionedHashes
   }
+  if (tx.authorizationList != null) populated.authorizationList = tx.authorizationList
 
   return populated
+}
+
+/** @private */
+async function _estimateGasWithAuthList (provider, { from, to, value, data, authorizationList }) {
+  const formatAuth = (auth) => {
+    const { address, nonce, chainId } = auth
+    const signature = auth.signature instanceof Signature
+      ? auth.signature
+      : Signature.from(auth.signature)
+    return {
+      address,
+      nonce: toQuantity(nonce),
+      chainId: toQuantity(chainId),
+      r: toQuantity(signature.r),
+      s: toQuantity(signature.s),
+      yParity: toQuantity(signature.yParity)
+    }
+  }
+  const rpcTx = {
+    from,
+    to,
+    value: toQuantity(value ?? 0),
+    data: data ?? '0x',
+    type: '0x04',
+    authorizationList: authorizationList.map(formatAuth)
+  }
+  const result = await provider.send('eth_estimateGas', [rpcTx])
+  return BigInt(result)
 }

@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { verifyMessage, Contract } from 'ethers'
+import { Contract, ZeroAddress } from 'ethers'
 
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
@@ -22,25 +22,31 @@ import SeedSignerEvm from './signers/seed-signer-evm.js'
 import { populateTransactionEvm } from './utils/tx-populator-evm.js'
 
 /** @typedef {import('ethers').HDNodeWallet} HDNodeWallet */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
+/** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
 
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
+/** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
+/** @typedef {import('./wallet-account-read-only-evm.js').EvmTransferOptions} EvmTransferOptions */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 /**
  * @typedef {Object} ApproveOptions
  * @property {string} token - The address of the token to approve.
- * @property {string} spender - The spender’s address.
+ * @property {string} spender - The spender's address.
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
  */
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+
+const DELEGATION_TX_GAS_LIMIT = 100_000
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
@@ -109,8 +115,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {WalletAccountEvm}
    */
   static fromSeed (seed, path, config = {}) {
-    const root = new SeedSignerEvm(seed, config, {})
-    const signer = root.derive(path, config)
+    const root = new SeedSignerEvm(seed)
+    const signer = root.derive(path)
     return new WalletAccountEvm(signer, config)
   }
 
@@ -142,16 +148,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * Verifies a message's signature.
+   * Signs typed data according to EIP-712.
    *
-   * @param {string} message - The original message.
-   * @param {string} signature - The signature to verify.
-   * @returns {Promise<boolean>} True if the signature is valid.
+   * @param {TypedData} typedData - The typed data to sign.
+   * @returns {Promise<string>} The typed data signature.
    */
-  async verify (message, signature) {
-    const address = await verifyMessage(message, signature)
-
-    return address.toLowerCase() === this._signer.address.toLowerCase()
+  async signTypedData ({ domain, types, message }) {
+    return await this._signer.signTypedData(domain, types, message)
   }
 
   /**
@@ -176,7 +179,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Transfers a token to another address.
    *
-   * @param {TransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
    */
   async transfer (options) {
@@ -201,7 +204,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * Approves a specific amount of tokens to a spender.
    *
    * @param {ApproveOptions} options The approve options.
-   * @returns {Promise<TransactionResult>} The transaction’s result.
+   * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {Error} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
    */
   async approve (options) {
@@ -242,6 +245,70 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const readOnlyAccount = new WalletAccountReadOnlyEvm(await this.getAddress(), this._config)
 
     return readOnlyAccount
+  }
+
+  /**
+   * Signs an ERC-7702 authorization tuple.
+   *
+   * @param {AuthorizationRequest} auth - The authorization request.
+   * @returns {Promise<Authorization>} The signed authorization.
+   */
+  async signAuthorization (auth) {
+    const populated = { ...auth }
+    if (this._provider) {
+      if (populated.chainId == null) {
+        const { chainId } = await this._provider.getNetwork()
+        populated.chainId = chainId
+      }
+      if (populated.nonce == null) {
+        const address = await this.getAddress()
+        populated.nonce = await this._provider.getTransactionCount(address)
+      }
+    }
+    return await this._signer.signAuthorization(populated)
+  }
+
+  /**
+   * Delegates this EOA to a smart contract via an ERC-7702 type 4 transaction.
+   *
+   * The transaction is sent to the EOA itself with zero value and no data.
+   * A fixed gas limit is used because `eth_estimateGas` may revert when
+   * the delegate contract lacks a `receive`/`fallback` function.
+   *
+   * @param {string} delegateAddress - The address of the contract to delegate to.
+   * @returns {Promise<TransactionResult>} The transaction result.
+   */
+  async delegate (delegateAddress) {
+    if (!this._provider) {
+      throw new Error('The wallet must be connected to a provider to delegate.')
+    }
+
+    const address = await this.getAddress()
+    const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'latest'])
+    const nonce = Number(nonceHex)
+
+    const auth = await this.signAuthorization({
+      address: delegateAddress,
+      nonce: nonce + 1
+    })
+
+    return await this.sendTransaction({
+      type: 4,
+      nonce,
+      to: address,
+      value: 0,
+      gasLimit: DELEGATION_TX_GAS_LIMIT,
+      authorizationList: [auth]
+    })
+  }
+
+  /**
+   * Revokes any active ERC-7702 delegation by delegating to the zero address.
+   *
+   * @returns {Promise<TransactionResult>} The transaction result.
+   */
+  async revokeDelegation () {
+    return await this.delegate(ZeroAddress)
   }
 
   /**

@@ -95,6 +95,15 @@ export default class PrivateKeySignerEvm {
     return this._wallet.signTypedData(domain, types, message)
   }
 
+  /**
+   * Sign an ERC-7702 authorization tuple.
+   * @param {import('ethers').AuthorizationRequest} auth
+   * @returns {Promise<import('ethers').Authorization>}
+   */
+  async signAuthorization (auth) {
+    return this._wallet.authorizeSync(auth)
+  }
+
   /** Dispose secrets from memory. */
   dispose () {
     this._signingKey.dispose()

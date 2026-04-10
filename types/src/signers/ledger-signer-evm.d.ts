@@ -95,6 +95,17 @@ export default class LedgerSignerEvm implements ISignerEvm {
      * @returns {Promise<string>}
      */
     signTypedData(domain: Record<string, any>, types: Record<string, any>, message: Record<string, any>): Promise<string>;
+    /**
+     * Sign an ERC-7702 authorization tuple.
+     *
+     * Standalone authorization signing is not supported on Ledger devices.
+     * Use `signTransaction` with a type 4 transaction containing an `authorizationList` instead.
+     *
+     * @param {import('ethers').AuthorizationRequest} _auth
+     * @returns {Promise<import('ethers').Authorization>}
+     * @throws {Error} Always throws — not supported on Ledger hardware.
+     */
+    signAuthorization(_auth: import('ethers').AuthorizationRequest): Promise<import('ethers').Authorization>;
     /** Clear device handles and local state. */
     dispose(): void;
 }

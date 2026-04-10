@@ -341,6 +341,26 @@ export default class LedgerSignerEvm {
     )
   }
 
+  /**
+   * Sign an ERC-7702 authorization tuple.
+   *
+   * Standalone authorization signing is not supported on Ledger devices because it
+   * requires raw hash signing which the Ledger Ethereum app does not expose for
+   * security reasons. Use `signTransaction` with a type 4 transaction containing
+   * an `authorizationList` instead.
+   *
+   * @param {import('ethers').AuthorizationRequest} _auth
+   * @returns {Promise<import('ethers').Authorization>}
+   * @throws {Error} Always throws — not supported on Ledger hardware.
+   */
+  async signAuthorization (_auth) {
+    throw new Error(
+      'Standalone EIP-7702 authorization signing is not supported on Ledger devices. ' +
+      'The Ledger Ethereum app does not expose raw hash signing. ' +
+      'Use signTransaction with a type 4 transaction containing an authorizationList instead.'
+    )
+  }
+
   /** Clear device handles and local state. */
   dispose () {
     this._disconnect()

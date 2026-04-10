@@ -97,6 +97,15 @@ export class ISignerEvm {
     throw new NotImplementedError('signTypedData(domain, types, message)')
   }
 
+  /**
+   * Sign an ERC-7702 authorization tuple.
+   * @param {import('ethers').AuthorizationRequest} auth
+   * @returns {Promise<import('ethers').Authorization>}
+   */
+  async signAuthorization (auth) {
+    throw new NotImplementedError('signAuthorization(auth)')
+  }
+
   /** Clear any secret material from memory. */
   dispose () {
     throw new NotImplementedError('dispose()')
@@ -228,6 +237,20 @@ export default class SeedSignerEvm {
       )
     }
     return this._account.signTypedData(domain, types, message)
+  }
+
+  /**
+   * Sign an ERC-7702 authorization tuple.
+   * @param {import('ethers').AuthorizationRequest} auth
+   * @returns {Promise<import('ethers').Authorization>}
+   */
+  async signAuthorization (auth) {
+    if (!this._account) {
+      throw new Error(
+        'Cannot sign authorizations from a root signer. Derive a child first.'
+      )
+    }
+    return this._account.authorizeSync(auth)
   }
 
   /** Dispose secrets from memory. */
