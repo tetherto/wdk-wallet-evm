@@ -16,7 +16,7 @@
 
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
 
-import { BrowserProvider, Contract, Interface, JsonRpcProvider, Signature, toQuantity, verifyMessage, verifyTypedData } from 'ethers'
+import { BrowserProvider, Contract, Interface, JsonRpcProvider, Network, Signature, toQuantity, verifyMessage, verifyTypedData } from 'ethers'
 
 import { multicall } from './multicall.js'
 
@@ -103,7 +103,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
        * @type {Provider | undefined}
        */
       this._provider = typeof provider === 'string'
-        ? new JsonRpcProvider(provider)
+        ? new JsonRpcProvider(provider, Network.from(config.chainId), { staticNetwork: true })
         : new BrowserProvider(provider)
     }
   }
