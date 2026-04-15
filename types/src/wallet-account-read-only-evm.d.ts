@@ -201,9 +201,13 @@ export type EvmTransferOptions = {
 };
 export type EvmWalletConfig = {
     /**
-     * - The url of the rpc provider, or an instance of a class that implements eip-1193.
+     * - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. 
      */
-    provider?: string | Eip1193Provider;
+    provider?: string | Eip1193Provider | Array<string | Eip1193Provider>;
+    /**
+     * - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3. 
+     */
+    retries?: number;
     /**
      * - The maximum fee amount for transfer operations.
      */

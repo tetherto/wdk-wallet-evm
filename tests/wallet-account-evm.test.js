@@ -256,10 +256,10 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 0n,
-        chainId: 31_337n,
+        chainId: 1n,
         signature: expect.objectContaining({
-          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
-          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          r: '0xa2b8fd8a79d4449081588213035817da714ea1062233ac6d3f276185408504fa',
+          s: '0x0116b3fb7c6d7d7e8a084410fac2f6796a7d5810fff1415ec365d7502ac318b3',
           v: 27
         })
       }])
@@ -322,10 +322,10 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 0n,
-        chainId: 31_337n,
+        chainId: 1n,
         signature: expect.objectContaining({
-          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
-          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          r: '0xa2b8fd8a79d4449081588213035817da714ea1062233ac6d3f276185408504fa',
+          s: '0x0116b3fb7c6d7d7e8a084410fac2f6796a7d5810fff1415ec365d7502ac318b3',
           v: 27
         })
       }])
@@ -384,7 +384,6 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if approving non-zero USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
 
       const approveOptions = {
         token: USDT_MAINNET_ADDRESS,
@@ -398,7 +397,6 @@ describe('WalletAccountEvm', () => {
 
     test('should successfully approve a non-zero amount for USDT on mainnet when allowance is zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(0n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {
@@ -424,7 +422,6 @@ describe('WalletAccountEvm', () => {
 
     test('should successfully approve a zero amount for USDT on mainnet when allowance is non-zero', async () => {
       jest.spyOn(account, 'getAllowance').mockResolvedValue(1n)
-      jest.spyOn(account._provider, 'getNetwork').mockResolvedValue({ chainId: 1n })
       const sendTxSpy = jest.spyOn(account, 'sendTransaction').mockResolvedValue({ hash: '0xhash', fee: 0n })
 
       const approveOptions = {
@@ -480,10 +477,10 @@ describe('WalletAccountEvm', () => {
       expect(auth).toEqual({
         address: delegateContract.target,
         nonce: 0n,
-        chainId: 31_337n,
+        chainId: 1n,
         signature: expect.objectContaining({
-          r: '0x6d9dbf302601c472e1ab44401e56abc1b4cbce9b6806a7267f853d0ff4b4a324',
-          s: '0x52e3b093cdc0e2fc2fc878352ce80c57d25ab3ea28ac2c065f72ff4b29a65783',
+          r: '0xa2b8fd8a79d4449081588213035817da714ea1062233ac6d3f276185408504fa',
+          s: '0x0116b3fb7c6d7d7e8a084410fac2f6796a7d5810fff1415ec365d7502ac318b3',
           v: 27
         })
       })
@@ -505,11 +502,11 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: DELEGATE_CONTRACT_ADDRESS,
         nonce: 1n,
-        chainId: 31_337n,
+        chainId: 1n,
         signature: expect.objectContaining({
-          r: '0x7dc08507592858aced1689ea3d58a4e3b482dd3ace313b33a5cd53c90d895a6e',
-          s: '0x4e3b748e3d9d4d55231f64b389bd1890b598150328f4e15a24baa35e39ed7e00',
-          v: 28
+          r: '0x00834b27fe5c5cd7928aa0f97faf8ce651e0942ab763807756c5e2c2d71d912e',
+          s: '0x78b7103e51a15f41d1c25c89e1cac9f754397cde5dc7674b95f6bc64ff7d01d7',
+          v: 27
         })
       }])
 
@@ -539,11 +536,11 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList).toEqual([{
         address: '0x0000000000000000000000000000000000000000',
         nonce: 1n,
-        chainId: 31_337n,
+        chainId: 1n,
         signature: expect.objectContaining({
-          r: '0x6ec7aaa669f7ffe72dccf910d7f6d8282649660747f3ce8a1218de8ab5710899',
-          s: '0x4bf4e7983a6f1e1db3d275f02e18bfc4408732e49ac3465dc8cd3150e9ac9240',
-          v: 28
+          r: '0xc58040c5a751ef2a3a2e9b95f95bf400e65a284661cca59c28868de0fef9c11b',
+          s: '0x4ef4cfd278836602291b26baffac20e7d0601e8634a3b92de513d7d6dddd8fd8',
+          v: 27
         })
       }])
 

@@ -4,6 +4,7 @@ require('@nomicfoundation/hardhat-ethers')
 module.exports = {
   networks: {
     hardhat: {
+      chainId: 1,
       hardfork: 'prague',
       accounts: {
         mnemonic: 'anger burst story spy face pattern whale quit delay fiction ball solve',
