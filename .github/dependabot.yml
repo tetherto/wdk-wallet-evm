@@ -6,7 +6,7 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     reviewers:
-      - "jonathunne"
+      - "tetherto/wdk-sdk-write"
     assignees:
       - "jonathunne"
     labels:
