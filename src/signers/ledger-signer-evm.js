@@ -25,6 +25,9 @@ import { Signature, Transaction, getBytes } from 'ethers'
 
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
+/** @typedef {import('rxjs').Observable} Observable */
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
@@ -178,7 +181,7 @@ export default class LedgerSignerEvm {
    * Consume a DeviceAction observable and resolve on Completed; reject early on Error/Stopped.
    *
    * @template T
-   * @param {import('rxjs').Observable<any>} observable
+   * @param {Observable<any>} observable
    * @returns {Promise<T>}
    * @private
    */
@@ -360,8 +363,8 @@ export default class LedgerSignerEvm {
    * security reasons. Use `signTransaction` with a type 4 transaction containing
    * an `authorizationList` instead.
    *
-   * @param {import('ethers').AuthorizationRequest} _auth
-   * @returns {Promise<import('ethers').Authorization>}
+   * @param {AuthorizationRequest} _auth
+   * @returns {Promise<Authorization>}
    * @throws {Error} Always throws — not supported on Ledger hardware.
    */
   async signAuthorization (_auth) {

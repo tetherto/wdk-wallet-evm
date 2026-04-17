@@ -19,6 +19,8 @@ import MemorySafeSigningKey from '../memory-safe/signing-key.js'
 
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('./seed-signer-evm.js').ISignerEvm} ISignerEvm */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
 
 /**
  * @implements {ISignerEvm}
@@ -114,8 +116,8 @@ export default class PrivateKeySignerEvm {
 
   /**
    * Sign an ERC-7702 authorization tuple.
-   * @param {import('ethers').AuthorizationRequest} auth
-   * @returns {Promise<import('ethers').Authorization>}
+   * @param {AuthorizationRequest} auth
+   * @returns {Promise<Authorization>}
    */
   async signAuthorization (auth) {
     return this._wallet.authorizeSync(auth)

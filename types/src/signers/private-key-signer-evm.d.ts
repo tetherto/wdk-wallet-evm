@@ -1,5 +1,9 @@
-/** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('./seed-signer-evm.js').ISignerEvm} ISignerEvm */
+/** @typedef {import('./seed-signer-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+/** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
+/** @typedef {import('ethers').TypedDataField} TypedDataField */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
 /**
  * @implements {ISignerEvm}
  * Signer that wraps a raw private key in a memory-safe buffer, exposing a minimal
@@ -59,22 +63,24 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     signTransaction(unsignedTx: UnsignedEvmTransaction): Promise<string>;
     /**
      * EIP-712 typed data signing.
-     * @param {Record<string, any>} domain
-     * @param {Record<string, any>} types
+     * @param {TypedDataDomain} domain
+     * @param {Record<string, TypedDataField[]>} types
      * @param {Record<string, any>} message
      * @returns {Promise<string>}
      */
-    signTypedData(domain: Record<string, any>, types: Record<string, any>, message: Record<string, any>): Promise<string>;
+    signTypedData(domain: TypedDataDomain, types: Record<string, TypedDataField[]>, message: Record<string, any>): Promise<string>;
     /**
      * Sign an ERC-7702 authorization tuple.
-     * @param {import('ethers').AuthorizationRequest} auth
-     * @returns {Promise<import('ethers').Authorization>}
+     * @param {AuthorizationRequest} auth
+     * @returns {Promise<Authorization>}
      */
-    signAuthorization(auth: import('ethers').AuthorizationRequest): Promise<import('ethers').Authorization>;
+    signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /** Dispose secrets from memory. */
     dispose(): void;
 }
-export type UnsignedEvmTransaction = import("../utils/tx-populator-evm.js").UnsignedEvmTransaction;
 export type ISignerEvm = import("./seed-signer-evm.js").ISignerEvm;
-import MemorySafeSigningKey from '../memory-safe/signing-key.js';
-import { BaseWallet } from 'ethers';
+export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
+export type TypedDataDomain = import("ethers").TypedDataDomain;
+export type TypedDataField = import("ethers").TypedDataField;
+export type AuthorizationRequest = import("ethers").AuthorizationRequest;
+export type Authorization = import("ethers").Authorization;

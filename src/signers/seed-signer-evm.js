@@ -23,6 +23,9 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('@tetherto/wdk-wallet/src/isigner.js').ISigner} ISigner */
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
+/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
+/** @typedef {import('ethers').Authorization} Authorization */
+/** @typedef {import('../memory-safe/hd-node-wallet.js').default} MemorySafeHDNodeWallet */
 
 /**
  * Interface for EVM signers.
@@ -99,8 +102,8 @@ export class ISignerEvm {
 
   /**
    * Sign an ERC-7702 authorization tuple.
-   * @param {import('ethers').AuthorizationRequest} auth
-   * @returns {Promise<import('ethers').Authorization>}
+   * @param {AuthorizationRequest} auth
+   * @returns {Promise<Authorization>}
    */
   async signAuthorization (auth) {
     throw new NotImplementedError('signAuthorization(auth)')
@@ -123,7 +126,7 @@ export default class SeedSignerEvm {
    * Provide either a mnemonic/seed or an existing root via opts.root.
    *
    * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
-   * @param {{root?: import('../memory-safe/hd-node-wallet.js').default, path?: string}} [opts]
+   * @param {{root?: MemorySafeHDNodeWallet, path?: string}} [opts]
    */
   constructor (seed, opts = {}) {
     // If a root is provided, do not expect a seed
@@ -252,8 +255,8 @@ export default class SeedSignerEvm {
 
   /**
    * Sign an ERC-7702 authorization tuple.
-   * @param {import('ethers').AuthorizationRequest} auth
-   * @returns {Promise<import('ethers').Authorization>}
+   * @param {AuthorizationRequest} auth
+   * @returns {Promise<Authorization>}
    */
   async signAuthorization (auth) {
     if (!this._account) {
