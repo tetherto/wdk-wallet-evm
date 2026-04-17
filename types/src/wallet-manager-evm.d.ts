@@ -1,3 +1,6 @@
+/** @typedef {import('ethers').Provider} Provider */
+/** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
+/** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 export default class WalletManagerEvm extends WalletManager {
     /**
      * Multiplier for normal fee rate calculations (in %).
@@ -16,17 +19,13 @@ export default class WalletManagerEvm extends WalletManager {
     /**
      * Creates a new wallet manager for evm blockchains.
      *
-     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+     * Accepts either a BIP-39 seed (string/Uint8Array) for backwards compatibility, or a
+     * pre-built root signer object. Private key signers are not supported.
+     *
+     * @param {string|Uint8Array|object} seedOrSigner - A BIP-39 seed phrase, seed bytes, or a root signer.
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
-    constructor(seed: string | Uint8Array, config?: EvmWalletConfig);
-    /**
-     * The evm wallet configuration.
-     *
-     * @protected
-     * @type {EvmWalletConfig}
-     */
-    protected _config: EvmWalletConfig;
+    constructor(seedOrSigner: string | Uint8Array | object, config?: EvmWalletConfig);
     /**
      * An ethers provider to interact with a node of the blockchain.
      *
@@ -35,15 +34,23 @@ export default class WalletManagerEvm extends WalletManager {
      */
     protected _provider: Provider | undefined;
     /**
+     * Registers an additional root signer under a name.
+     *
+     * @param {string} signerName - The signer name.
+     * @param {object} signer - The root signer to register.
+     */
+    createSigner(signerName: string, signer: object): void;
+    /**
      * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
      *
      * @example
      * // Returns the account with derivation path m/44'/60'/0'/0/1
      * const account = await wallet.getAccount(1);
      * @param {number} [index] - The index of the account to get (default: 0).
+     * @param {string} [signerName='default'] - The root signer name.
      * @returns {Promise<WalletAccountEvm>} The account.
      */
-    getAccount(index?: number): Promise<WalletAccountEvm>;
+    getAccount(index?: number, signerName?: string): Promise<WalletAccountEvm>;
     /**
      * Returns the wallet account at a specific BIP-44 derivation path.
      *
@@ -51,9 +58,10 @@ export default class WalletManagerEvm extends WalletManager {
      * // Returns the account with derivation path m/44'/60'/0'/0/1
      * const account = await wallet.getAccountByPath("0'/0/1");
      * @param {string} path - The derivation path (e.g. "0'/0/0").
+     * @param {string} [signerName='default'] - The root signer name.
      * @returns {Promise<WalletAccountEvm>} The account.
      */
-    getAccountByPath(path: string): Promise<WalletAccountEvm>;
+    getAccountByPath(path: string, signerName?: string): Promise<WalletAccountEvm>;
     /**
      * Returns the current fee rates.
      *

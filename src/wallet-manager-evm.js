@@ -21,6 +21,7 @@ import { BrowserProvider, JsonRpcProvider } from 'ethers'
 import FailoverProvider from '@tetherto/wdk-failover-provider'
 
 import WalletAccountEvm from './wallet-account-evm.js'
+import SeedSignerEvm from './signers/seed-signer-evm.js'
 
 /** @typedef {import('ethers').Provider} Provider */
 
@@ -48,11 +49,21 @@ export default class WalletManagerEvm extends WalletManager {
   /**
    * Creates a new wallet manager for evm blockchains.
    *
-   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+   * Accepts either a BIP-39 seed (string/Uint8Array) for backwards compatibility, or a
+   * pre-built root signer object. Private key signers are not supported.
+   *
+   * @param {string|Uint8Array|object} seedOrSigner - A BIP-39 seed phrase, seed bytes, or a root signer.
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
-  constructor (seed, config = {}) {
-    super(seed, config)
+  constructor (seedOrSigner, config = {}) {
+    let signer = seedOrSigner
+    if (typeof seedOrSigner === 'string' || seedOrSigner instanceof Uint8Array) {
+      signer = new SeedSignerEvm(seedOrSigner)
+    }
+    if (signer.isPrivateKey) {
+      throw new Error('Private key signers are not supported for wallet managers.')
+    }
+    super(signer, config)
 
     /**
      * The evm wallet configuration.
@@ -94,16 +105,33 @@ export default class WalletManagerEvm extends WalletManager {
   }
 
   /**
+   * Registers an additional root signer under a name.
+   *
+   * @param {string} signerName - The signer name.
+   * @param {object} signer - The root signer to register.
+   */
+  createSigner (signerName, signer) {
+    if (!signerName) {
+      throw new Error('Signer name is required.')
+    }
+    if (signer?.isPrivateKey) {
+      throw new Error('Private key signers are not supported for wallet managers.')
+    }
+    this._signers[signerName] = signer
+  }
+
+  /**
    * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
    *
    * @example
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccount(1);
    * @param {number} [index] - The index of the account to get (default: 0).
+   * @param {string} [signerName='default'] - The root signer name.
    * @returns {Promise<WalletAccountEvm>} The account.
    */
-  async getAccount (index = 0) {
-    return await this.getAccountByPath(`0'/0/${index}`)
+  async getAccount (index = 0, signerName = 'default') {
+    return await this.getAccountByPath(`0'/0/${index}`, signerName)
   }
 
   /**
@@ -113,16 +141,22 @@ export default class WalletManagerEvm extends WalletManager {
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccountByPath("0'/0/1");
    * @param {string} path - The derivation path (e.g. "0'/0/0").
+   * @param {string} [signerName='default'] - The root signer name.
    * @returns {Promise<WalletAccountEvm>} The account.
    */
-  async getAccountByPath (path) {
-    if (!this._accounts[path]) {
-      const account = new WalletAccountEvm(this.seed, path, this._config)
-
-      this._accounts[path] = account
+  async getAccountByPath (path, signerName = 'default') {
+    const key = `${signerName}:${path}`
+    if (this._accounts[key]) {
+      return this._accounts[key]
     }
-
-    return this._accounts[path]
+    const signer = this._signers[signerName]
+    if (!signer) {
+      throw new Error(`Signer ${signerName} not found.`)
+    }
+    const childSigner = signer.derive(path, this._config)
+    const account = new WalletAccountEvm(childSigner, this._config)
+    this._accounts[key] = account
+    return account
   }
 
   /**
