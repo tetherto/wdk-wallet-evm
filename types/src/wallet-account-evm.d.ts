@@ -55,6 +55,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
+     * Signs a transaction.
+     *
+     * @param {EvmTransaction} tx - The transaction to sign.
+     * @returns {Promise<string>} The signed transaction as a hex string.
+     */
+    signTransaction(tx: EvmTransaction): Promise<string>;
+    /**
      * Sends a transaction.
      *
      * @param {EvmTransaction} tx - The transaction.

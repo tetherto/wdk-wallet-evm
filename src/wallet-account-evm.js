@@ -148,6 +148,19 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
+   * Signs a transaction.
+   *
+   * @param {EvmTransaction} tx - The transaction to sign.
+   * @returns {Promise<string>} The signed transaction as a hex string.
+   */
+  async signTransaction (tx) {
+    return await this._account.signTransaction({
+      from: await this.getAddress(),
+      ...tx
+    })
+  }
+
+  /**
    * Sends a transaction.
    *
    * @param {EvmTransaction} tx - The transaction.
