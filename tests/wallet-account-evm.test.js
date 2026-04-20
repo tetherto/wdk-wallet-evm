@@ -1,6 +1,6 @@
 import hre from 'hardhat'
 
-import { ContractFactory, Contract, Signature, Transaction } from 'ethers'
+import { ContractFactory, Contract } from 'ethers'
 
 import * as bip39 from 'bip39'
 
@@ -206,7 +206,7 @@ describe('WalletAccountEvm', () => {
       }
       const SIGNED_TRANSACTION = "0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec"
       const signedTx = await accountWithoutProvider.signTransaction(TRANSACTION)
-      console.log(signedTx)
+      
       expect(signedTx).toBe(SIGNED_TRANSACTION)
     })
   })
