@@ -211,6 +211,11 @@ export default class SeedSignerEvm {
     return new SeedSignerEvm(null, { root: this._root, path: relPath })
   }
 
+  /** @returns {Promise<string>} */
+  async getAddress () {
+    return this._address
+  }
+
   /**
    * Sign a plain message string.
    * @param {string} message

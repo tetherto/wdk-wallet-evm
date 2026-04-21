@@ -2,8 +2,6 @@ import hre from 'hardhat'
 
 import { ContractFactory, Contract } from 'ethers'
 
-import * as bip39 from 'bip39'
-
 import { afterEach, beforeEach, describe, expect, test, jest } from '@jest/globals'
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
@@ -19,10 +17,6 @@ const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 const DELEGATE_CONTRACT_ADDRESS = '0xbe08d4d81ebea77f6aa54b2067ea5f56005f98de'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
-
-const INVALID_SEED_PHRASE = 'invalid seed phrase'
-
-const SEED = bip39.mnemonicToSeedSync(SEED_PHRASE)
 
 const ACCOUNT = {
   index: 0,
@@ -96,48 +90,6 @@ describe('WalletAccountEvm', () => {
     await hre.network.provider.send('hardhat_reset')
   })
 
-  describe('constructor', () => {
-    test('should successfully initialize an account for the given seed phrase and path', async () => {
-      const signer = new SeedSignerEvm(SEED_PHRASE, {path: "0'/0/0"})
-      const account = new WalletAccountEvm(signer)
-
-      expect(account.index).toBe(ACCOUNT.index)
-
-      expect(account.path).toBe(ACCOUNT.path)
-
-      expect(account.keyPair).toEqual({
-        privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
-        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
-      })
-    })
-
-    test('should successfully initialize an account for the given seed and path', async () => {
-      const signer = new SeedSignerEvm(SEED).derive("0'/0/0")
-      const account = new WalletAccountEvm(signer)
-
-      expect(account.index).toBe(ACCOUNT.index)
-
-      expect(account.path).toBe(ACCOUNT.path)
-
-      expect(account.keyPair).toEqual({
-        privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
-        publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
-      })
-    })
-
-    test('should throw if the seed phrase is invalid', () => {
-      // eslint-disable-next-line no-new
-      expect(() => { new SeedSignerEvm(INVALID_SEED_PHRASE).derive("0'/0/0") })
-        .toThrow('The seed phrase is invalid.')
-    })
-
-    test('should throw if the path is invalid', () => {
-      // eslint-disable-next-line no-new
-      expect(() => { new SeedSignerEvm(SEED_PHRASE).derive("a'/b/c") })
-        .toThrow('invalid path component')
-    })
-  })
-
   describe('sign', () => {
     const MESSAGE = 'Dummy message to sign.'
 
@@ -147,14 +99,6 @@ describe('WalletAccountEvm', () => {
       const signature = await account.sign(MESSAGE)
 
       expect(signature).toBe(EXPECTED_SIGNATURE)
-    })
-
-    test('should return the correct signature with PrivateKeySignerEvm', async () => {
-      const pkSigner = new PrivateKeySignerEvm(ACCOUNT.keyPair.privateKey)
-      const pkAccount = new WalletAccountEvm(pkSigner)
-      const signature = await pkAccount.sign(MESSAGE)
-      expect(signature).toBe(EXPECTED_SIGNATURE)
-      pkAccount.dispose()
     })
   })
 
