@@ -64,7 +64,7 @@ export default class LedgerSignerEvm {
     /**
      * @private
      * @type {DeviceManagementKit}
-     */
+    /** @private */
     this._dmk =
       dmk ||
       new DeviceManagementKitBuilder()

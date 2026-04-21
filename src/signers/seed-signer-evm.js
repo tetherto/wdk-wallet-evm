@@ -21,7 +21,7 @@ import { NotImplementedError } from '@tetherto/wdk-wallet'
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
-/** @typedef {import('@tetherto/wdk-wallet/src/isigner.js').ISigner} ISigner */
+/** @typedef {import(@tetherto/wdk-wallet).ISigner} ISigner */
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
 /** @typedef {import('ethers').Authorization} Authorization */
