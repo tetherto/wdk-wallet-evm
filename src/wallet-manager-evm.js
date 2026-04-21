@@ -127,7 +127,7 @@ export default class WalletManagerEvm extends WalletManager {
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccount(1);
    * @param {number} [index] - The index of the account to get (default: 0).
-   * @param {string} [signerName='default'] - The root signer name.
+   * @param {string} [signerName] - The root signer name (default: 'default').
    * @returns {Promise<WalletAccountEvm>} The account.
    */
   async getAccount (index = 0, signerName = 'default') {
@@ -141,7 +141,7 @@ export default class WalletManagerEvm extends WalletManager {
    * // Returns the account with derivation path m/44'/60'/0'/0/1
    * const account = await wallet.getAccountByPath("0'/0/1");
    * @param {string} path - The derivation path (e.g. "0'/0/0").
-   * @param {string} [signerName='default'] - The root signer name.
+   * @param {string} [signerName] - The root signer name (default: 'default').
    * @returns {Promise<WalletAccountEvm>} The account.
    */
   async getAccountByPath (path, signerName = 'default') {
