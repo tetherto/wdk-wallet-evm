@@ -1,27 +1,24 @@
 /** @implements {IWalletAccount} */
 export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implements IWalletAccount {
     /**
-     * Creates a new evm wallet account.
+     * Legacy helper to create an account from seed + path.
+     * Creates a root signer from the seed and derives a child for the given path.
      *
-     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+     * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase or seed bytes.
      * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
      * @param {EvmWalletConfig} [config] - The configuration object.
+     * @returns {WalletAccountEvm}
      */
-    constructor(seed: string | Uint8Array, path: string, config?: EvmWalletConfig);
+    static fromSeed(seed: string | Uint8Array, path: string, config?: EvmWalletConfig): WalletAccountEvm;
     /**
-     * The wallet account configuration.
+     * Creates a new evm wallet account using a signer.
      *
-     * @protected
-     * @type {EvmWalletConfig}
+     * @param {object} signer - A signer implementing the EVM signer interface (must be a child, not a root).
+     * @param {EvmWalletConfig} [config] - The configuration object.
      */
-    protected _config: EvmWalletConfig;
-    /**
-     * The account.
-     *
-     * @protected
-     * @type {HDNodeWallet}
-     */
-    protected _account: HDNodeWallet;
+    constructor(signer: object, config?: EvmWalletConfig);
+    /** @private */
+    private _signer;
     /**
      * The derivation path's index of this account.
      *
@@ -40,6 +37,12 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @type {KeyPair}
      */
     get keyPair(): KeyPair;
+    /**
+     * Returns the account's address.
+     *
+     * @returns {Promise<string>} The account's address.
+     */
+    getAddress(): Promise<string>;
     /**
      * Signs a message.
      *

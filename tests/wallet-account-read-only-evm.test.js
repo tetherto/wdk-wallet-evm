@@ -8,7 +8,6 @@ import { WalletAccountReadOnlyEvm } from '../index.js'
 
 import TestToken from './artifacts/TestToken.json' with { type: 'json' }
 
-const PRIVATE_KEY = '260905feebf1ec684f36f1599128b85f3a26c2b817f2065a2fc278398449c41f'
 
 const ADDRESS = '0x405005C7c4422390F4B334F64Cf20E0b767131d0'
 
