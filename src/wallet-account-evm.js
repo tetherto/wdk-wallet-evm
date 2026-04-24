@@ -234,9 +234,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
    */
   async toReadOnlyAccount () {
-    const readOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
+    if (!this._evmReadOnlyAccount) {
+      this._evmReadOnlyAccount = new WalletAccountReadOnlyEvm(this._account.address, this._config)
+    }
 
-    return readOnlyAccount
+    return this._evmReadOnlyAccount
   }
 
   /**
