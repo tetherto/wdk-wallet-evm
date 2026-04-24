@@ -209,6 +209,10 @@ export type EvmWalletConfig = {
      */
     retries?: number;
     /**
+     * - The chain ID of the network. When provided, skips automatic chain ID detection from the provider.
+     */
+    chainId?: number;
+    /**
      * - The maximum fee amount for transfer operations.
      */
     transferMaxFee?: number | bigint;
