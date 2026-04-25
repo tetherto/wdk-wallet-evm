@@ -177,6 +177,10 @@ export type EvmTransaction = {
      */
     nonce?: number;
     /**
+     * - The chain ID of the network.
+     */
+    chainId?: number | bigint;
+    /**
      * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
      */
     authorizationList?: AuthorizationLike[];

@@ -54,6 +54,7 @@ import { multicall } from './multicall.js'
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
  * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
  * @property {number} [nonce] - The transaction nonce.
+ * @property {number | bigint} [chainId] - The chain ID of the network.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
