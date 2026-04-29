@@ -156,14 +156,15 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     }
 
     const { IR, IL } = serI(index, this.chainCode, this.publicKey, this.privateKeyBuffer)
+    const childPriv = new Uint8Array(this.privateKeyBuffer)
 
-    const overflow = addToPrivateKey(this.privateKeyBuffer, IL)
+    const overflow = addToPrivateKey(childPriv, IL)
 
-    if (overflow || compareWithCurveOrder(this.privateKeyBuffer) >= 0) {
-      subtractCurveOrderFromPrivateKey(this.privateKeyBuffer)
+    if (overflow || compareWithCurveOrder(childPriv) >= 0) {
+      subtractCurveOrderFromPrivateKey(childPriv)
     }
 
-    const ki = new MemorySafeSigningKey(this.privateKeyBuffer)
+    const ki = new MemorySafeSigningKey(childPriv)
 
     return new MemorySafeHDNodeWallet(_guard, ki, this.fingerprint, hexlify(IR),
       path, index, this.depth + 1, this.mnemonic, this.provider)
