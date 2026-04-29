@@ -47,8 +47,9 @@
   },
   "overrides": {
     "cookie": "1.0.2",
+    "serialize-javascript": ">=7.0.5",
     "tmp": "0.2.5",
-    "undici": "7.21.0"
+    "undici": ">=7.24.0"
   },
   "exports": {
     ".": {
