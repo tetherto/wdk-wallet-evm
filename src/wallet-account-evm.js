@@ -158,6 +158,19 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
+   * Signs a transaction.
+   *
+   * @param {EvmTransaction} tx - The transaction to sign.
+   * @returns {Promise<string>} The signed transaction as a hex string.
+   */
+  async signTransaction (tx) {
+    return await this._signer.signTransaction({
+      from: await this.getAddress(),
+      ...tx
+    })
+  }
+
+  /**
    * Sends a transaction.
    *
    * @param {EvmTransaction} tx - The transaction.
@@ -242,9 +255,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<WalletAccountReadOnlyEvm>} The read-only account.
    */
   async toReadOnlyAccount () {
-    const readOnlyAccount = new WalletAccountReadOnlyEvm(await this.getAddress(), this._config)
+    if (!this._evmReadOnlyAccount) {
+      this._evmReadOnlyAccount = new WalletAccountReadOnlyEvm(await this.getAddress(), this._config)
+    }
 
-    return readOnlyAccount
+    return this._evmReadOnlyAccount
   }
 
   /**

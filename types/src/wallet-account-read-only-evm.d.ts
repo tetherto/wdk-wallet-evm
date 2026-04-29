@@ -177,6 +177,10 @@ export type EvmTransaction = {
      */
     nonce?: number;
     /**
+     * - The chain ID of the network.
+     */
+    chainId?: number | bigint;
+    /**
      * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
      */
     authorizationList?: AuthorizationLike[];
@@ -208,6 +212,10 @@ export type EvmWalletConfig = {
      * - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3. 
      */
     retries?: number;
+    /**
+     * - The chain ID of the network. When provided, skips automatic chain ID detection from the provider.
+     */
+    chainId?: number;
     /**
      * - The maximum fee amount for transfer operations.
      */

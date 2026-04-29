@@ -56,6 +56,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
  * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
  * @property {number} [nonce] - The transaction nonce.
+ * @property {number | bigint} [chainId] - The chain ID of the network.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
@@ -71,6 +72,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @typedef {Object} EvmWalletConfig
  * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list.
  * @property {number} [retries] - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3.
+ * @property {number} [chainId] - The chain ID of the network. When provided, skips automatic chain ID detection from the provider.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
  */
 
@@ -105,6 +107,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     this._provider = undefined
 
     const { provider, retries = 3 } = config
+    const network = config.chainId ? Network.from(config.chainId) : undefined
+    const providerOpts = config.chainId ? { staticNetwork: true } : undefined
 
     if (Array.isArray(provider)) {
       if (provider.length > 0) {
@@ -112,7 +116,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
         for (const entry of provider) {
           const option = typeof entry === 'string'
-            ? new JsonRpcProvider(entry, Network.from(config.chainId), { staticNetwork: true })
+            ? new JsonRpcProvider(entry, network, providerOpts)
             : new BrowserProvider(entry)
           failoverProvider.addProvider(option)
         }
@@ -122,7 +126,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     } else if (provider) {
       this._provider =
         typeof provider === 'string'
-          ? new JsonRpcProvider(provider, Network.from(config.chainId), { staticNetwork: true })
+          ? new JsonRpcProvider(provider, network, providerOpts)
           : new BrowserProvider(provider)
     }
   }

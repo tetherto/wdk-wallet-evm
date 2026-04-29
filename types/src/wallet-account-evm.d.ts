@@ -17,6 +17,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
     constructor(signer: object, config?: EvmWalletConfig);
+    /**
+     * The wallet account configuration.
+     *
+     * @protected
+     * @type {EvmWalletConfig}
+     */
+    protected _config: EvmWalletConfig;
     /** @private */
     private _signer;
     /**
@@ -57,6 +64,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<string>} The typed data signature.
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
+    /**
+     * Signs a transaction.
+     *
+     * @param {EvmTransaction} tx - The transaction to sign.
+     * @returns {Promise<string>} The signed transaction as a hex string.
+     */
+    signTransaction(tx: EvmTransaction): Promise<string>;
     /**
      * Sends a transaction.
      *

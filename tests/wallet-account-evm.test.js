@@ -148,6 +148,26 @@ describe('WalletAccountEvm', () => {
     })
   })
 
+  describe('signTransaction', () => {
+    test('should sign a transaction and return a valid hex string', async () => {
+      const accountWithoutProvider = new WalletAccountEvm(new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000n,
+        gasLimit: 21_000n,
+        maxFeePerGas: 2_000_000_000n,
+        maxPriorityFeePerGas: 1_000_000_000n,
+        nonce: 0,
+        chainId: 31_337n
+      }
+      const SIGNED_TRANSACTION = "0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec"
+      const signedTx = await accountWithoutProvider.signTransaction(TRANSACTION)
+
+      expect(signedTx).toBe(SIGNED_TRANSACTION)
+    })
+  })
+
   describe('sendTransaction', () => {
     test('should successfully send a transaction', async () => {
       const TRANSACTION = {
