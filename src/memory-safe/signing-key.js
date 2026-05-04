@@ -70,8 +70,9 @@ export default class MemorySafeSigningKey extends SigningKey {
   }
 
   dispose () {
-    sodium_memzero(this._privateKeyBuffer)
-
-    this._privateKeyBuffer = undefined
+    if (this._privateKeyBuffer) {
+      sodium_memzero(this._privateKeyBuffer)
+      this._privateKeyBuffer = undefined
+    }
   }
 }

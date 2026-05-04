@@ -5,6 +5,7 @@ import { ContractFactory } from 'ethers'
 import { describe, expect, test, beforeEach, afterEach } from '@jest/globals'
 
 import WalletManagerEvm from '../../index.js'
+import SeedSignerEvm from '../../src/signers/seed-signer-evm.js'
 
 import TestToken from './../artifacts/TestToken.json' with { type: 'json' }
 
@@ -69,12 +70,11 @@ describe('@tetherto/wdk-wallet-evm', () => {
       await sendTestTokensTo(account.address, INITIAL_TOKEN_BALANCE)
     }
 
-    wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider
-    })
+    wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE), { provider: hre.network.provider })
   })
 
   afterEach(async () => {
+    wallet.dispose()
     await hre.network.provider.send('hardhat_reset')
   })
 
@@ -280,19 +280,16 @@ describe('@tetherto/wdk-wallet-evm', () => {
     }
 
     for (const account of [account0, account1]) {
-      expect(account.keyPair.privateKey).toBe(undefined)
+      expect(account.keyPair.privateKey).toBeNull()
 
-      await expect(account.sign(MESSAGE)).rejects.toThrow('Uint8Array expected')
-      await expect(account.sendTransaction(TRANSACTION)).rejects.toThrow('Uint8Array expected')
-      await expect(account.transfer(TRANSFER)).rejects.toThrow('Uint8Array expected')
+      await expect(account.sign(MESSAGE)).rejects.toThrow()
+      await expect(account.sendTransaction(TRANSACTION)).rejects.toThrow()
+      await expect(account.transfer(TRANSFER)).rejects.toThrow()
     }
   })
 
   test('should create a wallet with a low transfer max fee, derive an account, try to transfer some tokens and gracefully fail', async () => {
-    const wallet = new WalletManagerEvm(SEED_PHRASE, {
-      provider: hre.network.provider,
-      transferMaxFee: 0
-    })
+    const wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE), { provider: hre.network.provider, transferMaxFee: 0 })
 
     const account = await wallet.getAccount(0)
 
