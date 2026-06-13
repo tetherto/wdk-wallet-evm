@@ -18,6 +18,9 @@ import { Contract, ZeroAddress } from 'ethers'
 
 import * as bip39 from 'bip39'
 
+import { getERC20Token } from "@hinkal/common";
+import { prepareEthersHinkal } from "@hinkal/common/providers/prepareEthersHinkal";
+
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
 import MemorySafeHDNodeWallet from './memory-safe/hd-node-wallet.js'
@@ -208,6 +211,72 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     return { hash, fee }
   }
+
+/**
+ * Prepares a Hinkal instance for private operations.
+ * Validates the provider connection and token support before initializing Hinkal.
+ *
+ * @private
+ * @param {string} token - The token address to validate.
+ * @returns {Promise<{ hinkal: Hinkal, erc20Token: ERC20Token }>} The Hinkal instance and token metadata.
+ * @throws {Error} If the wallet is not connected to a provider.
+ * @throws {Error} If the token is not supported by Hinkal on the current chain.
+ */
+async _prepareHinkal(token) {
+  if (!this._account.provider) {
+    throw new Error('The wallet must be connected to a provider.')
+  }
+  const { chainId } = await this._provider.getNetwork()
+  const erc20Token = getERC20Token(token, Number(chainId))
+  if (!erc20Token) {
+    throw new Error(`The token ${token} is not supported by Hinkal on chain ${chainId}.`)
+  }
+  const hinkal = await prepareEthersHinkal(this._account)
+  return { hinkal, erc20Token }
+}
+
+/**
+ * Sends a token to another address privately through Hinkal.
+ *
+ * @param {EvmTransferOptions} options - The transfer's options (`amount` in base units).
+ * @returns {Promise<{ hash: string }>} The transaction hash.
+ * @throws {Error} If the token is not supported by Hinkal on the account's chain.
+ */
+async privateSend({ token, recipient, amount }) {
+  const { hinkal, erc20Token } = await this._prepareHinkal(token)
+  const hash = await hinkal.depositAndWithdraw(erc20Token, [BigInt(amount)], [recipient])
+  return { hash }
+}
+
+/**
+ * Withdraws this account's stuck UTXOs of a token back to its own address.
+ *
+ * @param {{ token: string }} options - The options (only `token` is used).
+ * @returns {Promise<{ hashes: string[] }>} The withdrawal transactions' hashes.
+ * @throws {Error} If the token is not supported by Hinkal on the account's chain.
+ */
+async withdrawStuckUtxos({ token }) {
+  const { hinkal, erc20Token } = await this._prepareHinkal(token)
+  const recipient = await this.getAddress()
+  const hashes = await hinkal.withdrawStuckUtxos(erc20Token, recipient)
+  return { hashes }
+}
+
+/**
+ * Returns this account's stuck Hinkal shielded balances (UTXOs awaiting recovery).
+ *
+ * @returns {Promise<Array<{ token: string, balance: bigint }>>} The stuck balance per token.
+ * @throws {Error} If the wallet is not connected to a provider.
+ */
+async stuckUtxoBalances() {
+  if (!this._account.provider) {
+    throw new Error('The wallet must be connected to a provider.')
+  }
+  const { chainId } = await this._provider.getNetwork()
+  const hinkal = await prepareEthersHinkal(this._account)
+  const balances = await hinkal.getStuckShieldedBalances(Number(chainId))
+  return balances.map(({ token, balance }) => ({ token: token.erc20TokenAddress, balance }))
+}
 
   /**
    * Approves a specific amount of tokens to a spender.
