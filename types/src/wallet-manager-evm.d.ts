@@ -34,34 +34,41 @@ export default class WalletManagerEvm extends WalletManager {
      */
     protected _provider: Provider | undefined;
     /**
-     * Registers an additional root signer under a name.
+     * Returns the wallet account at a specific index.
      *
-     * @param {string} signerName - The signer name.
-     * @param {ISignerEvm} signer - The root signer to register.
-     */
-    createSigner(signerName: string, signer: ISignerEvm): void;
-    /**
-     * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
-     *
-     * @example
-     * // Returns the account with derivation path m/44'/60'/0'/0/1
-     * const account = await wallet.getAccount(1);
      * @param {number} [index] - The index of the account to get (default: 0).
-     * @param {string} [signerName] - The root signer name (default: 'default').
+     * @param {Object} [options] - Account options.
+     * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
      * @returns {Promise<WalletAccountEvm>} The account.
+     * @throws {Error} If a signer name is given but no signer exists with that name.
+     * @throws {SignerError} If the signer doesn't support account derivation.
      */
-    getAccount(index?: number, signerName?: string): Promise<WalletAccountEvm>;
+    getAccount(index?: number, options?: {
+        signerName?: string;
+    }): Promise<WalletAccountEvm>;
     /**
-     * Returns the wallet account at a specific BIP-44 derivation path.
+     * Returns the wallet account associated with a registered signer. For
+     * non-derivable signers (e.g., private-key signers), returns the signer's
+     * single account, with no further derivation.
      *
-     * @example
-     * // Returns the account with derivation path m/44'/60'/0'/0/1
-     * const account = await wallet.getAccountByPath("0'/0/1");
-     * @param {string} path - The derivation path (e.g. "0'/0/0").
-     * @param {string} [signerName] - The root signer name (default: 'default').
+     * @param {string} signerName - The signer name registered via {@link addSigner}.
      * @returns {Promise<WalletAccountEvm>} The account.
+     * @throws {Error} If no signer exists with the given name.
      */
-    getAccountByPath(path: string, signerName?: string): Promise<WalletAccountEvm>;
+    getAccount(signerName: string): Promise<WalletAccountEvm>;
+    /**
+     * Returns the wallet account at a specific derivation path.
+     *
+     * @param {string} path - The derivation path (e.g. "0'/0/0").
+     * @param {Object} [options] - Account options.
+     * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
+     * @returns {Promise<WalletAccountEvm>} The account.
+     * @throws {Error} If a signer name is given but no signer exists with that name.
+     * @throws {SignerError} If the signer doesn't support account derivation.
+     */
+    getAccountByPath(path: string, options?: {
+        signerName?: string;
+    }): Promise<WalletAccountEvm>;
     /**
      * Returns the current fee rates.
      *

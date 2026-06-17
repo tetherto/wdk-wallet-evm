@@ -1,6 +1,6 @@
+import { ISignerEvm } from "./seed-signer-evm.js";
 /**
  * @typedef {import("@ledgerhq/device-management-kit").DeviceManagementKit} DeviceManagementKit
- * @typedef {import("./seed-signer-evm.js").ISignerEvm} ISignerEvm
  * @typedef {import("./seed-signer-evm.js").UnsignedEvmTransaction} UnsignedEvmTransaction
  * @typedef {import("../wallet-account-read-only-evm.js").EvmWalletConfig} EvmWalletConfig
  * @typedef {import("../wallet-account-read-only-evm.js").TypedData} TypedData
@@ -10,12 +10,12 @@
  * @typedef {import('rxjs').Observable<any>} Observable
  */
 /**
- * @implements {ISignerEvm}
+ * @extends {ISignerEvm}
  * Hardware-backed signer using Ledger DMK + Ethereum app.
  * Handles device connection, reconnection and provides signing primitives compatible with the
  * rest of the EVM wallet stack.
  */
-export default class LedgerSignerEvm implements ISignerEvm {
+export default class LedgerSignerEvm extends ISignerEvm {
     /**
      * @param {string} path - Relative BIP-44 path segment (e.g. "0'/0/0"). Prefixed internally.
      * @param {DeviceManagementKit} [dmk] - Optional DMK instance. Auto-created if omitted.
@@ -33,6 +33,10 @@ export default class LedgerSignerEvm implements ISignerEvm {
     private _path;
     /** @private */
     private _dmk;
+    /** @type {boolean} */
+    get isRoot(): boolean;
+    /** @type {boolean} */
+    get isPrivateKey(): boolean;
     /** @type {number|undefined} */
     get index(): number | undefined;
     /** @type {string|undefined} */
@@ -120,7 +124,6 @@ export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWa
 export type TypedData = import("../wallet-account-read-only-evm.js").TypedData;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type DeviceManagementKit = import("@ledgerhq/device-management-kit").DeviceManagementKit;
-export type ISignerEvm = import("./seed-signer-evm.js").ISignerEvm;
 export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
 export type AuthorizationRequest = import("ethers").AuthorizationRequest;
 export type Authorization = import("ethers").Authorization;

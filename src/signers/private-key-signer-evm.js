@@ -15,28 +15,32 @@
 
 import { BaseWallet } from 'ethers'
 
+import { SignerError } from '@tetherto/wdk-wallet'
+
 import MemorySafeSigningKey from '../memory-safe/signing-key.js'
+import { ISignerEvm } from './seed-signer-evm.js'
 
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
-/** @typedef {import('./seed-signer-evm.js').ISignerEvm} ISignerEvm */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
 /** @typedef {import('ethers').Authorization} Authorization */
 /** @typedef {import('../wallet-account-read-only-evm.js').TypedData} TypedData */
 
 /**
- * @implements {ISignerEvm}
+ * @extends {ISignerEvm}
  * Signer that wraps a raw private key in a memory-safe buffer, exposing a minimal
  * interface for signing messages, transactions and typed data. This signer does
  * not support derivation and always represents a single account.
  */
-export default class PrivateKeySignerEvm {
+export default class PrivateKeySignerEvm extends ISignerEvm {
   /**
    * Create a signer from a raw private key.
    *
    * @param {string|Uint8Array} privateKey - Hex string (with/without 0x) or raw key bytes.
    */
   constructor (privateKey) {
+    super()
+
     // Expect a Uint8Array buffer; accept hex string as convenience
     let privateKeyBuffer = privateKey
     if (typeof privateKey === 'string') {
@@ -98,10 +102,10 @@ export default class PrivateKeySignerEvm {
 
   /**
    * PrivateKeySignerEvm is not a hierarchical signer and cannot derive.
-   * @throws {Error}
+   * @throws {SignerError} Always — private-key signers do not support derivation.
    */
   derive () {
-    throw new Error('PrivateKeySignerEvm does not support derivation.')
+    throw new SignerError('PrivateKeySignerEvm does not support derivation.')
   }
 
   /** @returns {Promise<string>} */
@@ -150,7 +154,7 @@ export default class PrivateKeySignerEvm {
 
   /** Dispose secrets from memory. */
   dispose () {
-    this._signingKey.dispose()
+    if (this._signingKey) this._signingKey.dispose()
     this._signingKey = undefined
     this._wallet = undefined
   }

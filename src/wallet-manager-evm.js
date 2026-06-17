@@ -27,6 +27,7 @@ import SeedSignerEvm from './signers/seed-signer-evm.js'
 /** @typedef {import('ethers').Provider} Provider */
 
 /** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
+/** @typedef {import("@tetherto/wdk-wallet").SignerError} SignerError */
 
 /** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 
@@ -106,54 +107,61 @@ export default class WalletManagerEvm extends WalletManager {
   }
 
   /**
-   * Registers an additional root signer under a name.
+   * Returns the wallet account at a specific index.
    *
-   * @param {string} signerName - The signer name.
-   * @param {ISignerEvm} signer - The root signer to register.
-   */
-  createSigner (signerName, signer) {
-    if (!signerName) {
-      throw new Error('Signer name is required.')
-    }
-    if (signer?.isPrivateKey) {
-      throw new Error('Private key signers are not supported for wallet managers.')
-    }
-    this._signers[signerName] = signer
-  }
-
-  /**
-   * Returns the wallet account at a specific index (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
-   *
-   * @example
-   * // Returns the account with derivation path m/44'/60'/0'/0/1
-   * const account = await wallet.getAccount(1);
+   * @overload
    * @param {number} [index] - The index of the account to get (default: 0).
-   * @param {string} [signerName] - The root signer name (default: 'default').
+   * @param {Object} [options] - Account options.
+   * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
    * @returns {Promise<WalletAccountEvm>} The account.
+   * @throws {Error} If a signer name is given but no signer exists with that name.
+   * @throws {SignerError} If the signer doesn't support account derivation.
    */
-  async getAccount (index = 0, signerName = 'default') {
-    return await this.getAccountByPath(`0'/0/${index}`, signerName)
+
+  /**
+   * Returns the wallet account associated with a registered signer. For
+   * non-derivable signers (e.g., private-key signers), returns the signer's
+   * single account, with no further derivation.
+   *
+   * @overload
+   * @param {string} signerName - The signer name registered via {@link addSigner}.
+   * @returns {Promise<WalletAccountEvm>} The account.
+   * @throws {Error} If no signer exists with the given name.
+   */
+
+  async getAccount (indexOrSignerName = 0, options = {}) {
+    if (typeof indexOrSignerName === 'string') {
+      const key = `${indexOrSignerName}#self`
+      if (this._accounts[key]) {
+        return this._accounts[key]
+      }
+      const signer = this.getSigner(indexOrSignerName)
+      const account = new WalletAccountEvm(signer, this._config)
+      this._accounts[key] = account
+      return account
+    }
+
+    const { signerName } = options
+    return await this.getAccountByPath(`0'/0/${indexOrSignerName}`, { signerName })
   }
 
   /**
-   * Returns the wallet account at a specific BIP-44 derivation path.
+   * Returns the wallet account at a specific derivation path.
    *
-   * @example
-   * // Returns the account with derivation path m/44'/60'/0'/0/1
-   * const account = await wallet.getAccountByPath("0'/0/1");
    * @param {string} path - The derivation path (e.g. "0'/0/0").
-   * @param {string} [signerName] - The root signer name (default: 'default').
+   * @param {Object} [options] - Account options.
+   * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
    * @returns {Promise<WalletAccountEvm>} The account.
+   * @throws {Error} If a signer name is given but no signer exists with that name.
+   * @throws {SignerError} If the signer doesn't support account derivation.
    */
-  async getAccountByPath (path, signerName = 'default') {
-    const key = `${signerName}:${path}`
+  async getAccountByPath (path, options = {}) {
+    const { signerName } = options
+    const key = `${signerName ?? ''}:${path}`
     if (this._accounts[key]) {
       return this._accounts[key]
     }
-    const signer = this._signers[signerName]
-    if (!signer) {
-      throw new Error(`Signer ${signerName} not found.`)
-    }
+    const signer = this.getSigner(signerName)
     const childSigner = signer.derive(path, this._config)
     const account = new WalletAccountEvm(childSigner, this._config)
     this._accounts[key] = account

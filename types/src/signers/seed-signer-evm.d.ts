@@ -1,3 +1,4 @@
+import { ISigner } from "@tetherto/wdk-wallet";
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('../wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
@@ -27,12 +28,22 @@ export type UnsignedEvmTransaction = {
     authorizationList?: AuthorizationLike[];
 };
 /**
- * Interface for EVM signers.
- * Follows the base `ISigner` from `@tetherto/wdk-wallet`. For interface compatibility,
- * the second argument to `derive` is accepted but ignored by EVM signers.
+ * Interface for EVM signers, extending the base `ISigner` from `@tetherto/wdk-wallet`.
+ *
+ * @extends {ISigner}
  * @interface
  */
-export class ISignerEvm {
+export class ISignerEvm extends ISigner {
+    /**
+     * Whether this signer is a root (master) signer that can only derive children.
+     * @type {boolean}
+     */
+    get isRoot(): boolean;
+    /**
+     * Whether this signer was created from a standalone private key.
+     * @type {boolean}
+     */
+    get isPrivateKey(): boolean;
     /**
      * The last component index for the derivation path of this signer, when applicable.
      * @type {number|undefined}
@@ -49,10 +60,17 @@ export class ISignerEvm {
      */
     get address(): string | undefined;
     /**
+     * The account's key pair.
+     * @type {KeyPair}
+     */
+    get keyPair(): KeyPair;
+    /**
      * Derive a child signer from this signer using a relative path (e.g. "0'/0/0").
-     * @param {string} relPath
+     *
+     * @param {string} relPath - The relative BIP-44 path segment.
      * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
-     * @returns {ISignerEvm}
+     * @returns {ISignerEvm} The derived child signer.
+     * @throws {SignerError} If the signer does not support derivation (e.g. private-key signers).
      */
     derive(relPath: string, _cfg?: EvmWalletConfig): ISignerEvm;
     /**
@@ -89,11 +107,11 @@ export class ISignerEvm {
     dispose(): void;
 }
 /**
- * @implements {ISignerEvm}
+ * @extends {ISignerEvm}
  * Signer implementation that derives keys from a BIP-39 seed using the BIP-44 Ethereum path.
  * Can represent either a root (no address, only derivation) or a child (derived account with address).
  */
-export default class SeedSignerEvm implements ISignerEvm {
+export default class SeedSignerEvm extends ISignerEvm {
     /**
      * Create a SeedSignerEvm.
      * Provide either a mnemonic/seed or an existing root via opts.root.

@@ -1,16 +1,16 @@
-/** @typedef {import('./seed-signer-evm.js').ISignerEvm} ISignerEvm */
+import { ISignerEvm } from "./seed-signer-evm.js";
 /** @typedef {import('./seed-signer-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('../wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
 /** @typedef {import('ethers').Authorization} Authorization */
 /**
- * @implements {ISignerEvm}
+ * @extends {ISignerEvm}
  * Signer that wraps a raw private key in a memory-safe buffer, exposing a minimal
  * interface for signing messages, transactions and typed data. This signer does
  * not support derivation and always represents a single account.
  */
-export default class PrivateKeySignerEvm implements ISignerEvm {
+export default class PrivateKeySignerEvm extends ISignerEvm {
     /**
      * @param {string|Uint8Array} privateKey - Hex string (with/without 0x) or raw key bytes.
      */
@@ -42,9 +42,9 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     get keyPair(): KeyPair;
     /**
      * PrivateKeySignerEvm is not a hierarchical signer and cannot derive.
-     * @throws {Error}
+     * @throws {SignerError} Always — private-key signers do not support derivation.
      */
-    derive(): void;
+    derive(): never;
     /** @returns {Promise<string>} */
     getAddress(): Promise<string>;
     /**
@@ -77,7 +77,6 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     /** Dispose secrets from memory. */
     dispose(): void;
 }
-export type ISignerEvm = import("./seed-signer-evm.js").ISignerEvm;
 export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
 export type TypedData = import("../wallet-account-read-only-evm.js").TypedData;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;

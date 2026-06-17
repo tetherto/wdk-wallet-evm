@@ -23,6 +23,8 @@ import { SignerEthBuilder } from '@ledgerhq/device-signer-kit-ethereum'
 import { filter, firstValueFrom, map } from 'rxjs'
 import { Signature, Transaction, getBytes } from 'ethers'
 
+import { ISignerEvm } from './seed-signer-evm.js'
+
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('../wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
@@ -35,16 +37,15 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "44'/60'"
 
 /**
  * @typedef {import("@ledgerhq/device-management-kit").DeviceManagementKit} DeviceManagementKit
- * @typedef {import("./seed-signer-evm.js").ISignerEvm} ISignerEvm
  */
 
 /**
- * @implements {ISignerEvm}
+ * @extends {ISignerEvm}
  * Hardware-backed signer using Ledger DMK + Ethereum app.
  * Handles device connection, reconnection and provides signing primitives compatible with the
  * rest of the EVM wallet stack.
  */
-export default class LedgerSignerEvm {
+export default class LedgerSignerEvm extends ISignerEvm {
   /**
    * Create a hardware-backed Ledger signer for the given derivation path.
    *
@@ -52,6 +53,8 @@ export default class LedgerSignerEvm {
    * @param {DeviceManagementKit} [dmk] - Optional DMK instance. Auto-created if omitted.
    */
   constructor (path, dmk) {
+    super()
+
     /** @private */
     this._account = undefined
     /** @private */
@@ -69,6 +72,23 @@ export default class LedgerSignerEvm {
       new DeviceManagementKitBuilder()
         .addTransport(webHidTransportFactory)
         .build()
+  }
+
+  /**
+   * Whether this signer is a root (master) signer. Always false: a Ledger signer is
+   * always bound to a concrete derivation path.
+   * @type {boolean}
+   */
+  get isRoot () {
+    return false
+  }
+
+  /**
+   * Whether this signer was created from a standalone private key. Always false for Ledger signers.
+   * @type {boolean}
+   */
+  get isPrivateKey () {
+    return false
   }
 
   /**
