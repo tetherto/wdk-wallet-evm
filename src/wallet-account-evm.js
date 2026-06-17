@@ -156,6 +156,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {EvmTransaction} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
+   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option (requires a connected provider).
    */
   async signTransaction (tx) {
     if (this._account.provider && this._config.transactionMaxFee !== undefined) {
@@ -177,6 +178,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
+   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
    */
   async sendTransaction (tx) {
     if (!this._account.provider) {
@@ -202,6 +204,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {EvmTransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
+   * @throws {Error} If the transfer's cost exceeds the maximum transfer fee option.
    */
   async transfer (options) {
     if (!this._account.provider) {
