@@ -156,7 +156,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {EvmTransaction} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
-   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option (requires a connected provider).
+   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
+   * @note transactionMaxFee is only enforced when a provider is connected; the check is skipped when none is attached.
    */
   async signTransaction (tx) {
     if (this._account.provider && this._config.transactionMaxFee !== undefined) {
