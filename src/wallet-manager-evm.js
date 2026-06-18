@@ -119,9 +119,10 @@ export default class WalletManagerEvm extends WalletManager {
    */
 
   /**
-   * Returns the wallet account associated with a registered signer. For
-   * non-derivable signers (e.g., private-key signers), returns the signer's
-   * single account, with no further derivation.
+   * Returns the wallet account associated with a registered signer. Non-derivable
+   * signers (e.g. private-key signers) are their own single account; derivable (root)
+   * signers return their default account (index 0). The root signer itself is never
+   * wrapped in an account, so the root key is only ever disposed with the manager.
    *
    * @overload
    * @param {string} signerName - The signer name registered via {@link addSigner}.
@@ -136,7 +137,11 @@ export default class WalletManagerEvm extends WalletManager {
         return this._accounts[key]
       }
       const signer = this.getSigner(indexOrSignerName)
-      const account = new WalletAccountEvm(signer, this._config)
+      // Never wrap a root signer directly: disposing that account would dispose the
+      // shared root key. Non-derivable signers are their own account; derivable ones
+      // return a derived child for the default account.
+      const accountSigner = signer.isPrivateKey ? signer : signer.derive("0'/0/0")
+      const account = new WalletAccountEvm(accountSigner, this._config)
       this._accounts[key] = account
       return account
     }

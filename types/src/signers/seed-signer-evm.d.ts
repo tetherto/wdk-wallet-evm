@@ -35,7 +35,7 @@ export type UnsignedEvmTransaction = {
  */
 export class ISignerEvm extends ISigner {
     /**
-     * Whether this signer is a root (master) signer that can only derive children.
+     * Whether this signer is a root (master) signer that holds the HD root and can derive children.
      * @type {boolean}
      */
     get isRoot(): boolean;
@@ -109,30 +109,39 @@ export class ISignerEvm extends ISigner {
 /**
  * @extends {ISignerEvm}
  * Signer implementation that derives keys from a BIP-39 seed using the BIP-44 Ethereum path.
- * Can represent either a root (no address, only derivation) or a child (derived account with address).
+ * Always holds a derived account (index 0 by default). A root signer also retains the HD root
+ * and can derive child signers; a derived child holds only its own account.
  */
 export default class SeedSignerEvm extends ISignerEvm {
     /**
      * Create a SeedSignerEvm.
-     * Provide either a mnemonic/seed or an existing root via opts.root.
+     * Provide a mnemonic/seed (children built via {@link derive} pass a shared root internally).
      *
      * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
-     * @param {{root?: object, path?: string}} [opts]
+     * @param {{root?: object, path?: string, isChild?: boolean}} [opts] - Construction options for root reuse, direct child derivation or path definition (default is index 0).
+     * @throws {Error} If neither a seed nor a root is provided, or if both are provided.
+     * @throws {Error} If a seed is provided but is not a valid BIP-39 mnemonic.
      */
     constructor(seed: string | Uint8Array | null, opts?: {
         root?: object;
         path?: string;
+        isChild?: boolean;
     });
     /** @private */
     private _isRoot;
-    /** @private */
-    private _root;
     /** @private */
     private _account;
     /** @private */
     private _address;
     /** @private */
     private _path;
+    /**
+     * The HD root node, kept only when this signer owns it (created from a seed).
+     * A child derived via `derive` uses its parent's root to derive its own account
+     * but does not retain it, so disposing a child never touches the shared root.
+     * @private
+     */
+    private _root;
     get isRoot(): boolean;
     get isPrivateKey(): boolean;
     get index(): number | undefined;
@@ -144,6 +153,7 @@ export default class SeedSignerEvm extends ISignerEvm {
      * @param {string} relPath
      * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
      * @returns {SeedSignerEvm}
+     * @throws {Error} If called on a derived child signer, which does not retain the root.
      */
     derive(relPath: string, _cfg?: EvmWalletConfig): SeedSignerEvm;
     /**
@@ -171,7 +181,7 @@ export default class SeedSignerEvm extends ISignerEvm {
      * @returns {Promise<Authorization>}
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
-    /** Dispose secrets from memory. */
+    /** Disposes secrets from memory. */
     dispose(): void;
 }
 export type EvmWalletConfig = import("../wallet-account-read-only-evm.js").EvmWalletConfig;

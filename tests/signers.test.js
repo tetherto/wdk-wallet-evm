@@ -35,12 +35,14 @@ describe('SeedSignerEvm', () => {
     root.dispose()
   })
 
-  test('should create a root signer from a mnemonic', () => {
+  test('should create a root signer with the account at index 0 by default', () => {
     const signer = new SeedSignerEvm(VALID_SEED_PHRASE)
 
     expect(signer.isRoot).toBe(true)
     expect(signer.isPrivateKey).toBe(false)
-    expect(signer.address).toBeUndefined()
+    expect(signer.address).toBe(EXPECTED_ADDRESS)
+    expect(signer.path).toBe("m/44'/60'/0'/0/0")
+    expect(signer.index).toBe(0)
 
     signer.dispose()
   })
@@ -73,7 +75,7 @@ describe('SeedSignerEvm', () => {
   test('should derive the same address when path is provided via constructor opts', () => {
     const signer = new SeedSignerEvm(VALID_SEED_PHRASE, { path: "0'/0/0" })
 
-    expect(signer.isRoot).toBe(false)
+    expect(signer.isRoot).toBe(true)
     expect(signer.address).toBe(EXPECTED_ADDRESS)
 
     signer.dispose()
@@ -83,7 +85,7 @@ describe('SeedSignerEvm', () => {
     const root = new SeedSignerEvm(VALID_SEED_PHRASE)
     root.dispose()
 
-    expect(() => root.derive("0'/0/0")).toThrow('Seed or root is required.')
+    expect(() => root.derive("0'/0/0")).toThrow('Cannot derive: this signer has no root')
   })
 
   test('should return the correct signature', async () => {

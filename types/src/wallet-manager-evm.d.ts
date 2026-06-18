@@ -47,9 +47,10 @@ export default class WalletManagerEvm extends WalletManager {
         signerName?: string;
     }): Promise<WalletAccountEvm>;
     /**
-     * Returns the wallet account associated with a registered signer. For
-     * non-derivable signers (e.g., private-key signers), returns the signer's
-     * single account, with no further derivation.
+     * Returns the wallet account associated with a registered signer. Non-derivable
+     * signers (e.g. private-key signers) are their own single account; derivable (root)
+     * signers return their default account (index 0). The root signer itself is never
+     * wrapped in an account, so the root key is only ever disposed with the manager.
      *
      * @param {string} signerName - The signer name registered via {@link addSigner}.
      * @returns {Promise<WalletAccountEvm>} The account.

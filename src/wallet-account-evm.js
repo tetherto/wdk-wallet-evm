@@ -54,14 +54,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Creates a new evm wallet account using a signer.
    *
-   * @param {ISignerEvm} signer - A signer implementing the EVM signer interface (must be a child, not a root).
+   * @param {ISignerEvm} signer - A signer implementing the EVM signer interface.
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
   constructor (signer, config = {}) {
-    if (signer.isRoot) {
-      throw new Error('The signer is the root signer. Call derive method to create a child signer.')
-    }
-
     super(signer.address, config)
 
     /**
@@ -119,6 +115,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   static fromSeed (seed, path, config = {}) {
     const root = new SeedSignerEvm(seed)
     const signer = root.derive(path)
+    // The derived child holds its own account key and does not retain the root,
+    // so the transient master can be wiped immediately.
+    root.dispose()
     return new WalletAccountEvm(signer, config)
   }
 

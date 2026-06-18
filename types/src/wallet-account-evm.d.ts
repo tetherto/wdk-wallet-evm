@@ -13,7 +13,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Creates a new evm wallet account using a signer.
      *
-     * @param {ISignerEvm} signer - A signer implementing the EVM signer interface (must be a child, not a root).
+     * @param {ISignerEvm} signer - A signer implementing the EVM signer interface.
      * @param {EvmWalletConfig} [config] - The configuration object.
      */
     constructor(signer: ISignerEvm, config?: EvmWalletConfig);

@@ -20,6 +20,9 @@ import { ISigner, NotImplementedError } from '@tetherto/wdk-wallet'
 
 const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
+// Relative path of the account derived when none is provided.
+const DEFAULT_ACCOUNT_PATH = "0'/0/0"
+
 /** @typedef {import('../utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 /** @typedef {import('@tetherto/wdk-wallet').ISigner} ISigner */
 /** @typedef {import('@tetherto/wdk-wallet').SignerError} SignerError */
@@ -32,8 +35,9 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
 
 /**
  * @typedef {Object} SeedSignerEvmOpts
- * @property {MemorySafeHDNodeWallet} [root] - An existing HD node wallet root to derive from.
- * @property {string} [path] - Relative BIP-44 path segment (e.g. "0'/0/0").
+ * @property {MemorySafeHDNodeWallet} [root] - An existing HD node wallet root to derive from (internal; set by {@link SeedSignerEvm#derive}).
+ * @property {string} [path] - Relative BIP-44 path segment (e.g. "0'/0/0"). Defaults to the account at index 0.
+ * @property {boolean} [isChild] - Internal. When true, the signer is a derived child and does not retain the root (set by {@link SeedSignerEvm#derive}).
  */
 
 /**
@@ -44,7 +48,7 @@ const BIP_44_ETH_DERIVATION_PATH_PREFIX = "m/44'/60'"
  */
 export class ISignerEvm extends ISigner {
   /**
-   * Whether this signer is a root (master) signer that can only derive children.
+   * Whether this signer is a root (master) signer that holds the HD root and can derive children.
    * @type {boolean}
    */
   get isRoot () {
@@ -157,15 +161,18 @@ export class ISignerEvm extends ISigner {
 /**
  * @extends {ISignerEvm}
  * Signer implementation that derives keys from a BIP-39 seed using the BIP-44 Ethereum path.
- * Can represent either a root (no address, only derivation) or a child (derived account with address).
+ * Always holds a derived account (index 0 by default). A root signer also retains the HD root
+ * and can derive child signers; a derived child holds only its own account.
  */
 export default class SeedSignerEvm extends ISignerEvm {
   /**
    * Create a SeedSignerEvm.
-   * Provide either a mnemonic/seed or an existing root via opts.root.
+   * Provide a mnemonic/seed (children built via {@link derive} pass a shared root internally).
    *
    * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
-   * @param {SeedSignerEvmOpts} [opts] - Construction options for root reuse or direct child derivation.
+   * @param {SeedSignerEvmOpts} [opts] - Construction options for root reuse, direct child derivation or path definition (default is index 0).
+     * @throws {Error} If neither a seed nor a root is provided, or if both are provided.
+     * @throws {Error} If a seed is provided but is not a valid BIP-39 mnemonic.
    */
   constructor (seed, opts = {}) {
     super()
@@ -186,30 +193,25 @@ export default class SeedSignerEvm extends ISignerEvm {
       seed = bip39.mnemonicToSeedSync(seed)
     }
 
-    /** @private */
-    this._isRoot = true
-    /** @private */
-    this._root =
-      opts.root || (seed ? MemorySafeHDNodeWallet.fromSeed(seed) : undefined)
-    /** @private */
-    this._account = undefined
-    /** @private */
-    this._address = undefined
-    /** @private */
-    this._path = undefined
+    const root = opts.root || (seed ? MemorySafeHDNodeWallet.fromSeed(seed) : undefined)
 
-    if (opts.path) {
-      const fullPath = `${BIP_44_ETH_DERIVATION_PATH_PREFIX}/${opts.path}`
-      const account = this._root.derivePath(fullPath)
-      this._account = account
-      this._address = account.address
-      this._path = fullPath
-      this._isRoot = false
-    }
+    const fullPath = `${BIP_44_ETH_DERIVATION_PATH_PREFIX}/${opts.path || DEFAULT_ACCOUNT_PATH}`
+    const account = root.derivePath(fullPath)
+
+    /** @private */
+    this._account = account
+    /** @private */
+    this._address = account.address
+    /** @private */
+    this._path = fullPath
+    /** @private */
+    this._isRoot = !opts.isChild
+    /** @private */
+    this._root = opts.isChild ? undefined : root
   }
 
   /**
-   * Whether this signer is a root (master) signer that can only derive children.
+   * Whether this signer is a root (master) signer that holds the HD root and can derive children.
    * @type {boolean}
    */
   get isRoot () {
@@ -234,7 +236,7 @@ export default class SeedSignerEvm extends ISignerEvm {
   }
 
   /**
-   * The full derivation path if this is a child signer.
+   * The full derivation path of this signer's account.
    * @type {string|undefined}
    */
   get path () {
@@ -265,9 +267,13 @@ export default class SeedSignerEvm extends ISignerEvm {
    * @param {string} relPath
    * @param {EvmWalletConfig} [_cfg] - Ignored for EVM signers; present for base compatibility.
    * @returns {SeedSignerEvm}
+   * @throws {Error} If called on a derived child signer, which does not retain the root.
    */
   derive (relPath, _cfg) {
-    return new SeedSignerEvm(null, { root: this._root, path: relPath })
+    if (!this._root) {
+      throw new Error('Cannot derive: this signer has no root (it is a derived child or has been disposed).')
+    }
+    return new SeedSignerEvm(null, { root: this._root, path: relPath, isChild: true })
   }
 
   /**
@@ -284,9 +290,6 @@ export default class SeedSignerEvm extends ISignerEvm {
    * @returns {Promise<string>}
    */
   async sign (message) {
-    if (!this._account) {
-      throw new Error('Cannot sign from a root signer. Derive a child first.')
-    }
     return this._account.signMessage(message)
   }
 
@@ -296,11 +299,6 @@ export default class SeedSignerEvm extends ISignerEvm {
    * @returns {Promise<string>}
    */
   async signTransaction (unsignedTx) {
-    if (!this._account) {
-      throw new Error(
-        'Cannot sign transactions from a root signer. Derive a child first.'
-      )
-    }
     return this._account.signTransaction(unsignedTx)
   }
 
@@ -311,11 +309,6 @@ export default class SeedSignerEvm extends ISignerEvm {
    * @returns {Promise<string>} The typed data signature.
    */
   async signTypedData ({ domain, types, message }) {
-    if (!this._account) {
-      throw new Error(
-        'Cannot sign typed data from a root signer. Derive a child first.'
-      )
-    }
     return this._account.signTypedData(domain, types, message)
   }
 
@@ -325,15 +318,10 @@ export default class SeedSignerEvm extends ISignerEvm {
    * @returns {Promise<Authorization>}
    */
   async signAuthorization (auth) {
-    if (!this._account) {
-      throw new Error(
-        'Cannot sign authorizations from a root signer. Derive a child first.'
-      )
-    }
     return this._account.authorizeSync(auth)
   }
 
-  /** Dispose secrets from memory. */
+  /** Disposes secrets from memory. */
   dispose () {
     if (this._account) this._account.dispose()
     this._account = undefined
