@@ -115,8 +115,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   static fromSeed (seed, path, config = {}) {
     const root = new SeedSignerEvm(seed)
     const signer = root.derive(path)
-    // The derived child holds its own account key and does not retain the root,
-    // so the transient master can be wiped immediately.
+    // The derived child holds its own account key and does not retain the root
     root.dispose()
     return new WalletAccountEvm(signer, config)
   }

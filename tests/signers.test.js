@@ -114,6 +114,33 @@ describe('SeedSignerEvm', () => {
 
     expect(child.keyPair.privateKey).toBeNull()
   })
+
+  test('should not neuter the shared root when a derived child is disposed', async () => {
+    const root = new SeedSignerEvm(VALID_SEED_PHRASE)
+    const a = root.derive("0'/0/0")
+    const b = root.derive("0'/0/1")
+
+    const signature = await b.sign(MESSAGE)
+
+    a.dispose()
+
+    // The sibling still signs and the root can still derive new children.
+    await expect(b.sign(MESSAGE)).resolves.toBe(signature)
+    expect(() => root.derive("0'/0/2")).not.toThrow()
+
+    b.dispose()
+    root.dispose()
+  })
+
+  test('should not let a derived child derive further', () => {
+    const root = new SeedSignerEvm(VALID_SEED_PHRASE)
+    const child = root.derive("0'/0/0")
+
+    expect(() => child.derive("0'/0/1")).toThrow('Cannot derive: this signer has no root')
+
+    child.dispose()
+    root.dispose()
+  })
 })
 
 describe('PrivateKeySignerEvm', () => {
