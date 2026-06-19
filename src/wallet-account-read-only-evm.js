@@ -74,6 +74,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number} [retries] - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3.
  * @property {number} [chainId] - The chain ID of the network. When provided, skips automatic chain ID detection from the provider.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
+ * @property {number | bigint} [transactionMaxFee] - The maximum fee amount for sendTransaction and signTransaction operations.
  */
 
 const DELEGATION_DESIGNATOR_PREFIX = '0xef0100'
@@ -85,7 +86,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * Creates a new evm read-only wallet account.
    *
    * @param {string} address - The account's address.
-   * @param {Omit<EvmWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
+   * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
    */
   constructor (address, config = { }) {
     super(address)
@@ -94,7 +95,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * The read-only wallet account configuration.
      *
      * @protected
-     * @type {Omit<EvmWalletConfig, 'transferMaxFee'>}
+     * @type {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>}
      */
     this._config = config
 

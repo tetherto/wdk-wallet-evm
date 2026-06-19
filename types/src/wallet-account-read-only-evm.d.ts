@@ -11,16 +11,16 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * Creates a new evm read-only wallet account.
      *
      * @param {string} address - The account's address.
-     * @param {Omit<EvmWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
+     * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
      */
-    constructor(address: string, config?: Omit<EvmWalletConfig, "transferMaxFee">);
+    constructor(address: string, config?: Omit<EvmWalletConfig, "transferMaxFee" | "transactionMaxFee">);
     /**
      * The read-only wallet account configuration.
      *
      * @protected
-     * @type {Omit<EvmWalletConfig, 'transferMaxFee'>}
+     * @type {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>}
      */
-    protected _config: Omit<EvmWalletConfig, "transferMaxFee">;
+    protected _config: Omit<EvmWalletConfig, "transferMaxFee" | "transactionMaxFee">;
     /**
      * An ethers provider to interact with a node of the blockchain.
      *
@@ -220,5 +220,9 @@ export type EvmWalletConfig = {
      * - The maximum fee amount for transfer operations.
      */
     transferMaxFee?: number | bigint;
+    /**
+     * - The maximum fee amount for sendTransaction and signTransaction operations.
+     */
+    transactionMaxFee?: number | bigint;
 };
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';

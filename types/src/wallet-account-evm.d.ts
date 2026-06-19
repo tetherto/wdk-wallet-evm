@@ -61,8 +61,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Signs a transaction.
      *
+     * If a provider is set, it also estimates the transaction's costs and checks them against the transaction max. fee option.
+     *
      * @param {EvmTransaction} tx - The transaction to sign.
      * @returns {Promise<string>} The signed transaction as a hex string.
+     * @throws {Error} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
      */
     signTransaction(tx: EvmTransaction): Promise<string>;
     /**
@@ -70,6 +73,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<TransactionResult>} The transaction's result.
+     * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
      */
     sendTransaction(tx: EvmTransaction): Promise<TransactionResult>;
     /**
@@ -77,6 +81,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {EvmTransferOptions} options - The transfer's options.
      * @returns {Promise<TransferResult>} The transfer's result.
+     * @throws {Error} If the transfer's cost exceeds the maximum transfer fee option.
      */
     transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**

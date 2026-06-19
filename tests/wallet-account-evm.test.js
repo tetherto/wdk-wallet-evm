@@ -192,22 +192,70 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('signTransaction', () => {
+    const TRANSACTION = {
+      to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      value: 1_000n,
+      gasLimit: 21_000n,
+      maxFeePerGas: 2_000_000_000n,
+      maxPriorityFeePerGas: 1_000_000_000n,
+      nonce: 0,
+      chainId: 31_337n
+    }
+
+    const SIGNED_TRANSACTION = '0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec'
+
     test('should sign a transaction and return a valid hex string', async () => {
       const accountWithoutProvider = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
-      
-      const TRANSACTION = {
-        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
-        value: 1_000n,
-        gasLimit: 21_000n,
-        maxFeePerGas: 2_000_000_000n,
-        maxPriorityFeePerGas: 1_000_000_000n,
-        nonce: 0,
-        chainId: 31_337n
-      }
-      const SIGNED_TRANSACTION = "0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec"
+
       const signedTx = await accountWithoutProvider.signTransaction(TRANSACTION)
-      
+
       expect(signedTx).toBe(SIGNED_TRANSACTION)
+    })
+
+    test('should throw if transaction fee exceeds the transaction max fee configuration', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: 0
+      })
+
+      await expect(account.signTransaction(TRANSACTION))
+        .rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+    })
+
+    test('should not enforce transaction max fee without a provider', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        transactionMaxFee: 0
+      })
+
+      const signedTx = await account.signTransaction(TRANSACTION)
+
+      expect(signedTx).toBe(SIGNED_TRANSACTION)
+    })
+
+    test('should allow a fee exactly equal to transactionMaxFee', async () => {
+      const { fee } = await account.quoteSendTransaction(TRANSACTION)
+
+      const accountAtLimit = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: fee
+      })
+
+      const signedTx = await accountAtLimit.signTransaction(TRANSACTION)
+
+      expect(signedTx).toBeTruthy()
+    })
+
+    test('should allow a fee below transactionMaxFee', async () => {
+      const { fee } = await account.quoteSendTransaction(TRANSACTION)
+
+      const accountBelowLimit = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: fee + 1n
+      })
+
+      const signedTx = await accountBelowLimit.signTransaction(TRANSACTION)
+
+      expect(signedTx).toBeTruthy()
     })
   })
 
@@ -285,6 +333,57 @@ describe('WalletAccountEvm', () => {
       }])
 
       expect(fee).toBe(EXPECTED_FEE)
+    })
+
+    test('should throw if transaction fee exceeds the transaction max fee configuration', async () => {
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: 0
+      })
+
+      await expect(account.sendTransaction(TRANSACTION))
+        .rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+    })
+
+    test('should allow a fee exactly equal to transactionMaxFee', async () => {
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const { fee } = await account.quoteSendTransaction(TRANSACTION)
+
+      const accountAtLimit = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: fee
+      })
+
+      const result = await accountAtLimit.sendTransaction(TRANSACTION)
+
+      expect(result).toHaveProperty('hash')
+    })
+
+    test('should allow a fee below transactionMaxFee', async () => {
+      const TRANSACTION = {
+        to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+        value: 1_000
+      }
+
+      const { fee } = await account.quoteSendTransaction(TRANSACTION)
+
+      const accountBelowLimit = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider: hre.network.provider,
+        transactionMaxFee: fee + 1n
+      })
+
+      const result = await accountBelowLimit.sendTransaction(TRANSACTION)
+
+      expect(result).toHaveProperty('hash')
     })
 
     test('should throw if the account is not connected to a provider', async () => {
