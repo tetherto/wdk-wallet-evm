@@ -2,6 +2,8 @@ import hre from 'hardhat'
 
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 
+import { SignerError } from '@tetherto/wdk-wallet'
+
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
 
 const SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
@@ -17,6 +19,15 @@ describe('WalletManagerEvm', () => {
 
   afterEach(() => {
     wallet.dispose()
+  })
+
+  describe('constructor', () => {
+    test('should throw SignerError if an ISigner is passed instead of a seed', () => {
+      const fakeSigner = { derive: async () => {}, signTransaction: async () => {} }
+
+      expect(() => new WalletManagerEvm(fakeSigner))
+        .toThrow(SignerError)
+    })
   })
 
   describe('getAccount', () => {
@@ -40,6 +51,16 @@ describe('WalletManagerEvm', () => {
       await expect(wallet.getAccount(-1))
         .rejects.toThrow('invalid path component')
     })
+
+    test('should throw SignerError if a signer name is given positionally', async () => {
+      await expect(wallet.getAccount('mySigner'))
+        .rejects.toThrow(SignerError)
+    })
+
+    test('should throw SignerError if options.signerName is given', async () => {
+      await expect(wallet.getAccount(0, { signerName: 'mySigner' }))
+        .rejects.toThrow(SignerError)
+    })
   })
 
   describe('getAccountByPath', () => {
@@ -54,6 +75,11 @@ describe('WalletManagerEvm', () => {
     test('should throw if the path is invalid', async () => {
       await expect(wallet.getAccountByPath("a'/b/c"))
         .rejects.toThrow('invalid path component')
+    })
+
+    test('should throw SignerError if options.signerName is given', async () => {
+      await expect(wallet.getAccountByPath("0'/0/0", { signerName: 'mySigner' }))
+        .rejects.toThrow(SignerError)
     })
   })
 
