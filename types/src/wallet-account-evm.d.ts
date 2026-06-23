@@ -1,5 +1,5 @@
-/** @implements {IWalletAccount} */
-export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implements IWalletAccount {
+/** @implements {IWalletAccount<string>} */
+export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implements IWalletAccount<string> {
     /**
      * Creates a new evm wallet account.
      *
@@ -71,11 +71,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Sends a transaction.
      *
-     * @param {EvmTransaction} tx - The transaction.
+     * @param {EvmTransaction | string} tx - The transaction.
      * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
      */
-    sendTransaction(tx: EvmTransaction): Promise<TransactionResult>;
+    sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
+    /**
+     * Quotes the costs of a send transaction operation.
+     *
+     * @param {EvmTransaction | string} tx - The transaction.
+     * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
+     */
+    quoteSendTransaction(tx: EvmTransaction | string): Promise<Omit<TransactionResult, "hash">>;
     /**
      * Transfers a token to another address.
      *
@@ -131,7 +138,7 @@ export type HDNodeWallet = import("ethers").HDNodeWallet;
 export type AuthorizationRequest = import("ethers").AuthorizationRequest;
 export type Authorization = import("ethers").Authorization;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
-export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
+export type IWalletAccount<TSignedTransaction> = import("@tetherto/wdk-wallet").IWalletAccount<TSignedTransaction>;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
