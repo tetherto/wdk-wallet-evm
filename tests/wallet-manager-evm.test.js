@@ -29,6 +29,13 @@ describe('WalletManagerEvm', () => {
       expect(() => new WalletManagerEvm(new PrivateKeySignerEvm(PRIVATE_KEY))) // eslint-disable-line no-new
         .toThrow('The default signer must be derivable.')
     })
+
+    test('should throw if the default signer is a bare ISigner without isDerivable', () => {
+      const bareSigner = { derive: async () => {}, signTransaction: async () => {}, getAddress: async () => '0x0', dispose: () => {} }
+
+      expect(() => new WalletManagerEvm(bareSigner)) // eslint-disable-line no-new
+        .toThrow('The default signer must be derivable.')
+    })
   })
 
   describe('getAccount', () => {
