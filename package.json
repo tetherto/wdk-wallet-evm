@@ -36,6 +36,26 @@
     "ethers": "6.14.4",
     "sodium-universal": "5.0.1"
   },
+  "peerDependencies": {
+    "@ledgerhq/device-management-kit": "^1.3.0",
+    "@ledgerhq/device-signer-kit-ethereum": "^1.10.0",
+    "@ledgerhq/device-transport-kit-web-hid": "^1.2.3",
+    "rxjs": "^7.8.2"
+  },
+  "peerDependenciesMeta": {
+    "@ledgerhq/device-management-kit": {
+      "optional": true
+    },
+    "@ledgerhq/device-signer-kit-ethereum": {
+      "optional": true
+    },
+    "@ledgerhq/device-transport-kit-web-hid": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "3.0.9",
     "cross-env": "7.0.3",
@@ -63,6 +83,10 @@
     "./signers": {
       "types": "./types/src/signers/index.d.ts",
       "default": "./src/signers/index.js"
+    },
+    "./signers/ledger": {
+      "types": "./types/src/signers/ledger-signer-evm.d.ts",
+      "default": "./src/signers/ledger-signer-evm.js"
     },
     "./package": {
       "default": "./package.json"
