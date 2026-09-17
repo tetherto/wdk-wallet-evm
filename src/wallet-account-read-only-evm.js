@@ -238,6 +238,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a send transaction operation.
    *
+   * A `gasLimit` set on the transaction replaces the gas estimation, and a `maxFeePerGas` (or `gasPrice`) set on it
+   * replaces the fee rate fetched from the provider, so the quote is the transaction's maximum cost as it will be sent.
+   *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
@@ -249,15 +252,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
     const from = await this.getAddress()
 
-    const gas = tx.authorizationList
-      ? await this._estimateGasWithAuthList({ from, ...tx })
-      : await this._provider.estimateGas({ from, ...tx })
+    const gas = tx.gasLimit ?? await this._estimateGas({ from, ...tx })
+    const feeRate = tx.maxFeePerGas ?? tx.gasPrice ?? await this._getFeeRate()
 
-    const data = await this._provider.getFeeData()
-
-    const feeRate = data.maxFeePerGas || data.gasPrice
-
-    return { fee: gas * feeRate }
+    return { fee: BigInt(gas) * BigInt(feeRate) }
   }
 
   /**
@@ -517,6 +515,20 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     const result = await this._provider.send('eth_estimateGas', [rpcTx])
 
     return BigInt(result)
+  }
+
+  /** @private */
+  async _estimateGas (tx) {
+    return tx.authorizationList
+      ? await this._estimateGasWithAuthList(tx)
+      : await this._provider.estimateGas(tx)
+  }
+
+  /** @private */
+  async _getFeeRate () {
+    const { maxFeePerGas, gasPrice } = await this._provider.getFeeData()
+
+    return maxFeePerGas || gasPrice
   }
 
   /**

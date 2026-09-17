@@ -231,6 +231,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Quotes the costs of a send transaction operation.
    *
+   * A `gasLimit` set on the transaction replaces the gas estimation, and a `maxFeePerGas` (or `gasPrice`) set on it
+   * replaces the fee rate fetched from the provider, so the quote is the transaction's maximum cost as it will be sent.
+   * A signed raw transaction is quoted from its own gas limit and fee cap.
+   *
    * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
@@ -241,19 +245,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
         throw new ProviderRequiredError('The wallet must be connected to a provider to quote send transaction operations.')
       }
 
-      const { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList } = Transaction.from(tx)
+      const { gasLimit, gasPrice, maxFeePerGas } = Transaction.from(tx)
 
-      const transaction = { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList }
-
-      const gas = transaction.authorizationList
-        ? await this._estimateGasWithAuthList(transaction)
-        : await this._provider.estimateGas(transaction)
-
-      const fees = await this._provider.getFeeData()
-
-      const feeRate = fees.maxFeePerGas || fees.gasPrice
-
-      return { fee: gas * feeRate }
+      return { fee: gasLimit * (maxFeePerGas ?? gasPrice) }
     }
 
     return await super.quoteSendTransaction(tx)

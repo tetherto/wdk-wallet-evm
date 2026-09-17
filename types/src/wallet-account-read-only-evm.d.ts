@@ -68,6 +68,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a send transaction operation.
      *
+     * A `gasLimit` set on the transaction replaces the gas estimation, and a `maxFeePerGas` (or `gasPrice`) set on it
+     * replaces the fee rate fetched from the provider, so the quote is the transaction's maximum cost as it will be sent.
+     *
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
@@ -164,6 +167,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     getDelegation(): Promise<DelegationInfo>;
     /** @private */
     private _estimateGasWithAuthList;
+    private _estimateGas;
+    private _getFeeRate;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
