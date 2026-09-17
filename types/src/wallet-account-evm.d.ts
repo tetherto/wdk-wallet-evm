@@ -116,12 +116,12 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Approves a specific amount of tokens to a spender.
      *
-     * @param {ApproveOptions} options The approve options.
+     * @param {EvmApproveOptions} options - The approve options, including any gas overrides to carry onto the transaction.
      * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
      */
-    approve(options: ApproveOptions): Promise<TransactionResult>;
+    approve(options: EvmApproveOptions): Promise<TransactionResult>;
     /**
      * Returns a read-only copy of the account.
      *
@@ -170,6 +170,7 @@ export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
 export type EvmTransaction = import("./wallet-account-read-only-evm.js").EvmTransaction;
 export type EvmTransferOptions = import("./wallet-account-read-only-evm.js").EvmTransferOptions;
+export type EvmGasOverrides = import("./wallet-account-read-only-evm.js").EvmGasOverrides;
 export type EvmWalletConfig = import("./wallet-account-read-only-evm.js").EvmWalletConfig;
 export type ApproveOptions = {
     /**
@@ -185,4 +186,8 @@ export type ApproveOptions = {
      */
     amount: number | bigint;
 };
+/**
+ * The options of a token approval, extended with the optional gas overrides of an evm transaction.
+ */
+export type EvmApproveOptions = ApproveOptions & EvmGasOverrides;
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js';

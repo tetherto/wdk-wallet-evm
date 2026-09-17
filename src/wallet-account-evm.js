@@ -39,6 +39,7 @@ import { populateTransactionEvm } from './utils/tx-populator-evm.js'
 /** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransferOptions} EvmTransferOptions */
+/** @typedef {import('./wallet-account-read-only-evm.js').EvmGasOverrides} EvmGasOverrides */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 /**
@@ -46,6 +47,12 @@ import { populateTransactionEvm } from './utils/tx-populator-evm.js'
  * @property {string} token - The address of the token to approve.
  * @property {string} spender - The spender's address.
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
+ */
+
+/**
+ * The options of a token approval, extended with the optional gas overrides of an evm transaction.
+ *
+ * @typedef {ApproveOptions & EvmGasOverrides} EvmApproveOptions
  */
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
@@ -281,7 +288,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Approves a specific amount of tokens to a spender.
    *
-   * @param {ApproveOptions} options The approve options.
+   * @param {EvmApproveOptions} options - The approve options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
@@ -309,7 +316,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('approve', [spender, amount])
+      data: contract.interface.encodeFunctionData('approve', [spender, amount]),
+      ...WalletAccountReadOnlyEvm._getGasOverrides(options)
     }
 
     return await this.sendTransaction(tx)

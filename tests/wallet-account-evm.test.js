@@ -414,6 +414,29 @@ describe('WalletAccountEvm', () => {
       expect(transaction.data).toBe(data)
     })
 
+    test('should carry the gas overrides set on the options onto the broadcast transaction', async () => {
+      const TRANSFER = {
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        gasLimit: 90_000n,
+        maxFeePerGas: 30_000_000_000n,
+        maxPriorityFeePerGas: 2_000_000_000n
+      }
+
+      const { hash, fee } = await account.transfer(TRANSFER)
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_FEE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.type).toBe(2)
+      expect(transaction.gasLimit).toBe(TRANSFER.gasLimit)
+      expect(transaction.maxFeePerGas).toBe(TRANSFER.maxFeePerGas)
+      expect(transaction.maxPriorityFeePerGas).toBe(TRANSFER.maxPriorityFeePerGas)
+    })
+
     test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
       const account = new WalletAccountEvm(
         await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"),
@@ -459,6 +482,28 @@ describe('WalletAccountEvm', () => {
 
       expect(transaction.to).toBe(APPROVE_OPTIONS.token)
       expect(transaction.data).toBe(data)
+    })
+
+    test('should carry the gas overrides set on the options onto the broadcast transaction', async () => {
+      const APPROVE_OPTIONS = {
+        token: TOKEN_ADDRESS,
+        spender: SPENDER_ADDRESS,
+        amount: AMOUNT,
+        gasLimit: 60_000n,
+        gasPrice: 5_000_000_000n
+      }
+
+      const { hash, fee } = await account.approve(APPROVE_OPTIONS)
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_FEE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.type).toBe(2)
+      expect(transaction.gasLimit).toBe(APPROVE_OPTIONS.gasLimit)
+      expect(transaction.maxFeePerGas).toBe(APPROVE_OPTIONS.gasPrice)
+      expect(transaction.maxPriorityFeePerGas).toBe(APPROVE_OPTIONS.gasPrice)
     })
 
     test('should throw if approving non-zero USDT on mainnet when allowance is non-zero', async () => {

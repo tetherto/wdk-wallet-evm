@@ -25,6 +25,7 @@
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
+/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 /** @typedef {import('@tetherto/wdk-wallet').Finality} Finality */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionReceipt} TransactionReceipt */
 /** @typedef {import('@tetherto/wdk-wallet').WaitForTransactionTarget} WaitForTransactionTarget */
@@ -33,11 +34,13 @@
 /** @typedef {import('./src/wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').DelegationInfo} DelegationInfo */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
+/** @typedef {import('./src/wallet-account-read-only-evm.js').EvmGasOverrides} EvmGasOverrides */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransferOptions} EvmTransferOptions */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransactionDetails} EvmTransactionDetails */
 
 /** @typedef {import('./src/wallet-account-evm.js').ApproveOptions} ApproveOptions */
+/** @typedef {import('./src/wallet-account-evm.js').EvmApproveOptions} EvmApproveOptions */
 
 /** @typedef {import('./src/utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
 

@@ -1,10 +1,18 @@
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
+     * Extracts the gas and fee overrides set on transfer or approve options.
+     *
+     * @protected
+     * @param {EvmGasOverrides} options - The options to read the overrides from.
+     * @returns {EvmGasOverrides} Only the gas and fee fields that are set on the options.
+     */
+    protected static _getGasOverrides(options: EvmGasOverrides): EvmGasOverrides;
+    /**
      * Returns an evm transaction to execute the given token transfer.
      *
      * @protected
-     * @param {EvmTransferOptions} options - The transfer's options.
-     * @returns {Promise<EvmTransaction>} The evm transaction.
+     * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides and ERC-7702 authorizations to carry onto the transaction.
+     * @returns {Promise<EvmTransaction>} The ERC-20 transfer call as an evm transaction, with the options' gas overrides and authorizations applied.
      */
     protected static _getTransferTransaction(options: EvmTransferOptions): Promise<EvmTransaction>;
     /**
@@ -168,6 +176,7 @@ export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTransactionOptions;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 /**
  * The EVM-specific fields added to a normalized transaction receipt.
  */
@@ -251,24 +260,15 @@ export type EvmTransaction = {
      */
     authorizationList?: AuthorizationLike[];
 };
-export type EvmTransferOptions = {
-    /**
-     * - The address of the token to transfer.
-     */
-    token: string;
-    /**
-     * - The address of the recipient.
-     */
-    recipient: string;
-    /**
-     * - The amount of tokens to transfer to the recipient (in base units).
-     */
-    amount: number | bigint;
-    /**
-     * - An optional list of ERC-7702 signed authorizations.
-     */
-    authorizationList?: AuthorizationLike[];
-};
+/**
+ * The gas and fee fields of an evm transaction that can be set on transfer and approve options.
+ */
+export type EvmGasOverrides = Pick<EvmTransaction, "gasLimit" | "gasPrice" | "maxFeePerGas" | "maxPriorityFeePerGas">;
+/**
+ * The options of a token transfer, extended with the optional gas overrides and ERC-7702 authorizations of an evm
+ * transaction.
+ */
+export type EvmTransferOptions = TransferOptions & EvmGasOverrides & Pick<EvmTransaction, "authorizationList">;
 export type EvmWalletConfig = {
     /**
      * - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. 
