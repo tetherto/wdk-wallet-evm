@@ -185,7 +185,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
     const { hash, fee } = await account.transfer(TRANSFER)
     const transaction = await provider.getTransaction(hash)
 
-    expect(fee).toBe(106_069_950_248_256n)
+    expect(fee).toBe(TRANSFER.gasLimit * TRANSFER.maxFeePerGas)
     expect(transaction.gasLimit).toBe(TRANSFER.gasLimit)
     expect(transaction.maxFeePerGas).toBe(TRANSFER.maxFeePerGas)
     expect(transaction.maxPriorityFeePerGas).toBe(TRANSFER.maxPriorityFeePerGas)
