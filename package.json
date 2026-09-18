@@ -31,8 +31,8 @@
   "dependencies": {
     "@noble/hashes": "1.8.0",
     "@noble/secp256k1": "2.2.3",
+    "@tetherto/wdk-wallet": "github:claudiovb/wdk-wallet#fix/universal-signer",
     "@tetherto/wdk-failover-provider": "1.0.0-beta.2",
-    "@tetherto/wdk-wallet": "1.0.0-beta.17",
     "bare-node-runtime": "^1.5.0",
     "bip39": "3.1.0",
     "ethers": "6.17.0",
@@ -62,6 +62,7 @@
     },
     "./signers": {
       "types": "./types/src/signers/index.d.ts",
+      "bare": "./src/signers/bare.js",
       "default": "./src/signers/index.js"
     },
     "./package": {
@@ -75,6 +76,7 @@
   "standard": {
     "ignore": [
       "bare.js",
+      "src/signers/bare.js",
       "tests/**/*.js"
     ]
   }

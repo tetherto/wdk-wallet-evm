@@ -12,18 +12,32 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Creates a new evm wallet account from a BIP-39 seed, deriving the account's key at the
      * given BIP-44 path.
      *
+     * Kept relative to Ethereum's coin type (m/44'/60') for backwards compatibility with
+     * pre-existing callers of this constructor; unlike SeedSignerEvm's own constructor (which
+     * now takes a full absolute path), this overload's `path` is still just the account path
+     * segment below "m/44'/60'".
+     *
      * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase or seed bytes.
-     * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
+     * @param {string} path - The BIP-44 account path, relative to "m/44'/60'" (e.g. "0'/0/0").
      * @param {EvmWalletConfig} [config] - The configuration object.
+     * @throws {ValueError} If the given seed phrase is invalid.
      */
     constructor(seed: string | Uint8Array, path: string, config?: EvmWalletConfig);
     /**
      * Creates a new evm wallet account using a signer.
      *
      * @param {ISignerEvm} signer - A signer implementing the EVM signer interface.
-     * @param {EvmWalletConfig} [config] - The configuration object.
+     * @param {EvmWalletConfig & SignerOptions} [config] - The configuration object.
      */
-    constructor(signer: ISignerEvm, config?: EvmWalletConfig);
+    constructor(signer: ISignerEvm, config?: EvmWalletConfig & SignerOptions);
+    /**
+     * If true, disposes the signer on calls to the 'dispose' method. Always true for an
+     * account created from a seed, which owns its internally created signer.
+     *
+     * @protected
+     * @type {boolean}
+     */
+    protected _shouldWipeSignerOnDisposal: boolean;
     /**
      * The wallet account configuration.
      *
@@ -34,17 +48,12 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /** @private */
     private _signer;
     /**
-     * The derivation path's index of this account.
+     * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)),
+     * or null if the account's signer is not bound to a BIP-44 position (e.g. private-key signers).
      *
-     * @type {number}
+     * @type {string | null}
      */
-    get index(): number;
-    /**
-     * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
-     *
-     * @type {string}
-     */
-    get path(): string;
+    get path(): string | null;
     /**
      * The account's key pair.
      *
@@ -52,12 +61,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * it's strongly recommended to treat the key pair as a read-only view of the keys. While it's still technically possible to alter their
      * content, client code should never do so.
      *
-     * @type {KeyPair}
+     * @type {KeyPair | null}
      */
-    get keyPair(): KeyPair;
+    get keyPair(): KeyPair | null;
     /**
-     * Returns the account's address. If it wasn't resolved at construction time (e.g hardware signers), it asks the
-     * underlying signer to resolve it, then caches it locally.
+     * Returns the account's address.
      *
      * @returns {Promise<string>} The account's address.
      */
@@ -89,7 +97,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Sends a transaction.
      *
-     * @param {EvmTransaction | string} tx - The transaction.
+     * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
      * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
@@ -99,9 +107,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Quotes the costs of a send transaction operation.
      *
-     * @param {EvmTransaction | string} tx - The transaction.
+     * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
      */
     quoteSendTransaction(tx: EvmTransaction | string): Promise<Omit<TransactionResult, "hash">>;
     /**
@@ -131,8 +140,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Signs an ERC-7702 authorization tuple.
      *
+     * The chainId and nonce are populated from the provider when not explicitly provided.
+     *
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
+     * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**
@@ -154,17 +166,21 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     revokeDelegation(): Promise<TransactionResult>;
     /**
-     * Disposes the wallet account, erasing the private key from the memory.
+     * Disposes the wallet account, erasing the private key from the memory. The signer is
+     * wiped only if the account owns it: always for an account created from a seed, otherwise
+     * only when `shouldWipeSignerOnDisposal` was set in the config -- a caller-supplied signer
+     * is left untouched by default.
      */
     dispose(): void;
 }
-export type ISignerEvm = import("./signers/seed-signer-evm.js").ISignerEvm;
+export type ISignerEvm = import("./signers/signer-evm.js").ISignerEvm;
 export type HDNodeWallet = import("ethers").HDNodeWallet;
 export type AuthorizationRequest = import("ethers").AuthorizationRequest;
 export type Authorization = import("ethers").Authorization;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type IWalletAccount<TSignedTransaction> = import("@tetherto/wdk-wallet").IWalletAccount<TSignedTransaction>;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
+export type ProviderRequiredError = import("@tetherto/wdk-wallet").ProviderRequiredError;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TypedData = import("./wallet-account-read-only-evm.js").TypedData;
@@ -184,5 +200,11 @@ export type ApproveOptions = {
      * - The amount of tokens to approve to the spender.
      */
     amount: number | bigint;
+};
+export type SignerOptions = {
+    /**
+     * - If true, wipes the signer given at construction on calls to the 'dispose' method.
+     */
+    shouldWipeSignerOnDisposal?: boolean;
 };
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js';

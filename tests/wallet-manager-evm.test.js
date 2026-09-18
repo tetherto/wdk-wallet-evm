@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
 
-import { InvalidSignerError, NoSuchElementError, ProviderRequiredError } from '@tetherto/wdk-wallet'
+import { InvalidSignerError, NoSuchElementError, ProviderRequiredError, UnsupportedOperationError } from '@tetherto/wdk-wallet'
 
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -51,7 +51,7 @@ describe('WalletManagerEvm', () => {
   let wallet
 
   beforeEach(async () => {
-    const root = new SeedSignerEvm(SEED_PHRASE)
+    const root = new SeedSignerEvm(SEED_PHRASE, "m/44'/60'")
     wallet = new WalletManagerEvm(root, { provider: createProvider() })
   })
 
@@ -107,7 +107,7 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should derive from a named signer via options.signerName', async () => {
-      wallet.addSigner('secondary', new SeedSignerEvm(SEED_PHRASE))
+      wallet.addSigner('secondary', new SeedSignerEvm(SEED_PHRASE, "m/44'/60'"))
 
       const account = await wallet.getAccount(2, { signerName: 'secondary' })
 
@@ -138,7 +138,7 @@ describe('WalletManagerEvm', () => {
       await expect(promise).rejects.toThrow('No signer found with name "missing".')
     })
 
-    test('should derive a detached account for a named derivable signer without handing out the root', async () => {
+    test('should use the named signer as given without taking ownership of it', async () => {
       const named = new SeedSignerEvm(SEED_PHRASE)
       wallet.addSigner('seed', named)
 
@@ -147,13 +147,16 @@ describe('WalletManagerEvm', () => {
       expect(account).toBeInstanceOf(WalletAccountEvm)
       expect(account.path).toBe("m/44'/60'/0'/0/0")
 
-      // Disposing the account must not neuter the registered root.
+      // The registered signer is wrapped as-is but stays consumer-owned, so disposing
+      // the returned account must leave the signer fully usable.
       account.dispose()
       await expect(named.derive("0'/0/1")).resolves.toBeInstanceOf(SeedSignerEvm)
+
+      named.dispose()
     })
 
     test('should mirror the registered signer\'s own (non-default) path', async () => {
-      wallet.addSigner('atFive', new SeedSignerEvm(SEED_PHRASE, { path: "0'/0/5" }))
+      wallet.addSigner('atFive', new SeedSignerEvm(SEED_PHRASE, "m/44'/60'/0'/0/5"))
 
       const account = await wallet.getAccount('atFive')
 
@@ -171,7 +174,7 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should derive from a named signer via options.signerName', async () => {
-      wallet.addSigner('secondary', new SeedSignerEvm(SEED_PHRASE))
+      wallet.addSigner('secondary', new SeedSignerEvm(SEED_PHRASE, "m/44'/60'"))
 
       const account = await wallet.getAccountByPath("0'/0/0", { signerName: 'secondary' })
 
@@ -188,8 +191,8 @@ describe('WalletManagerEvm', () => {
 
       const promise = wallet.getAccountByPath("0'/0/0", { signerName: 'hot' })
 
-      await expect(promise).rejects.toThrow(InvalidSignerError)
-      await expect(promise).rejects.toThrow('PrivateKeySignerEvm does not support derivation.')
+      await expect(promise).rejects.toThrow(UnsupportedOperationError)
+      await expect(promise).rejects.toThrow("Method 'derive(path)' is not supported.")
     })
   })
 
@@ -217,15 +220,55 @@ describe('WalletManagerEvm', () => {
       for (const account of [account0, account1]) {
         expect(account.keyPair.privateKey).toBe(null)
 
-        // Once disposed, the underlying signer is cleared, so any signing operation
-        // fails when it reaches the now-undefined signer rather than for some other reason.
+        // Once disposed, the signer keeps its (neutered) HD node, so any signing
+        // operation fails inside the crypto layer when it reads the wiped private key.
         await expect(account.sign(MESSAGE))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signMessage'\)/)
+          .rejects.toThrow(/Uint8Array expected/)
         await expect(account.sendTransaction(TRANSACTION))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signTransaction'\)/)
+          .rejects.toThrow(/Uint8Array expected/)
         await expect(account.transfer(TRANSFER))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signTransaction'\)/)
+          .rejects.toThrow(/Uint8Array expected/)
       }
+    })
+
+    test('should dispose the internally created default signer when constructed from a seed', () => {
+      const wallet = new WalletManagerEvm(SEED_PHRASE)
+      const defaultSigner = wallet.getSigner()
+
+      wallet.dispose()
+
+      expect(defaultSigner.keyPair.privateKey).toBe(null)
+    })
+
+    test('should not dispose a default signer supplied at construction', async () => {
+      const root = new SeedSignerEvm(SEED_PHRASE, "m/44'/60'")
+      const wallet = new WalletManagerEvm(root)
+
+      wallet.dispose()
+
+      // The consumer still owns the signer, so it must remain fully usable.
+      await expect(root.derive("0'/0/0")).resolves.toBeInstanceOf(SeedSignerEvm)
+
+      root.dispose()
+    })
+
+    test('should not dispose signers registered via addSigner', () => {
+      const named = new SeedSignerEvm(SEED_PHRASE)
+      wallet.addSigner('seed', named)
+
+      wallet.dispose()
+
+      expect(named.keyPair.privateKey).not.toBe(null)
+
+      named.dispose()
+    })
+
+    test('should be safe to call dispose more than once', () => {
+      const wallet = new WalletManagerEvm(SEED_PHRASE)
+
+      wallet.dispose()
+
+      expect(() => wallet.dispose()).not.toThrow()
     })
   })
 
@@ -241,7 +284,7 @@ describe('WalletManagerEvm', () => {
     })
 
     test('should throw if the wallet is not connected to a provider', async () => {
-      const wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE))
+      const wallet = new WalletManagerEvm(SEED_PHRASE)
 
       const promise = wallet.getFeeRates()
 

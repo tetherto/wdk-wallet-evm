@@ -38,11 +38,12 @@
 /** @typedef {import('./src/wallet-account-read-only-evm.js').EvmTransactionDetails} EvmTransactionDetails */
 
 /** @typedef {import('./src/wallet-account-evm.js').ApproveOptions} ApproveOptions */
-
-/** @typedef {import('./src/utils/tx-populator-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
+/** @typedef {import('./src/wallet-account-evm.js').SignerOptions} SignerOptions */
 
 export { default } from './src/wallet-manager-evm.js'
 
 export { default as WalletAccountReadOnlyEvm } from './src/wallet-account-read-only-evm.js'
 
 export { default as WalletAccountEvm } from './src/wallet-account-evm.js'
+
+export { ISigner } from '@tetherto/wdk-wallet'

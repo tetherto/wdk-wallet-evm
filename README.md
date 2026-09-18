@@ -53,7 +53,7 @@ const seedPhrase =
   'test only example nut use this real life secret phrase must random'
 
 // Create a root signer from the seed phrase
-const root = new SeedSignerEvm(seedPhrase)
+const root = new SeedSignerEvm(seedPhrase, "m/44'/60'")
 
 // Create wallet manager with provider config (provider is required for chain ops)
 const wallet = new WalletManagerEvm(root, {
@@ -107,7 +107,7 @@ const account = new WalletAccountEvm(mnemonic, "0'/0/0", {
 import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
 import { SeedSignerEvm } from '@tetherto/wdk-wallet-evm/signers'
 
-const root = new SeedSignerEvm(mnemonic)
+const root = new SeedSignerEvm(mnemonic, "m/44'/60'")
 const wallet = new WalletManagerEvm(root, {
   provider: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
 })
@@ -297,7 +297,7 @@ Examples:
 // Root + manager (seed)
 import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
 import { SeedSignerEvm } from '@tetherto/wdk-wallet-evm/signers'
-const root = new SeedSignerEvm(mnemonic)
+const root = new SeedSignerEvm(mnemonic, "m/44'/60'")
 const wallet = new WalletManagerEvm(root, { provider: 'https://...' })
 const account0 = await wallet.getAccount(0)
 
