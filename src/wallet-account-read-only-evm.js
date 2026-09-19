@@ -27,6 +27,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
 /** @typedef {import('ethers').TypedDataField} TypedDataField */
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
+/** @typedef {import('ethers').BlobLike} BlobLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
 
@@ -68,6 +69,9 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
  * @property {number} [nonce] - The transaction nonce.
  * @property {number | bigint} [chainId] - The chain ID of the network.
+ * @property {number | bigint} [maxFeePerBlobGas] - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
+ * @property {BlobLike[]} [blobs] - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
+ * @property {string[]} [blobVersionedHashes] - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
