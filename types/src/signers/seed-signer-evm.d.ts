@@ -21,9 +21,6 @@ export type UnsignedEvmTransaction = {
     maxFeePerGas?: number | bigint;
     maxPriorityFeePerGas?: number | bigint;
     accessList?: any[];
-    maxFeePerBlobGas?: number | bigint;
-    blobs?: any[];
-    blobVersionedHashes?: string[];
     authorizationList?: AuthorizationLike[];
 };
 export type SeedSignerEvmOpts = {

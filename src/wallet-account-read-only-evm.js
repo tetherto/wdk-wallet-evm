@@ -27,7 +27,6 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
 /** @typedef {import('ethers').TypedDataField} TypedDataField */
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
-/** @typedef {import('ethers').BlobLike} BlobLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
 
@@ -67,12 +66,9 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number | bigint} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
  * @property {number | bigint} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
- * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
+ * @property {number} [type] - The [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718) transaction type: 0 for legacy, 1 for [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930) access-list, 2 for [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559), 4 for ERC-7702. Type 3 ([EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob transactions) is not supported and is rejected. Omit to have the type inferred from the transaction's fields and the network's fee data.
  * @property {number} [nonce] - The transaction nonce.
  * @property {number | bigint} [chainId] - The chain ID of the network.
- * @property {number | bigint} [maxFeePerBlobGas] - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
- * @property {BlobLike[]} [blobs] - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
- * @property {string[]} [blobVersionedHashes] - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 

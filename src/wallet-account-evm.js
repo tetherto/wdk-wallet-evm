@@ -22,7 +22,7 @@ import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
 import SeedSignerEvm from './signers/seed-signer-evm.js'
 import PrivateKeySignerEvm from './signers/private-key-signer-evm.js'
-import { populateTransactionEvm } from './utils/tx-populator-evm.js'
+import { isBlobTransaction, populateTransactionEvm } from './utils/tx-populator-evm.js'
 
 /** @typedef {import('./signers/seed-signer-evm.js').ISignerEvm} ISignerEvm */
 /** @typedef {import('ethers').HDNodeWallet} HDNodeWallet */
@@ -181,9 +181,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {EvmTransaction} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
+   * @throws {ValueError} If the transaction is an EIP-4844 (type 3) blob transaction.
    * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
    */
   async signTransaction (tx) {
+    if (isBlobTransaction(tx)) {
+      throw new ValueError('eip-4844 blob transactions are not supported')
+    }
+
     if (this._provider && this._config.transactionMaxFee !== undefined) {
       const { fee } = await this.quoteSendTransaction(tx)
 
@@ -204,7 +209,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
-   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
    */
   async sendTransaction (tx) {
     if (!this._provider) {
@@ -234,6 +239,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {ValueError} If the transaction is an EIP-4844 (type 3) blob transaction.
    */
   async quoteSendTransaction (tx) {
     if (typeof tx === 'string') {
@@ -241,7 +247,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
         throw new ProviderRequiredError('The wallet must be connected to a provider to quote send transaction operations.')
       }
 
-      const { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList } = Transaction.from(tx)
+      const parsedTx = Transaction.from(tx)
+
+      if (isBlobTransaction(parsedTx)) {
+        throw new ValueError('eip-4844 blob transactions are not supported')
+      }
+
+      const { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList } = parsedTx
 
       const transaction = { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList }
 
@@ -254,6 +266,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       const feeRate = fees.maxFeePerGas || fees.gasPrice
 
       return { fee: gas * feeRate }
+    }
+
+    if (isBlobTransaction(tx)) {
+      throw new ValueError('eip-4844 blob transactions are not supported')
     }
 
     return await super.quoteSendTransaction(tx)

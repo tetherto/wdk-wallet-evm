@@ -30,30 +30,44 @@ import { Signature, toQuantity } from 'ethers'
  * @property {string|null} to - The recipient's address, or null for contract creation.
  * @property {string} data - The transaction's calldata as a hex string.
  * @property {number|bigint} value - The amount of native currency (in wei) to transfer.
- * @property {number} type - The EIP-2718 transaction type (0/1 legacy, 2 EIP-1559, 3 EIP-4844, 4 EIP-7702).
+ * @property {number} type - The EIP-2718 transaction type (0/1 legacy, 2 EIP-1559, 4 EIP-7702).
  * @property {number|bigint} gasLimit - The maximum amount of gas the transaction may consume.
  * @property {number|bigint} [gasPrice] - The gas price (in wei) for legacy (type 0/1) transactions.
  * @property {number|bigint} [maxFeePerGas] - The maximum total fee (in wei) per gas for EIP-1559 transactions.
  * @property {number|bigint} [maxPriorityFeePerGas] - The maximum priority fee (in wei) per gas for EIP-1559 transactions.
  * @property {any[]} [accessList] - The EIP-2930 access list of addresses and storage keys.
- * @property {number|bigint} [maxFeePerBlobGas] - The maximum fee (in wei) per blob gas for EIP-4844 transactions.
- * @property {any[]} [blobs] - The blobs to include in an EIP-4844 transaction.
- * @property {string[]} [blobVersionedHashes] - The versioned hashes of the EIP-4844 blobs.
  * @property {AuthorizationLike[]} [authorizationList] - The EIP-7702 authorization tuples.
  */
+
+/**
+ * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+ *
+ * @param {UnsignedEvmTransaction} tx - The transaction to inspect.
+ * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+ */
+export function isBlobTransaction (tx) {
+  const hasBlobs = (
+    ('blobs' in tx && tx.blobs != null) ||
+    ('blobVersionedHashes' in tx && tx.blobVersionedHashes != null) ||
+    ('maxFeePerBlobGas' in tx && tx.maxFeePerBlobGas != null)
+  )
+
+  return Number(tx.type) === 3 || hasBlobs
+}
 
 /**
  * Build a fully populated unsigned transaction ready for signing.
  *
  * Resolves chain ID, nonce, gas limit and fee fields from the provider when not
- * explicitly supplied in `tx`. Supports legacy (type 0/1), EIP-1559 (type 2),
- * EIP-4844 (type 3) and EIP-7702 (type 4) transaction styles.
+ * explicitly supplied in `tx`. Supports legacy (type 0/1), EIP-1559 (type 2) and
+ * EIP-7702 (type 4) transaction styles. EIP-4844 (type 3) blob transactions are
+ * not supported.
  *
  * @param {Provider} provider - An ethers-compatible JSON-RPC provider.
  * @param {string} from - The sender address.
  * @param {UnsignedEvmTransaction} tx - The partial transaction to populate.
  * @returns {Promise<UnsignedEvmTransaction>} The fully populated unsigned transaction.
- * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+ * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
  */
 export async function populateTransactionEvm (provider, from, tx) {
   const net = await provider.getNetwork()
@@ -62,7 +76,6 @@ export async function populateTransactionEvm (provider, from, tx) {
   const has1559 = (tx.maxFeePerGas != null || tx.maxPriorityFeePerGas != null)
   const hasLegacy = (tx.gasPrice != null)
   const hasAccessList = (tx.accessList != null && Array.isArray(tx.accessList))
-  const hasBlobs = (tx.blobs != null || tx.blobVersionedHashes != null || tx.maxFeePerBlobGas != null)
   const hasAuthList = (tx.authorizationList != null && Array.isArray(tx.authorizationList))
 
   const explicitType = (tx.type != null) ? Number(tx.type) : null
@@ -73,8 +86,8 @@ export async function populateTransactionEvm (provider, from, tx) {
   if ((explicitType === 0 || explicitType === 1) && has1559) {
     throw new ValueError('pre-eip-1559 transaction does not support maxFeePerGas/maxPriorityFeePerGas')
   }
-  if ((explicitType === 3 || hasBlobs) && hasLegacy) {
-    throw new ValueError('blob transaction does not support gasPrice')
+  if (isBlobTransaction(tx)) {
+    throw new ValueError('eip-4844 blob transactions are not supported')
   }
 
   const feeData = await provider.getFeeData()
@@ -83,8 +96,6 @@ export async function populateTransactionEvm (provider, from, tx) {
   if (type == null) {
     if (hasAuthList) {
       type = 4
-    } else if (hasBlobs) {
-      type = 3
     } else if (feeData.maxFeePerGas != null && feeData.maxPriorityFeePerGas != null) {
       type = 2
     } else {
@@ -131,18 +142,6 @@ export async function populateTransactionEvm (provider, from, tx) {
     return populated
   }
 
-  if (type === 3) {
-    populated.type = 3
-    populated.maxFeePerGas = tx.maxFeePerGas ?? feeData.maxFeePerGas
-    populated.maxPriorityFeePerGas = tx.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas
-    if (tx.maxFeePerBlobGas == null) throw new ValueError('maxFeePerBlobGas is required for type 3 transactions')
-    populated.maxFeePerBlobGas = tx.maxFeePerBlobGas
-    if (tx.blobs != null) populated.blobs = tx.blobs
-    if (tx.blobVersionedHashes != null) populated.blobVersionedHashes = tx.blobVersionedHashes
-    if (hasAccessList) populated.accessList = tx.accessList
-    return populated
-  }
-
   // Type 4 (EIP-7702) and future types; pass-through
   populated.type = type
   if (hasAccessList) populated.accessList = tx.accessList
@@ -151,11 +150,6 @@ export async function populateTransactionEvm (provider, from, tx) {
   } else {
     populated.maxFeePerGas = tx.maxFeePerGas ?? feeData.maxFeePerGas
     populated.maxPriorityFeePerGas = tx.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas
-  }
-  if (hasBlobs) {
-    populated.maxFeePerBlobGas = tx.maxFeePerBlobGas
-    if (tx.blobs != null) populated.blobs = tx.blobs
-    if (tx.blobVersionedHashes != null) populated.blobVersionedHashes = tx.blobVersionedHashes
   }
   if (tx.authorizationList != null) populated.authorizationList = tx.authorizationList
 

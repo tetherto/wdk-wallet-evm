@@ -33,6 +33,7 @@ const ACCOUNT = {
 
 const DUMMY_TX_HASH = '0xdef456abc123def456abc123def456abc123def456abc123def456abc123def4'
 const SIGNED_TRANSACTION = '0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec'
+const SIGNED_BLOB_TRANSACTION = '0x03f8930180843b9aca0084b2d05e0082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c0843b9aca00e1a0010101010101010101010101010101010101010101010101010101010101010180a090fd2e675dde6b1dfe101dc6527a0a4c6dae3b60fa5c5519f7c8d35855856d41a0260ac9f8a659d4a04dd4f7d38a4a8dea7b91faa1725f7f028de2d66c2422a109'
 
 // Fee constants implied by the mocked rpc responses below:
 // maxFeePerGas = 2 * baseFee (1 gwei) + priorityFee (1 gwei) = 3 gwei.
@@ -268,6 +269,29 @@ describe('WalletAccountEvm', () => {
 
       expect(signedTx).toBeTruthy()
     })
+
+    test('should throw if a transaction is explicitly typed as a blob transaction', async () => {
+      const promise = account.signTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        type: 3
+      })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
+    })
+
+    test('should throw if a transaction carries blob fields', async () => {
+      const promise = account.signTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        maxFeePerBlobGas: 1_000_000_000,
+        blobVersionedHashes: ['0x' + '01'.repeat(32)]
+      })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
+    })
   })
 
   describe('sendTransaction', () => {
@@ -355,28 +379,36 @@ describe('WalletAccountEvm', () => {
       await expect(promise).rejects.toThrow('pre-eip-1559 transaction does not support maxFeePerGas/maxPriorityFeePerGas')
     })
 
-    test('should throw if a blob transaction also sets a gas price', async () => {
+    test('should throw if a transaction is explicitly typed as a blob transaction', async () => {
       const promise = account.sendTransaction({
         to: SPENDER_ADDRESS,
         value: 1_000,
-        type: 3,
-        gasPrice: 1_000_000_000
+        type: 3
       })
 
       await expect(promise).rejects.toThrow(ValueError)
-      await expect(promise).rejects.toThrow('blob transaction does not support gasPrice')
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
     })
 
-    test('should throw if a blob transaction omits the max fee per blob gas', async () => {
+    test('should throw if a transaction carries blob fields', async () => {
       const promise = account.sendTransaction({
         to: SPENDER_ADDRESS,
         value: 1_000,
-        type: 3,
+        maxFeePerBlobGas: 1_000_000_000,
         blobVersionedHashes: ['0x' + '01'.repeat(32)]
       })
 
       await expect(promise).rejects.toThrow(ValueError)
-      await expect(promise).rejects.toThrow('maxFeePerBlobGas is required for type 3 transactions')
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
+    })
+
+    test('should throw if a raw transaction is a blob transaction', async () => {
+      const promise = account.sendTransaction(SIGNED_BLOB_TRANSACTION)
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
+
+      expect(provider.sentRawTransactions).toEqual([])
     })
   })
 
@@ -388,6 +420,24 @@ describe('WalletAccountEvm', () => {
 
       await expect(promise).rejects.toThrow(ProviderRequiredError)
       await expect(promise).rejects.toThrow('The wallet must be connected to a provider to quote send transaction operations.')
+    })
+
+    test('should throw if quoting a raw blob transaction', async () => {
+      const promise = account.quoteSendTransaction(SIGNED_BLOB_TRANSACTION)
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
+    })
+
+    test('should throw if quoting a blob transaction', async () => {
+      const promise = account.quoteSendTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        type: 3
+      })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-4844 blob transactions are not supported')
     })
   })
 

@@ -51,18 +51,6 @@ export type UnsignedEvmTransaction = {
      */
     accessList?: any[];
     /**
-     * - The maximum fee (in wei) per blob gas for EIP-4844 transactions.
-     */
-    maxFeePerBlobGas?: number | bigint;
-    /**
-     * - The blobs to include in an EIP-4844 transaction.
-     */
-    blobs?: any[];
-    /**
-     * - The versioned hashes of the EIP-4844 blobs.
-     */
-    blobVersionedHashes?: string[];
-    /**
      * - The EIP-7702 authorization tuples.
      */
     authorizationList?: AuthorizationLike[];
@@ -70,16 +58,24 @@ export type UnsignedEvmTransaction = {
 export type Provider = import("ethers").Provider;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 /**
+ * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+ *
+ * @param {UnsignedEvmTransaction} tx - The transaction to inspect.
+ * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+ */
+export function isBlobTransaction(tx: UnsignedEvmTransaction): boolean;
+/**
  * Build a fully populated unsigned transaction ready for signing.
  *
  * Resolves chain ID, nonce, gas limit and fee fields from the provider when not
- * explicitly supplied in `tx`. Supports legacy (type 0/1), EIP-1559 (type 2),
- * EIP-4844 (type 3) and EIP-7702 (type 4) transaction styles.
+ * explicitly supplied in `tx`. Supports legacy (type 0/1), EIP-1559 (type 2) and
+ * EIP-7702 (type 4) transaction styles. EIP-4844 (type 3) blob transactions are
+ * not supported.
  *
  * @param {Provider} provider - An ethers-compatible JSON-RPC provider.
  * @param {string} from - The sender address.
  * @param {UnsignedEvmTransaction} tx - The partial transaction to populate.
  * @returns {Promise<UnsignedEvmTransaction>} The fully populated unsigned transaction.
- * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+ * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
  */
 export function populateTransactionEvm(provider: Provider, from: string, tx: UnsignedEvmTransaction): Promise<UnsignedEvmTransaction>;
