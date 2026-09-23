@@ -1,9 +1,5 @@
-/** @typedef {import('ethers').Provider} Provider */
-/** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
-/** @typedef {import("@tetherto/wdk-wallet").ISigner} ISigner */
-/** @typedef {import("@tetherto/wdk-wallet").NoSuchElementError} NoSuchElementError */
-/** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
-export default class WalletManagerEvm extends WalletManager {
+/** @extends {WalletManager<ISignerEvm>} */
+export default class WalletManagerEvm extends WalletManager<ISignerEvm> {
     /**
      * Multiplier for normal fee rate calculations (in %).
      *
@@ -19,20 +15,42 @@ export default class WalletManagerEvm extends WalletManager {
      */
     protected static _FEE_RATE_FAST_MULTIPLIER: bigint;
     /**
-     * Creates a new wallet manager for evm blockchains.
+     * Creates a new wallet manager for evm blockchains from a BIP-39 seed.
      *
-     * Accepts either a BIP-39 seed (string/Uint8Array) for backwards compatibility, or a
-     * pre-built root signer object. The default signer must be derivable (it must be able to
-     * derive child accounts); non-derivable signers (e.g. private-key signers) are not allowed
-     * as the default but may be registered by name via {@link addSigner} - If not adding to your global account managment for using just one non derivable signer create a standalone account.
-     *
-     * @param {string|Uint8Array|ISigner} seedOrSigner - A BIP-39 seed phrase, seed bytes, or a root signer. Root signers must be derivable — non-derivable signers (e.g. private-key signers) can only be registered by name via {@link addSigner}.
+     * @param {string | Uint8Array} seed - The BIP-39 seed phrase or raw seed bytes.
      * @param {EvmWalletConfig} [config] - The configuration object.
-     * @throws {InvalidSignerError} If the default signer doesn't support account derivation.
+     * @throws {ValueError} If the seed phrase is invalid.
      */
-    constructor(seedOrSigner: string | Uint8Array | ISigner, config?: EvmWalletConfig);
+    constructor(seed: string | Uint8Array, config?: EvmWalletConfig);
     /**
-     * An ethers provider to interact with a node of the blockchain.
+     * Creates a new wallet manager for evm blockchains from a default signer.
+     *
+     * The default signer must be derivable (it must be able to derive child accounts);
+     * non-derivable signers (e.g. private-key signers) are not allowed as the default but
+     * may be registered by name via {@link addSigner}. To use a single non-derivable signer
+     * outside of the wallet manager, create a standalone account instead.
+     * **Warning:** the signer is kept exactly as given, not cloned -- if you still hold a
+     * reference to it and dispose it directly, every subsequent {@link getAccount}/
+     * {@link getAccountByPath} call that falls back to the default signer (i.e. without an
+     * explicit `signerName`) fails, since deriving from a disposed signer isn't possible.
+     * Conversely, the manager never disposes a signer you supplied: {@link dispose} wipes
+     * only the default signer it creates internally from a seed.
+     *
+     * @param {ISignerEvm} signer - The default signer.
+     * @param {EvmWalletConfig} [config] - The configuration object.
+     * @throws {InvalidSignerError} If the default signer does not support account derivation.
+     */
+    constructor(signer: ISignerEvm, config?: EvmWalletConfig);
+    /**
+     * If true, disposes the default signer on calls to the 'dispose' method.
+     *
+     * @protected
+     * @type {boolean}
+     */
+    protected _shouldWipeDefaultSignerOnDisposal: boolean;
+    /**
+     * An ethers provider to interact with a node of the blockchain. Shared with every account
+     * this manager creates, so two accounts never open two clients for the same endpoint.
      *
      * @protected
      * @type {Provider | undefined}
@@ -46,15 +64,26 @@ export default class WalletManagerEvm extends WalletManager {
      * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
-     * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {UnsupportedOperationError} If the signer doesn't support account derivation.
      */
     getAccount(index?: number, options?: {
         signerName?: string;
     }): Promise<WalletAccountEvm>;
     /**
-     * Returns the wallet account associated with a registered signer. Non-derivable
-     * signers (e.g. private-key signers) return the signer's single account; derivable signers
-     * derive a detached child at the signer's own account (the root is never handed out).
+     * Returns the wallet account associated with a registered signer.
+     *
+     * The registered signer is used exactly as given, wherever it happens to sit -- this
+     * overload never derives. For a private-key signer that's its one account; for a derivable
+     * signer, it's the account at that signer's own current path, unchanged. If you want a
+     * derived leaf from a derivable named signer (e.g. a second seed registered as a bank of
+     * accounts), use {@link getAccount}(index, { signerName }) or {@link getAccountByPath}(path,
+     * { signerName }) instead -- both of those always derive, and throw clearly if the named
+     * signer can't.
+     *
+     * **Warning:** the returned account wraps the registered signer itself, exactly where it
+     * sits -- e.g. a second seed registered at the intermediate path "m/44'/60'" yields the
+     * account AT "m/44'/60'", not at a derived leaf, which is rarely what you want to transact
+     * with. Disposing the returned account leaves the registered signer untouched.
      *
      * @param {string} signerName - The signer name registered via {@link addSigner}.
      * @returns {Promise<WalletAccountEvm>} The account.
@@ -69,24 +98,34 @@ export default class WalletManagerEvm extends WalletManager {
      * @param {string} [options.signerName] - The signer name. Omit to use the default signer.
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
-     * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {UnsupportedOperationError} If the signer doesn't support account derivation.
      */
     getAccountByPath(path: string, options?: {
         signerName?: string;
     }): Promise<WalletAccountEvm>;
+    /** @private */
+    private _accountConfig;
     /**
      * Returns the current fee rates.
      *
      * @returns {Promise<FeeRates>} The fee rates (in weis).
-     * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      */
     getFeeRates(): Promise<FeeRates>;
+    /**
+     * Disposes all the wallet accounts, erasing their private keys from the memory. If the
+     * manager was created from a seed, the internally created default signer is wiped too;
+     * a default signer supplied at construction is left untouched, as are signers registered
+     * via {@link addSigner}.
+     */
+    dispose(): void;
 }
-export type ISignerEvm = import("./signers/seed-signer-evm.js").ISignerEvm;
+export type ISignerEvm = import("./signers/signer-evm.js").ISignerEvm;
 export type Provider = import("ethers").Provider;
 export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
-export type ISigner = import("@tetherto/wdk-wallet").ISigner;
+export type InvalidSignerError = import("@tetherto/wdk-wallet").InvalidSignerError;
+export type UnsupportedOperationError = import("@tetherto/wdk-wallet").UnsupportedOperationError;
 export type NoSuchElementError = import("@tetherto/wdk-wallet").NoSuchElementError;
+export type ValueError = import("@tetherto/wdk-wallet").ValueError;
 export type EvmWalletConfig = import("./wallet-account-evm.js").EvmWalletConfig;
 import WalletManager from '@tetherto/wdk-wallet';
 import WalletAccountEvm from './wallet-account-evm.js';

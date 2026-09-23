@@ -46,17 +46,14 @@ import {
 
 ```javascript
 import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
-import { SeedSignerEvm } from '@tetherto/wdk-wallet-evm/signers'
 
 // Use a BIP-39 seed phrase (replace with your own secure phrase)
 const seedPhrase =
   'test only example nut use this real life secret phrase must random'
 
-// Create a root signer from the seed phrase
-const root = new SeedSignerEvm(seedPhrase)
-
-// Create wallet manager with provider config (provider is required for chain ops)
-const wallet = new WalletManagerEvm(root, {
+// Create the wallet manager straight from the seed (recommended: derivation
+// paths are handled for you) with provider config (provider is required for chain ops)
+const wallet = new WalletManagerEvm(seedPhrase, {
   // Option 1: Using RPC URL
   provider: 'https://sepolia.drpc.org', // any EVM RPC
   transferMaxFee: 100000000000000n, // Optional: max fee in wei (BigInt)
@@ -65,7 +62,7 @@ const wallet = new WalletManagerEvm(root, {
 // OR
 
 // Option 2: Using EIP-1193 provider (e.g., from browser wallet)
-const wallet2 = new WalletManagerEvm(root, {
+const wallet2 = new WalletManagerEvm(seedPhrase, {
   provider: window.ethereum, // EIP-1193 provider
   transferMaxFee: 100000000000000n, // Optional
 })
@@ -90,13 +87,18 @@ const pkAccount = new WalletAccountEvm(pkSigner, {
 })
 ```
 
-### Single Account (no manager): Seed + path
+### Single Account (no manager): Seed
 
 ```javascript
 import { WalletAccountEvm } from '@tetherto/wdk-wallet-evm'
 
-// From a BIP-39 seed phrase (or seed bytes) and a BIP-44 derivation path
-const account = new WalletAccountEvm(mnemonic, "0'/0/0", {
+// From a BIP-39 seed phrase (or seed bytes); derives the default account m/44'/60'/0'/0/0
+const account = new WalletAccountEvm(mnemonic, {
+  provider: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
+})
+
+// Or pick a specific account path, relative to m/44'/60'
+const account5 = new WalletAccountEvm(mnemonic, "0'/0/5", {
   provider: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
 })
 ```
@@ -105,10 +107,8 @@ const account = new WalletAccountEvm(mnemonic, "0'/0/0", {
 
 ```javascript
 import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
-import { SeedSignerEvm } from '@tetherto/wdk-wallet-evm/signers'
 
-const root = new SeedSignerEvm(mnemonic)
-const wallet = new WalletManagerEvm(root, {
+const wallet = new WalletManagerEvm(mnemonic, {
   provider: 'https://eth-mainnet.g.alchemy.com/v2/your-api-key',
 })
 
@@ -284,29 +284,32 @@ account.dispose()
 wallet.dispose()
 ```
 
-## 🔐 Signers
+## 🔐 Signers (advanced usage)
 
-Signers provide the cryptographic primitives for accounts. There are two signer implementations:
+Signers provide the cryptographic primitives for accounts. The recommended way to use this package is passing the seed straight to `WalletManagerEvm` or `WalletAccountEvm` (as in the sections above); constructing your own signer is considered advanced usage. There are two signer implementations:
 
-- **SeedSignerEvm (root + child)**: Derives accounts from a BIP-39 seed using the BIP-44 Ethereum path. Can act as a root (for `WalletManagerEvm`) and derive children (for `WalletAccountEvm`).
-- **PrivateKeySignerEvm (child only)**: Wraps a raw private key in a memory-safe buffer. Cannot derive. Use directly with `WalletAccountEvm`. Not supported by `WalletManagerEvm`.
+- **SeedSignerEvm**: Holds one HD node from a BIP-39 seed at any absolute BIP-32 path (default: `"m/44'/60'"`) and derives child signers relative to its own path. Always derivable.
+- **PrivateKeySignerEvm**: Wraps a raw private key in a memory-safe buffer. Cannot derive. Use directly with `WalletAccountEvm`. Not supported as `WalletManagerEvm`'s default signer (registrable by name via `addSigner`).
 
 Examples:
 
 ```javascript
-// Root + manager (seed)
-import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
-import { SeedSignerEvm } from '@tetherto/wdk-wallet-evm/signers'
-const root = new SeedSignerEvm(mnemonic)
-const wallet = new WalletManagerEvm(root, { provider: 'https://...' })
-const account0 = await wallet.getAccount(0)
+import WalletManagerEvm, { WalletAccountEvm } from '@tetherto/wdk-wallet-evm'
+import { SeedSignerEvm, PrivateKeySignerEvm } from '@tetherto/wdk-wallet-evm/signers'
+
+// Manager from your own signer. The default path "m/44'/60'" works out of the box:
+// accounts derive below the signer's own path (getAccount(0) -> m/44'/60'/0'/0/0)
+const wallet = new WalletManagerEvm(new SeedSignerEvm(mnemonic), { provider: 'https://...' })
+
+// Account from your own signer: derive the account below the signer's default path
+const signer = await new SeedSignerEvm(mnemonic).derive("0'/0/0")
+const account = new WalletAccountEvm(signer, { provider: 'https://...' })
 
 // Single account from a private key
-import { WalletAccountEvm } from '@tetherto/wdk-wallet-evm'
-import { PrivateKeySignerEvm } from '@tetherto/wdk-wallet-evm/signers'
-const signer = new PrivateKeySignerEvm('0x0123...')
-const account = new WalletAccountEvm(signer, { provider: 'https://...' })
+const pkAccount = new WalletAccountEvm(new PrivateKeySignerEvm('0x0123...'), { provider: 'https://...' })
 ```
+
+Notes for advanced usage: a `SeedSignerEvm` sits exactly at the path you give it, and both `derive` and the manager's `getAccount`/`getAccountByPath` work relative to that path. If you rely on a non-default tree, pass your own absolute path explicitly (e.g. `new SeedSignerEvm(mnemonic, "m/44'/61'")`) so the resulting account positions are the ones you expect.
 
 ## Key Capabilities
 

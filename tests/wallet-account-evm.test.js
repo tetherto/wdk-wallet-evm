@@ -8,7 +8,6 @@ import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tet
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
-import PrivateKeySignerEvm from '../src/signers/private-key-signer-evm.js'
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 const DELEGATE_CONTRACT_ADDRESS = '0xbe08D4d81EbeA77f6AA54B2067EA5F56005F98dE'
@@ -22,7 +21,6 @@ const INVALID_SEED_PHRASE = 'invalid seed phrase'
 const SEED = bip39.mnemonicToSeedSync(SEED_PHRASE)
 
 const ACCOUNT = {
-  index: 0,
   path: "m/44'/60'/0'/0/0",
   address: '0x405005C7c4422390F4B334F64Cf20E0b767131d0',
   keyPair: {
@@ -93,7 +91,7 @@ describe('WalletAccountEvm', () => {
   beforeEach(async () => {
     provider = createProvider()
 
-    const root = new SeedSignerEvm(SEED_PHRASE)
+    const root = new SeedSignerEvm(SEED_PHRASE, "m/44'/60'")
     const signer = await root.derive("0'/0/0")
     account = new WalletAccountEvm(signer, { provider })
   })
@@ -101,8 +99,6 @@ describe('WalletAccountEvm', () => {
   describe('constructor (seed overload)', () => {
     test('should successfully initialize an account for the given seed phrase and path', async () => {
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
-
-      expect(account.index).toBe(ACCOUNT.index)
 
       expect(account.path).toBe(ACCOUNT.path)
 
@@ -115,14 +111,26 @@ describe('WalletAccountEvm', () => {
     test('should successfully initialize an account for the given seed and path', async () => {
       const account = new WalletAccountEvm(SEED, "0'/0/0")
 
-      expect(account.index).toBe(ACCOUNT.index)
-
       expect(account.path).toBe(ACCOUNT.path)
 
       expect(account.keyPair).toEqual({
         privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
         publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
       })
+    })
+
+    test('should default to the "0\'/0/0" account path when no path is given', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE)
+
+      expect(account.path).toBe(ACCOUNT.path)
+      expect(await account.getAddress()).toBe(ACCOUNT.address)
+    })
+
+    test('should treat a config object in the path position as the configuration', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, { transactionMaxFee: 1n })
+
+      expect(account.path).toBe(ACCOUNT.path)
+      expect(await account.getAddress()).toBe(ACCOUNT.address)
     })
 
     test('should throw if the seed phrase is invalid', () => {
@@ -142,9 +150,31 @@ describe('WalletAccountEvm', () => {
 
     test('should derive the same account as a manually derived signer', async () => {
       const seededAccount = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
-      const signerAccount = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const signerAccount = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"))
 
       expect(await seededAccount.getAddress()).toBe(await signerAccount.getAddress())
+    })
+
+    test('should successfully initialize an account with a signer (signer overload)', async () => {
+      const mockSigner = {
+        address: ACCOUNT.address,
+        path: ACCOUNT.path,
+        keyPair: {
+          privateKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.privateKey, 'hex')),
+          publicKey: new Uint8Array(Buffer.from(ACCOUNT.keyPair.publicKey, 'hex'))
+        },
+        isDerivable: false,
+        getAddress: async () => ACCOUNT.address,
+        sign: async () => '0xmocksignature',
+        dispose: () => {}
+      }
+
+      const account = new WalletAccountEvm(mockSigner)
+
+      expect(await account.getAddress()).toBe(ACCOUNT.address)
+      expect(account.path).toBe(ACCOUNT.path)
+      expect(account.keyPair).toEqual(mockSigner.keyPair)
+      expect(await account.sign('any message')).toBe('0xmocksignature')
     })
   })
 
@@ -156,6 +186,16 @@ describe('WalletAccountEvm', () => {
       expect(await account.getAddress()).toBe(ACCOUNT.address)
 
       account.dispose()
+    })
+
+    test('should wipe the internally created signer on disposal', () => {
+      const account = WalletAccountEvm.fromPrivateKey(ACCOUNT.keyPair.privateKey)
+
+      expect(account.keyPair.privateKey).not.toBeNull()
+
+      account.dispose()
+
+      expect(account.keyPair.privateKey).toBeNull()
     })
   })
 
@@ -229,7 +269,7 @@ describe('WalletAccountEvm', () => {
     }
 
     test('should sign a transaction and return a valid hex string', async () => {
-      const accountWithoutProvider = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const accountWithoutProvider = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
       const signedTx = await accountWithoutProvider.signTransaction(TRANSACTION)
 
@@ -237,7 +277,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if transaction fee exceeds the transaction max fee configuration', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
         provider,
         transactionMaxFee: 0
       })
@@ -249,7 +289,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should not enforce transaction max fee without a provider', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
         transactionMaxFee: 0
       })
 
@@ -259,12 +299,23 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should allow a fee exactly equal to transactionMaxFee', async () => {
-      const accountAtLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+      const accountAtLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
         provider,
         transactionMaxFee: MOCKED_FEE
       })
 
       const signedTx = await accountAtLimit.signTransaction(TRANSACTION)
+
+      expect(signedTx).toBeTruthy()
+    })
+
+    test('should allow a fee below transactionMaxFee', async () => {
+      const accountBelowLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transactionMaxFee: MOCKED_FEE + 1n
+      })
+
+      const signedTx = await accountBelowLimit.signTransaction(TRANSACTION)
 
       expect(signedTx).toBeTruthy()
     })
@@ -299,7 +350,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if transaction fee exceeds the transaction max fee configuration', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
         provider,
         transactionMaxFee: 0
       })
@@ -322,8 +373,40 @@ describe('WalletAccountEvm', () => {
       expect(provider.sentRawTransactions).toEqual([])
     })
 
+    test('should allow a fee exactly equal to transactionMaxFee', async () => {
+      const TRANSACTION = {
+        to: SPENDER_ADDRESS,
+        value: 1_000
+      }
+
+      const accountAtLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transactionMaxFee: MOCKED_FEE
+      })
+
+      const result = await accountAtLimit.sendTransaction(TRANSACTION)
+
+      expect(result).toHaveProperty('hash')
+    })
+
+    test('should allow a fee below transactionMaxFee', async () => {
+      const TRANSACTION = {
+        to: SPENDER_ADDRESS,
+        value: 1_000
+      }
+
+      const accountBelowLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transactionMaxFee: MOCKED_FEE + 1n
+      })
+
+      const result = await accountBelowLimit.sendTransaction(TRANSACTION)
+
+      expect(result).toHaveProperty('hash')
+    })
+
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
       const promise = account.sendTransaction({ })
 
@@ -439,7 +522,7 @@ describe('WalletAccountEvm', () => {
 
     test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
       const account = new WalletAccountEvm(
-        await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"),
+        await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"),
         { provider, transferMaxFee: 0 }
       )
 
@@ -450,7 +533,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
       const promise = account.transfer({ })
 
@@ -570,7 +653,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const accountWithoutProvider = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const accountWithoutProvider = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
       const approveOptions = {
         token: TOKEN_ADDRESS,
         spender: SPENDER_ADDRESS,
@@ -595,6 +678,27 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('signAuthorization', () => {
+    test('should throw when chainId and nonce are missing and the account has no provider', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      await expect(account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS }))
+        .rejects.toThrow('The wallet must be connected to a provider to populate the authorization chainId and nonce.')
+    })
+
+    test('should sign an authorization without a provider when chainId and nonce are explicit', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      const auth = await account.signAuthorization({
+        address: DELEGATE_CONTRACT_ADDRESS,
+        chainId: 1n,
+        nonce: 0
+      })
+
+      expect(auth.address.toLowerCase()).toBe(DELEGATE_CONTRACT_ADDRESS.toLowerCase())
+      expect(auth.chainId).toBe(1n)
+      expect(auth.nonce).toBe(0n)
+    })
+
     test('should resolve chain id and nonce from the provider and sign', async () => {
       const auth = await account.signAuthorization({
         address: DELEGATE_CONTRACT_ADDRESS
@@ -633,7 +737,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
       const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS)
 
@@ -655,7 +759,7 @@ describe('WalletAccountEvm', () => {
     })
 
     test('should throw if the account is not connected to a provider', async () => {
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
       const promise = account.revokeDelegation()
 
@@ -671,6 +775,28 @@ describe('WalletAccountEvm', () => {
       account.dispose()
 
       expect(account.keyPair.privateKey).toBe(null)
+    })
+
+    test('should not dispose a caller-supplied signer', () => {
+      const signer = new SeedSignerEvm(SEED_PHRASE)
+      const account = new WalletAccountEvm(signer)
+
+      account.dispose()
+
+      // The caller still owns the signer, so it must keep its key.
+      expect(signer.keyPair.privateKey).not.toBe(null)
+
+      signer.dispose()
+    })
+
+    test('should dispose a caller-supplied signer when shouldWipeSignerOnDisposal is set', () => {
+      const signer = new SeedSignerEvm(SEED_PHRASE)
+      const account = new WalletAccountEvm(signer, { shouldWipeSignerOnDisposal: true })
+
+      account.dispose()
+
+      expect(account.keyPair.privateKey).toBe(null)
+      expect(signer.keyPair.privateKey).toBe(null)
     })
   })
 })

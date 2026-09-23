@@ -3,6 +3,9 @@
     "index.js",
     "src/**/*.js",
   ],
+  "exclude": [
+    "src/signers/bare.js",
+  ],
   "compilerOptions": {
     "target": "ES2015",
     "module": "NodeNext",
