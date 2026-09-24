@@ -12,7 +12,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Creates a new evm wallet account from a BIP-39 seed, deriving the account's key at the
      * given BIP-44 path.
      *
-     * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase or seed bytes.
+     * @param {string | Uint8Array} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
      * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
      * @param {EvmWalletConfig} [config] - The configuration object.
      */

@@ -126,7 +126,7 @@ export default class SeedSignerEvm extends ISignerEvm {
      * Create a SeedSignerEvm.
      * Provide a mnemonic/seed (children built via {@link derive} pass a shared root internally).
      *
-     * @param {string|Uint8Array|null} seed - BIP-39 mnemonic or seed bytes. Omit when providing `opts.root`.
+     * @param {string|Uint8Array|null} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes). Omit when providing `opts.root`.
      * @param {SeedSignerEvmOpts} [opts] - Construction options for root reuse, direct child derivation or path definition (default is index 0).
      * @throws {ValueError} If neither a seed nor a root is provided, or if both are provided.
      * @throws {ValueError} If a seed is provided but is not a valid BIP-39 mnemonic.
