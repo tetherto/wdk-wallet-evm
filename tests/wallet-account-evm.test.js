@@ -1,4 +1,4 @@
-import { Interface, Transaction, ZeroAddress, toQuantity } from 'ethers'
+import { Interface, Transaction, Wallet, ZeroAddress, toQuantity } from 'ethers'
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
@@ -33,6 +33,7 @@ const ACCOUNT = {
 
 const DUMMY_TX_HASH = '0xdef456abc123def456abc123def456abc123def456abc123def456abc123def4'
 const SIGNED_TRANSACTION = '0x02f86e827a6980843b9aca00847735940082520894a460aebce0d3a4becad8ccf9d6d4861296c503bd8203e880c080a0189acf1d3170de712fd346182a77b08ccaa1317cdd13daf386f1405d52148171a04a83f7c7df7f258344e1726ac5b94f53fb415f0e41a58399b5031940b293b9ec'
+const SIGNED_TRANSACTION_FEE = 21_000n * 2_000_000_000n
 
 // Fee constants implied by the mocked rpc responses below:
 // maxFeePerGas = 2 * baseFee (1 gwei) + priorityFee (1 gwei) = 3 gwei.
@@ -261,7 +262,7 @@ describe('WalletAccountEvm', () => {
     test('should allow a fee exactly equal to transactionMaxFee', async () => {
       const accountAtLimit = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
         provider,
-        transactionMaxFee: MOCKED_FEE
+        transactionMaxFee: TRANSACTION.gasLimit * TRANSACTION.maxFeePerGas
       })
 
       const signedTx = await accountAtLimit.signTransaction(TRANSACTION)
@@ -275,7 +276,7 @@ describe('WalletAccountEvm', () => {
       const { hash, fee } = await account.sendTransaction(SIGNED_TRANSACTION)
 
       expect(hash).toBe(DUMMY_TX_HASH)
-      expect(fee).toBe(MOCKED_FEE)
+      expect(fee).toBe(SIGNED_TRANSACTION_FEE)
       expect(provider.sentRawTransactions).toEqual([SIGNED_TRANSACTION])
     })
 
@@ -381,6 +382,81 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('quoteSendTransaction', () => {
+    test('should quote a signed transaction from its own gas limit and fee cap after simulating it', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+        provider: createProvider({ eth_estimateGas: estimateGasMock })
+      })
+
+      const { fee } = await account.quoteSendTransaction(SIGNED_TRANSACTION)
+
+      expect(fee).toBe(SIGNED_TRANSACTION_FEE)
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ACCOUNT.address.toLowerCase(),
+        to: SPENDER_ADDRESS.toLowerCase(),
+        data: '0x',
+        value: '0x3e8',
+        gas: '0x5208',
+        maxFeePerGas: '0x77359400',
+        maxPriorityFeePerGas: '0x3b9aca00',
+        type: '0x2',
+        nonce: '0x0',
+        chainId: '0x7a69'
+      }])
+    })
+
+    test('should quote a legacy signed transaction from its own gas limit and gas price', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+        provider: createProvider({ eth_estimateGas: estimateGasMock })
+      })
+
+      const LEGACY_TRANSACTION = {
+        type: 0,
+        chainId: 1,
+        nonce: 0,
+        to: SPENDER_ADDRESS,
+        value: 1_000n,
+        gasLimit: 21_000n,
+        gasPrice: 5_000_000_000n
+      }
+      const signedTransaction = await new Wallet('0x' + ACCOUNT.keyPair.privateKey).signTransaction(LEGACY_TRANSACTION)
+
+      const { fee } = await account.quoteSendTransaction(signedTransaction)
+
+      expect(fee).toBe(LEGACY_TRANSACTION.gasLimit * LEGACY_TRANSACTION.gasPrice)
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ACCOUNT.address.toLowerCase(),
+        to: SPENDER_ADDRESS.toLowerCase(),
+        data: '0x',
+        value: '0x3e8',
+        gas: '0x5208',
+        gasPrice: toQuantity(LEGACY_TRANSACTION.gasPrice),
+        type: '0x0',
+        nonce: '0x0',
+        chainId: '0x1'
+      }])
+    })
+
+    test('should not broadcast a transfer that would revert even when its gas limit is pinned', async () => {
+      const provider = createProvider({
+        eth_estimateGas: () => { throw new Error('execution reverted: ERC20: transfer amount exceeds balance') }
+      })
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), { provider })
+
+      const promise = account.transfer({
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        gasLimit: 90_000n,
+        maxFeePerGas: 30_000_000_000n,
+        maxPriorityFeePerGas: 2_000_000_000n
+      })
+
+      await expect(promise).rejects.toMatchObject({ code: 'CALL_EXCEPTION', action: 'estimateGas' })
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
     test('should throw if quoting a raw transaction without a provider', async () => {
       const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"))
 
@@ -427,7 +503,7 @@ describe('WalletAccountEvm', () => {
       const { hash, fee } = await account.transfer(TRANSFER)
 
       expect(hash).toBe(DUMMY_TX_HASH)
-      expect(fee).toBe(MOCKED_FEE)
+      expect(fee).toBe(TRANSFER.gasLimit * TRANSFER.maxFeePerGas)
 
       const transaction = Transaction.from(provider.sentRawTransactions[0])
 
@@ -496,7 +572,7 @@ describe('WalletAccountEvm', () => {
       const { hash, fee } = await account.approve(APPROVE_OPTIONS)
 
       expect(hash).toBe(DUMMY_TX_HASH)
-      expect(fee).toBe(MOCKED_FEE)
+      expect(fee).toBe(APPROVE_OPTIONS.gasLimit * APPROVE_OPTIONS.gasPrice)
 
       const transaction = Transaction.from(provider.sentRawTransactions[0])
 

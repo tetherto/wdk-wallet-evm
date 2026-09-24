@@ -231,9 +231,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Quotes the costs of a send transaction operation.
    *
+   * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+   * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+   * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+   * cost as it will be sent.
+   * A signed raw transaction is simulated the same way and quoted from its own gas limit and fee cap.
+   *
    * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (typeof tx === 'string') {
@@ -243,17 +250,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
       const { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList } = Transaction.from(tx)
 
-      const transaction = { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList }
+      await this._estimateGas({ from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList })
 
-      const gas = transaction.authorizationList
-        ? await this._estimateGasWithAuthList(transaction)
-        : await this._provider.estimateGas(transaction)
-
-      const fees = await this._provider.getFeeData()
-
-      const feeRate = fees.maxFeePerGas || fees.gasPrice
-
-      return { fee: gas * feeRate }
+      return { fee: gasLimit * (maxFeePerGas ?? gasPrice) }
     }
 
     return await super.quoteSendTransaction(tx)

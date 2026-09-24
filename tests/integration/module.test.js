@@ -170,6 +170,24 @@ describe('@tetherto/wdk-wallet-evm', () => {
     expect(fee).toBe(EXPECTED_FEE)
   })
 
+  test('should reject a transfer that would revert before signing it, even with a pinned gas limit', async () => {
+    const account = await wallet.getAccountByPath("0'/0/0")
+
+    const promise = account.transfer({
+      token: testToken.target,
+      recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      amount: INITIAL_TOKEN_BALANCE + 1n,
+      gasLimit: 90_000n,
+      maxFeePerGas: 30_000_000_000n,
+      maxPriorityFeePerGas: 2_000_000_000n
+    })
+
+    await expect(promise).rejects.toThrow(/execution reverted/)
+
+    const tokenBalance = await account.getTokenBalance(testToken.target)
+    expect(tokenBalance).toBe(INITIAL_TOKEN_BALANCE)
+  })
+
   test('should transfer a token with the gas and fee fields set on the options', async () => {
     const account = await wallet.getAccountByPath("0'/0/0")
 
@@ -185,7 +203,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
     const { hash, fee } = await account.transfer(TRANSFER)
     const transaction = await provider.getTransaction(hash)
 
-    expect(fee).toBe(106_069_950_248_256n)
+    expect(fee).toBe(TRANSFER.gasLimit * TRANSFER.maxFeePerGas)
     expect(transaction.gasLimit).toBe(TRANSFER.gasLimit)
     expect(transaction.maxFeePerGas).toBe(TRANSFER.maxFeePerGas)
     expect(transaction.maxPriorityFeePerGas).toBe(TRANSFER.maxPriorityFeePerGas)

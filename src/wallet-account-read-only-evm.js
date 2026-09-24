@@ -30,6 +30,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').BlobLike} BlobLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
+/** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
@@ -278,9 +279,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a send transaction operation.
    *
+   * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+   * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+   * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+   * cost as it will be sent.
+   *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (!this._provider) {
@@ -289,15 +296,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
     const from = await this.getAddress()
 
-    const gas = tx.authorizationList
-      ? await this._estimateGasWithAuthList({ from, ...tx })
-      : await this._provider.estimateGas({ from, ...tx })
+    const estimatedGas = await this._estimateGas({ from, ...tx })
 
-    const data = await this._provider.getFeeData()
+    const gas = tx.gasLimit ?? estimatedGas
+    const feeRate = tx.maxFeePerGas ?? tx.gasPrice ?? await this._getFeeRate()
 
-    const feeRate = data.maxFeePerGas || data.gasPrice
-
-    return { fee: gas * feeRate }
+    return { fee: BigInt(gas) * BigInt(feeRate) }
   }
 
   /**
@@ -526,37 +530,18 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
   }
 
-  /** @private */
-  async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
-    const formatAuth = (auth) => {
-      const { address, nonce, chainId } = auth
-
-      const signature = auth.signature instanceof Signature
-        ? auth.signature
-        : Signature.from(auth.signature)
-
-      return {
-        address,
-        nonce: toQuantity(nonce),
-        chainId: toQuantity(chainId),
-        r: toQuantity(signature.r),
-        s: toQuantity(signature.s),
-        yParity: toQuantity(signature.yParity)
-      }
-    }
-
-    const rpcTx = {
-      from,
-      to,
-      value: toQuantity(value),
-      data: data ?? '0x',
-      type: '0x04',
-      authorizationList: authorizationList.map(formatAuth)
-    }
-
-    const result = await this._provider.send('eth_estimateGas', [rpcTx])
-
-    return BigInt(result)
+  /**
+   * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
+   * aware estimation for ERC-7702 transactions.
+   *
+   * @protected
+   * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+   * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
+   */
+  async _estimateGas (tx) {
+    return tx.authorizationList
+      ? await this._estimateGasWithAuthList(tx)
+      : await this._provider.estimateGas(tx)
   }
 
   /**
@@ -599,5 +584,45 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
 
     return tx
+  }
+
+  /** @private */
+  async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
+    const formatAuth = (auth) => {
+      const { address, nonce, chainId } = auth
+
+      const signature = auth.signature instanceof Signature
+        ? auth.signature
+        : Signature.from(auth.signature)
+
+      return {
+        address,
+        nonce: toQuantity(nonce),
+        chainId: toQuantity(chainId),
+        r: toQuantity(signature.r),
+        s: toQuantity(signature.s),
+        yParity: toQuantity(signature.yParity)
+      }
+    }
+
+    const rpcTx = {
+      from,
+      to,
+      value: toQuantity(value),
+      data: data ?? '0x',
+      type: '0x04',
+      authorizationList: authorizationList.map(formatAuth)
+    }
+
+    const result = await this._provider.send('eth_estimateGas', [rpcTx])
+
+    return BigInt(result)
+  }
+
+  /** @private */
+  async _getFeeRate () {
+    const { maxFeePerGas, gasPrice } = await this._provider.getFeeData()
+
+    return maxFeePerGas || gasPrice
   }
 }

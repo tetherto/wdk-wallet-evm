@@ -68,9 +68,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a send transaction operation.
      *
+     * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+     * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+     * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+     * cost as it will be sent.
+     *
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
@@ -164,6 +170,16 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     getDelegation(): Promise<DelegationInfo>;
     /** @private */
     private _estimateGasWithAuthList;
+    /**
+     * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
+     * aware estimation for ERC-7702 transactions.
+     *
+     * @protected
+     * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+     * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
+     */
+    protected _estimateGas(tx: EvmTransactionRequest): Promise<bigint>;
+    private _getFeeRate;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
@@ -173,6 +189,7 @@ export type BlobLike = import("ethers").BlobLike;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type EvmTransactionResponse = import("ethers").TransactionResponse;
+export type EvmTransactionRequest = import("ethers").TransactionRequest;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
