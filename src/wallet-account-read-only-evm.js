@@ -29,6 +29,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
+/** @typedef {import('ethers').TransactionRequest} TransactionRequest */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
@@ -238,8 +239,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a send transaction operation.
    *
-   * A `gasLimit` set on the transaction replaces the gas estimation, and a `maxFeePerGas` (or `gasPrice`) set on it
-   * replaces the fee rate fetched from the provider, so the quote is the transaction's maximum cost as it will be sent.
+   * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+   * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+   * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+   * cost as it will be sent.
    *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
@@ -252,7 +255,9 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
 
     const from = await this.getAddress()
 
-    const gas = tx.gasLimit ?? await this._estimateGas({ from, ...tx })
+    const estimatedGas = await this._estimateGas({ from, ...tx })
+
+    const gas = tx.gasLimit ?? estimatedGas
     const feeRate = tx.maxFeePerGas ?? tx.gasPrice ?? await this._getFeeRate()
 
     return { fee: BigInt(gas) * BigInt(feeRate) }
@@ -517,7 +522,14 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     return BigInt(result)
   }
 
-  /** @private */
+  /**
+   * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
+   * aware estimation for ERC-7702 transactions.
+   *
+   * @protected
+   * @param {TransactionRequest} tx - The transaction to simulate, including its `from` address.
+   * @returns {Promise<bigint>} The estimated gas.
+   */
   async _estimateGas (tx) {
     return tx.authorizationList
       ? await this._estimateGasWithAuthList(tx)

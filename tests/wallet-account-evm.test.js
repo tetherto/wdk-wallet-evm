@@ -382,11 +382,46 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('quoteSendTransaction', () => {
-    test('should quote a signed transaction from its own gas limit and fee cap', async () => {
+    test('should quote a signed transaction from its own gas limit and fee cap after simulating it', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+        provider: createProvider({ eth_estimateGas: estimateGasMock })
+      })
+
       const { fee } = await account.quoteSendTransaction(SIGNED_TRANSACTION)
 
       expect(fee).toBe(SIGNED_TRANSACTION_FEE)
-      expect(provider.request.mock.calls.map(([{ method }]) => method)).not.toContain('eth_estimateGas')
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ACCOUNT.address.toLowerCase(),
+        to: SPENDER_ADDRESS.toLowerCase(),
+        data: '0x',
+        value: '0x3e8',
+        gas: '0x5208',
+        maxFeePerGas: '0x77359400',
+        maxPriorityFeePerGas: '0x3b9aca00',
+        type: '0x2',
+        nonce: '0x0',
+        chainId: '0x7a69'
+      }])
+    })
+
+    test('should not broadcast a transfer that would revert even when its gas limit is pinned', async () => {
+      const provider = createProvider({
+        eth_estimateGas: () => { throw new Error('execution reverted: ERC20: transfer amount exceeds balance') }
+      })
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), { provider })
+
+      const promise = account.transfer({
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        gasLimit: 90_000n,
+        maxFeePerGas: 30_000_000_000n,
+        maxPriorityFeePerGas: 2_000_000_000n
+      })
+
+      await expect(promise).rejects.toMatchObject({ code: 'CALL_EXCEPTION', action: 'estimateGas' })
+      expect(provider.sentRawTransactions).toEqual([])
     })
 
     test('should throw if quoting a raw transaction without a provider', async () => {

@@ -99,9 +99,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Quotes the costs of a send transaction operation.
      *
-     * A `gasLimit` set on the transaction replaces the gas estimation, and a `maxFeePerGas` (or `gasPrice`) set on it
-     * replaces the fee rate fetched from the provider, so the quote is the transaction's maximum cost as it will be sent.
-     * A signed raw transaction is quoted from its own gas limit and fee cap.
+     * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+     * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+     * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+     * cost as it will be sent.
+     * A signed raw transaction is simulated the same way and quoted from its own gas limit and fee cap.
      *
      * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
