@@ -368,6 +368,49 @@ describe('WalletAccountEvm', () => {
       await expect(promise).rejects.toThrow('blob transaction does not support gasPrice')
     })
 
+    test('should throw if an eip-7702 transaction also sets a gas price', async () => {
+      const promise = account.sendTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        type: 4,
+        gasPrice: 1_000_000_000
+      })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-7702 transaction does not support gasPrice')
+    })
+
+    test('should throw if a transaction with an authorization list also sets a gas price', async () => {
+      const authorization = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS })
+
+      const promise = account.sendTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        gasPrice: 1_000_000_000,
+        authorizationList: [authorization]
+      })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('eip-7702 transaction does not support gasPrice')
+    })
+
+    test('should populate an eip-7702 transaction with eip-1559 fee fields', async () => {
+      const authorization = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS })
+
+      await account.sendTransaction({
+        to: SPENDER_ADDRESS,
+        value: 1_000,
+        authorizationList: [authorization]
+      })
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.type).toBe(4)
+      expect(transaction.maxFeePerGas).toBe(MOCKED_FEE_RATE)
+      expect(transaction.maxPriorityFeePerGas).toBe(1_000_000_000n)
+      expect(transaction.gasPrice).toBe(null)
+    })
+
     test('should throw if a blob transaction omits the max fee per blob gas', async () => {
       const promise = account.sendTransaction({
         to: SPENDER_ADDRESS,
