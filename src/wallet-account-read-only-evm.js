@@ -489,39 +489,6 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
   }
 
-  /** @private */
-  async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
-    const formatAuth = (auth) => {
-      const { address, nonce, chainId } = auth
-
-      const signature = auth.signature instanceof Signature
-        ? auth.signature
-        : Signature.from(auth.signature)
-
-      return {
-        address,
-        nonce: toQuantity(nonce),
-        chainId: toQuantity(chainId),
-        r: toQuantity(signature.r),
-        s: toQuantity(signature.s),
-        yParity: toQuantity(signature.yParity)
-      }
-    }
-
-    const rpcTx = {
-      from,
-      to,
-      value: toQuantity(value),
-      data: data ?? '0x',
-      type: '0x04',
-      authorizationList: authorizationList.map(formatAuth)
-    }
-
-    const result = await this._provider.send('eth_estimateGas', [rpcTx])
-
-    return BigInt(result)
-  }
-
   /**
    * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
    * aware estimation for ERC-7702 transactions.
@@ -534,13 +501,6 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     return tx.authorizationList
       ? await this._estimateGasWithAuthList(tx)
       : await this._provider.estimateGas(tx)
-  }
-
-  /** @private */
-  async _getFeeRate () {
-    const { maxFeePerGas, gasPrice } = await this._provider.getFeeData()
-
-    return maxFeePerGas || gasPrice
   }
 
   /**
@@ -583,5 +543,45 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
 
     return tx
+  }
+
+  /** @private */
+  async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
+    const formatAuth = (auth) => {
+      const { address, nonce, chainId } = auth
+
+      const signature = auth.signature instanceof Signature
+        ? auth.signature
+        : Signature.from(auth.signature)
+
+      return {
+        address,
+        nonce: toQuantity(nonce),
+        chainId: toQuantity(chainId),
+        r: toQuantity(signature.r),
+        s: toQuantity(signature.s),
+        yParity: toQuantity(signature.yParity)
+      }
+    }
+
+    const rpcTx = {
+      from,
+      to,
+      value: toQuantity(value),
+      data: data ?? '0x',
+      type: '0x04',
+      authorizationList: authorizationList.map(formatAuth)
+    }
+
+    const result = await this._provider.send('eth_estimateGas', [rpcTx])
+
+    return BigInt(result)
+  }
+
+  /** @private */
+  async _getFeeRate () {
+    const { maxFeePerGas, gasPrice } = await this._provider.getFeeData()
+
+    return maxFeePerGas || gasPrice
   }
 }
