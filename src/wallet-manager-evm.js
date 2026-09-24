@@ -53,7 +53,7 @@ export default class WalletManagerEvm extends WalletManager {
    * derive child accounts); non-derivable signers (e.g. private-key signers) are not allowed
    * as the default but may be registered by name via {@link addSigner} - If not adding to your global account managment for using just one non derivable signer create a standalone account.
    *
-   * @param {string|Uint8Array|ISigner} seedOrSigner - A BIP-39 seed phrase, seed bytes, or a root signer. Root signers must be derivable — non-derivable signers (e.g. private-key signers) can only be registered by name via {@link addSigner}.
+   * @param {string|Uint8Array|ISigner} seedOrSigner - A BIP-39 mnemonic seed phrase, a raw BIP-32 master seed (16-64 bytes), or a root signer. Root signers must be derivable — non-derivable signers (e.g. private-key signers) can only be registered by name via {@link addSigner}.
    * @param {EvmWalletConfig} [config] - The configuration object.
    * @throws {InvalidSignerError} If the default signer doesn't support account derivation.
    */
