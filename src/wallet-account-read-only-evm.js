@@ -27,6 +27,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
 /** @typedef {import('ethers').TypedDataField} TypedDataField */
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
+/** @typedef {import('ethers').BlobLike} BlobLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
 /** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
@@ -70,6 +71,9 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
  * @property {number} [nonce] - The transaction nonce.
  * @property {number | bigint} [chainId] - The chain ID of the network.
+ * @property {number | bigint} [maxFeePerBlobGas] - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
+ * @property {BlobLike[]} [blobs] - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
+ * @property {string[]} [blobVersionedHashes] - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
@@ -88,7 +92,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 
 /**
  * @typedef {Object} EvmWalletConfig
- * @property {string | Eip1193Provider | Array<string | Eip1193Provider>} [provider] - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list.
+ * @property {string | Provider | Eip1193Provider | Array<string | Provider | Eip1193Provider>} [provider] - The url of the rpc provider, an already-built ethers provider (e.g. a `JsonRpcProvider` or a failover wrapper), or an instance of a class that implements eip-1193. It's also possible to provide an array of these instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. An already-built provider is reused as-is, which lets a manager share a single provider across all the accounts it creates.
  * @property {number} [retries] - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3.
  * @property {number} [chainId] - The chain ID of the network. When provided, skips automatic chain ID detection from the provider.
  * @property {number | bigint} [transferMaxFee] - The maximum fee amount for transfer operations.
@@ -123,31 +127,67 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @protected
      * @type {Provider | undefined}
      */
-    this._provider = undefined
+    this._provider = WalletAccountReadOnlyEvm._buildProvider(config)
+  }
 
+  /**
+   * Whether a value is an EIP-1193 provider (e.g. a browser wallet).
+   *
+   * @protected
+   * @param {string | Eip1193Provider | Provider} value - The value to inspect.
+   * @returns {boolean} True if the value is an EIP-1193 provider.
+   */
+  static _isEip1193Provider (value) {
+    return typeof value.request === 'function'
+  }
+
+  /**
+   * Builds an ethers provider from the wallet configuration:
+   * - a url string -> a new `JsonRpcProvider`
+   * - an already-built ethers provider (or failover wrapper) -> reused as-is
+   * - anything else (EIP-1193 / browser wallet) -> wrapped in a `BrowserProvider`
+   * - an array of the above -> a `FailoverProvider` across each entry
+   *
+   * @protected
+   * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
+   * @returns {Provider | undefined} The provider, or undefined if none is configured.
+   */
+  static _buildProvider (config = {}) {
     const { provider, retries = 3 } = config
     const network = config.chainId ? Network.from(config.chainId) : undefined
     const providerOpts = config.chainId ? { staticNetwork: true } : undefined
 
-    if (Array.isArray(provider)) {
-      if (provider.length > 0) {
-        const failoverProvider = new FailoverProvider({ retries })
-
-        for (const entry of provider) {
-          const option = typeof entry === 'string'
-            ? new JsonRpcProvider(entry, network, providerOpts)
-            : new BrowserProvider(entry)
-          failoverProvider.addProvider(option)
-        }
-
-        this._provider = failoverProvider.initialize()
+    const toOption = (entry) => {
+      if (typeof entry === 'string') {
+        return new JsonRpcProvider(entry, network, providerOpts)
       }
-    } else if (provider) {
-      this._provider =
-        typeof provider === 'string'
-          ? new JsonRpcProvider(provider, network, providerOpts)
-          : new BrowserProvider(provider)
+
+      if (WalletAccountReadOnlyEvm._isEip1193Provider(entry)) {
+        return new BrowserProvider(entry)
+      }
+
+      return entry
     }
+
+    if (Array.isArray(provider)) {
+      if (provider.length === 0) {
+        return undefined
+      }
+
+      const failoverProvider = new FailoverProvider({ retries })
+
+      for (const entry of provider) {
+        failoverProvider.addProvider(toOption(entry))
+      }
+
+      return failoverProvider.initialize()
+    }
+
+    if (provider) {
+      return toOption(provider)
+    }
+
+    return undefined
   }
 
   /**
@@ -267,7 +307,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   /**
    * Quotes the costs of a transfer operation.
    *
-   * @param {EvmTransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    */

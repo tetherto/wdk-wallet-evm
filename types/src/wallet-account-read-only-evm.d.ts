@@ -82,7 +82,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a transfer operation.
      *
-     * @param {EvmTransferOptions} options - The transfer's options.
+     * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
      * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      */
@@ -185,6 +185,7 @@ export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
+export type BlobLike = import("ethers").BlobLike;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type EvmTransactionResponse = import("ethers").TransactionResponse;
@@ -272,6 +273,18 @@ export type EvmTransaction = {
      * - The chain ID of the network.
      */
     chainId?: number | bigint;
+    /**
+     * - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
+     */
+    maxFeePerBlobGas?: number | bigint;
+    /**
+     * - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
+     */
+    blobs?: BlobLike[];
+    /**
+     * - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
+     */
+    blobVersionedHashes?: string[];
     /**
      * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
      */

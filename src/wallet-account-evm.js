@@ -66,7 +66,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * given BIP-44 path.
    *
    * @overload
-   * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase or seed bytes.
+   * @param {string | Uint8Array} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
    * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
    * @param {EvmWalletConfig} [config] - The configuration object.
    */
@@ -261,7 +261,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Transfers a token to another address.
    *
-   * @param {EvmTransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<TransferResult>} The transfer's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
