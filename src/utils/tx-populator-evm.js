@@ -76,6 +76,9 @@ export async function populateTransactionEvm (provider, from, tx) {
   if ((explicitType === 3 || hasBlobs) && hasLegacy) {
     throw new ValueError('blob transaction does not support gasPrice')
   }
+  if ((explicitType === 4 || (explicitType == null && hasAuthList)) && hasLegacy) {
+    throw new ValueError('eip-7702 transaction does not support gasPrice')
+  }
 
   const feeData = await provider.getFeeData()
 
@@ -143,7 +146,16 @@ export async function populateTransactionEvm (provider, from, tx) {
     return populated
   }
 
-  // Type 4 (EIP-7702) and future types; pass-through
+  if (type === 4) {
+    populated.type = 4
+    populated.maxFeePerGas = tx.maxFeePerGas ?? feeData.maxFeePerGas
+    populated.maxPriorityFeePerGas = tx.maxPriorityFeePerGas ?? feeData.maxPriorityFeePerGas
+    if (hasAccessList) populated.accessList = tx.accessList
+    if (tx.authorizationList != null) populated.authorizationList = tx.authorizationList
+    return populated
+  }
+
+  // Future types; pass-through
   populated.type = type
   if (hasAccessList) populated.accessList = tx.accessList
   if (hasLegacy) {
