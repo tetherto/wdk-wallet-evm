@@ -240,6 +240,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (typeof tx === 'string') {

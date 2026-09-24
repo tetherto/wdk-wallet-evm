@@ -1,4 +1,4 @@
-import { Interface, Transaction, ZeroAddress, toQuantity } from 'ethers'
+import { Interface, Transaction, Wallet, ZeroAddress, toQuantity } from 'ethers'
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
@@ -402,6 +402,39 @@ describe('WalletAccountEvm', () => {
         type: '0x2',
         nonce: '0x0',
         chainId: '0x7a69'
+      }])
+    })
+
+    test('should quote a legacy signed transaction from its own gas limit and gas price', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0"), {
+        provider: createProvider({ eth_estimateGas: estimateGasMock })
+      })
+
+      const LEGACY_TRANSACTION = {
+        type: 0,
+        chainId: 1,
+        nonce: 0,
+        to: SPENDER_ADDRESS,
+        value: 1_000n,
+        gasLimit: 21_000n,
+        gasPrice: 5_000_000_000n
+      }
+      const signedTransaction = await new Wallet('0x' + ACCOUNT.keyPair.privateKey).signTransaction(LEGACY_TRANSACTION)
+
+      const { fee } = await account.quoteSendTransaction(signedTransaction)
+
+      expect(fee).toBe(LEGACY_TRANSACTION.gasLimit * LEGACY_TRANSACTION.gasPrice)
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ACCOUNT.address.toLowerCase(),
+        to: SPENDER_ADDRESS.toLowerCase(),
+        data: '0x',
+        value: '0x3e8',
+        gas: '0x5208',
+        gasPrice: toQuantity(LEGACY_TRANSACTION.gasPrice),
+        type: '0x0',
+        nonce: '0x0',
+        chainId: '0x1'
       }])
     })
 

@@ -76,6 +76,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
@@ -174,10 +175,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * aware estimation for ERC-7702 transactions.
      *
      * @protected
-     * @param {TransactionRequest} tx - The transaction to simulate, including its `from` address.
-     * @returns {Promise<bigint>} The estimated gas.
+     * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+     * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
      */
-    protected _estimateGas(tx: TransactionRequest): Promise<bigint>;
+    protected _estimateGas(tx: EvmTransactionRequest): Promise<bigint>;
     private _getFeeRate;
 }
 export type Provider = import("ethers").Provider;
@@ -187,7 +188,7 @@ export type TypedDataField = import("ethers").TypedDataField;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type EvmTransactionResponse = import("ethers").TransactionResponse;
-export type TransactionRequest = import("ethers").TransactionRequest;
+export type EvmTransactionRequest = import("ethers").TransactionRequest;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;

@@ -29,7 +29,7 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
-/** @typedef {import('ethers').TransactionRequest} TransactionRequest */
+/** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
@@ -247,6 +247,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (!this._provider) {
@@ -494,8 +495,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * aware estimation for ERC-7702 transactions.
    *
    * @protected
-   * @param {TransactionRequest} tx - The transaction to simulate, including its `from` address.
-   * @returns {Promise<bigint>} The estimated gas.
+   * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+   * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
    */
   async _estimateGas (tx) {
     return tx.authorizationList
