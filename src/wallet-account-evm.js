@@ -14,9 +14,9 @@
 
 'use strict'
 
-import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { InvalidSignerError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
-import { Contract, Transaction, ZeroAddress } from 'ethers'
+import { Contract, Transaction, ZeroAddress, verifyAuthorization, verifyMessage, verifyTypedData } from 'ethers'
 
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
@@ -159,9 +159,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
+   * @throws {InvalidSignerError} If the signature is not the account's.
    */
   async sign (message) {
-    return await this._signer.sign(message)
+    const signature = await this._signer.sign(message)
+
+    await this._assertSignedByAccount(() => verifyMessage(message, signature))
+
+    return signature
   }
 
   /**
@@ -169,9 +174,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {TypedData} typedData - The typed data to sign.
    * @returns {Promise<string>} The typed data signature.
+   * @throws {InvalidSignerError} If the signature is not the account's.
    */
   async signTypedData ({ domain, types, message }) {
-    return await this._signer.signTypedData({ domain, types, message })
+    const signature = await this._signer.signTypedData({ domain, types, message })
+
+    await this._assertSignedByAccount(() => verifyTypedData(domain, types, message, signature))
+
+    return signature
   }
 
   /**
@@ -182,6 +192,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {EvmTransaction} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
    * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
+   * @throws {InvalidSignerError} If the signed transaction is not signed by the account.
    */
   async signTransaction (tx) {
     if (this._provider && this._config.transactionMaxFee !== undefined) {
@@ -191,10 +202,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
         throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
       }
     }
-    return await this._signer.signTransaction({
+    const signed = await this._signer.signTransaction({
       from: await this.getAddress(),
       ...tx
     })
+
+    await this._assertSignedByAccount(() => Transaction.from(signed).from)
+
+    return signed
   }
 
   /**
@@ -205,6 +220,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+   * @throws {InvalidSignerError} If the signer returns another transaction than the one built, or one not signed by the account.
    */
   async sendTransaction (tx) {
     if (!this._provider) {
@@ -224,6 +240,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const from = await this.getAddress()
     const unsignedTx = await populateTransactionEvm(this._provider, from, tx)
     const signed = await this._signer.signTransaction(unsignedTx)
+
+    if (Transaction.from(signed).unsignedHash !== Transaction.from({ ...unsignedTx, from: undefined }).unsignedHash) {
+      throw new InvalidSignerError('The signer returned another transaction than the one it was asked to sign.')
+    }
+
+    await this._assertSignedByAccount(() => Transaction.from(signed).from)
+
     const hash = await this._provider.send('eth_sendRawTransaction', [signed])
     return { hash, fee }
   }
@@ -340,6 +363,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
+   * @throws {InvalidSignerError} If the authorization is not signed by the account.
    */
   async signAuthorization (auth) {
     const populated = { ...auth }
@@ -353,7 +377,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
         populated.nonce = await this._provider.getTransactionCount(address)
       }
     }
-    return await this._signer.signAuthorization(populated)
+    const authorization = await this._signer.signAuthorization(populated)
+
+    await this._assertSignedByAccount(() => verifyAuthorization(authorization, authorization.signature))
+
+    return authorization
   }
 
   /**
@@ -405,5 +433,25 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   dispose () {
     this._signer.dispose()
+  }
+
+  /**
+   * Checks that a signature the signer returned recovers to the account's address, so a faulty or
+   * compromised signer fails here instead of producing a signature or transaction of another key.
+   *
+   * @private
+   * @param {() => string | Promise<string>} recoverSigner - Recovers the address that signed.
+   * @throws {InvalidSignerError} If it is not the account's address, or cannot be recovered.
+   */
+  async _assertSignedByAccount (recoverSigner) {
+    let signer
+
+    try {
+      signer = await recoverSigner()
+    } catch {}
+
+    if (signer?.toLowerCase() !== (await this.getAddress()).toLowerCase()) {
+      throw new InvalidSignerError("The signer's signature does not match the account's address.")
+    }
   }
 }

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
 import * as bip39 from 'bip39'
 
-import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { InvalidSignerError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -780,6 +780,60 @@ describe('WalletAccountEvm', () => {
 
       await expect(promise).rejects.toThrow(ProviderRequiredError)
       await expect(promise).rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+  })
+
+  describe('signer output', () => {
+    const OTHER_PRIVATE_KEY = '0x' + '11'.repeat(32)
+
+    const TYPED_DATA = {
+      domain: { name: 'Test', version: '1', chainId: 1 },
+      types: { Mail: [{ name: 'contents', type: 'string' }] },
+      message: { contents: 'Hello' }
+    }
+
+    // the account's own signer, with some of its methods replaced
+    async function accountWith (replace) {
+      const signer = await new SeedSignerEvm(SEED_PHRASE).derive("0'/0/0")
+      const original = {
+        signTransaction: signer.signTransaction.bind(signer)
+      }
+
+      Object.assign(signer, replace(original, new PrivateKeySignerEvm(OTHER_PRIVATE_KEY)))
+
+      return new WalletAccountEvm(signer, { provider })
+    }
+
+    test('should refuse signatures made with another key', async () => {
+      const account = await accountWith((_, other) => ({
+        sign: (message) => other.sign(message),
+        signTypedData: (typedData) => other.signTypedData(typedData),
+        signTransaction: ({ from, ...tx }) => other.signTransaction(tx),
+        signAuthorization: (auth) => other.signAuthorization(auth)
+      }))
+
+      await expect(account.sign('Hello')).rejects.toThrow(InvalidSignerError)
+      await expect(account.signTypedData(TYPED_DATA)).rejects.toThrow(InvalidSignerError)
+      await expect(account.signTransaction({ to: SPENDER_ADDRESS, value: 1_000 })).rejects.toThrow(InvalidSignerError)
+      await expect(account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })).rejects.toThrow(InvalidSignerError)
+      await expect(account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS })).rejects.toThrow(InvalidSignerError)
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
+    test('should refuse to send a transaction other than the one it built', async () => {
+      const account = await accountWith(({ signTransaction }) => ({
+        signTransaction: (tx) => signTransaction({ ...tx, to: DELEGATE_CONTRACT_ADDRESS })
+      }))
+
+      await expect(account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 }))
+        .rejects.toThrow('The signer returned another transaction than the one it was asked to sign.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
+    test('should refuse a signature that cannot be recovered', async () => {
+      const account = await accountWith(() => ({ sign: async () => '0x1234' }))
+
+      await expect(account.sign('Hello')).rejects.toThrow("The signer's signature does not match the account's address.")
     })
   })
 

@@ -67,6 +67,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature.
+     * @throws {InvalidSignerError} If the signature is not the account's.
      */
     sign(message: string): Promise<string>;
     /**
@@ -74,6 +75,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
+     * @throws {InvalidSignerError} If the signature is not the account's.
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
@@ -84,6 +86,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {EvmTransaction} tx - The transaction to sign.
      * @returns {Promise<string>} The signed transaction as a hex string.
      * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
+     * @throws {InvalidSignerError} If the signed transaction is not signed by the account.
      */
     signTransaction(tx: EvmTransaction): Promise<string>;
     /**
@@ -94,6 +97,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+     * @throws {InvalidSignerError} If the signer returns another transaction than the one built, or one not signed by the account.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
     /**
@@ -140,6 +144,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
+     * @throws {InvalidSignerError} If the authorization is not signed by the account.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**
