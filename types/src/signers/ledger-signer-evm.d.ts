@@ -1,0 +1,125 @@
+import { ISignerEvm } from "./seed-signer-evm.js";
+/**
+ * @typedef {import("@ledgerhq/device-management-kit").DeviceManagementKit} DeviceManagementKit
+ * @typedef {import("./seed-signer-evm.js").UnsignedEvmTransaction} UnsignedEvmTransaction
+ * @typedef {import("../wallet-account-read-only-evm.js").TypedData} TypedData
+ * @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair
+ * @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest
+ * @typedef {import('ethers').Authorization} Authorization
+ * @typedef {import('rxjs').Observable<any>} Observable
+ */
+/**
+ * @extends {ISignerEvm}
+ * Hardware-backed signer using Ledger DMK + Ethereum app.
+ * Handles device connection, reconnection and provides signing primitives compatible with the
+ * rest of the EVM wallet stack.
+ */
+export default class LedgerSignerEvm extends ISignerEvm {
+    /**
+     * @param {string} path - Relative BIP-44 path segment (e.g. "0'/0/0"). Prefixed internally.
+     * @param {DeviceManagementKit} [dmk] - Optional DMK instance. Auto-created if omitted.
+     */
+    constructor(path: string, dmk?: DeviceManagementKit);
+    /** @private */
+    private _account;
+    /** @private */
+    private _address;
+    /** @private */
+    private _publicKey;
+    /** @private */
+    private _sessionId;
+    /** @private */
+    private _path;
+    /** @private */
+    private _dmk;
+    /** @type {boolean} */
+    get isDerivable(): boolean;
+    /** @type {number|undefined} */
+    get index(): number | undefined;
+    /** @type {string|undefined} */
+    get path(): string | undefined;
+    /** @type {string|undefined} */
+    get address(): string | undefined;
+    /**
+     * The account's key pair. Private key is always null for Ledger signers.
+     *
+     * @type {KeyPair}
+     * @throws {Error} If the device has not been connected yet.
+     */
+    get keyPair(): KeyPair;
+    /** @private */
+    private _disconnect;
+    /** @private */
+    private _reconnect;
+    /**
+     * Ensure the device is in a usable state before sending actions.
+     * - If locked or busy: fail fast with a friendly error.
+     * - If not connected: attempt reconnect.
+     *
+     * @private
+     */
+    private _ensureDeviceReady;
+    /**
+     * Consume a DeviceAction observable and resolve on Completed; reject early on Error/Stopped.
+     *
+     * @template T
+     * @param {Observable} observable
+     * @returns {Promise<T>}
+     * @private
+     */
+    private _consumeDeviceAction;
+    /** @private */
+    private _connect;
+    /**
+     * Derive a new signer at the given relative path, reusing the current device session.
+     *
+     * @param {string} relPath - Relative BIP-44 path (e.g. "0'/0/1").
+     * @returns {Promise<LedgerSignerEvm>} A new hardware-backed signer bound to the derived path.
+     */
+    derive(relPath: string): Promise<LedgerSignerEvm>;
+    /**
+     * @returns {Promise<string>} The account's address.
+     */
+    getAddress(): Promise<string>;
+    /**
+     * Signs a message.
+     *
+     * @param {string} message - The message to sign.
+     * @returns {Promise<string>} The message's signature.
+     */
+    sign(message: string): Promise<string>;
+    /**
+     * Signs a transaction and returns the serialized signed transaction hex.
+     *
+     * @param {UnsignedEvmTransaction} unsignedTx - The unsigned transaction object.
+     * @returns {Promise<string>} The serialized signed transaction hex.
+     */
+    signTransaction(unsignedTx: UnsignedEvmTransaction): Promise<string>;
+    /**
+     * Signs typed data according to EIP-712.
+     *
+     * @param {TypedData} typedData - The typed data to sign.
+     * @returns {Promise<string>} The typed data signature.
+     */
+    signTypedData({ domain, types, message }: TypedData): Promise<string>;
+    /**
+     * Sign an ERC-7702 authorization tuple.
+     *
+     * Standalone authorization signing is not supported on Ledger devices.
+     * Use `signTransaction` with a type 4 transaction containing an `authorizationList` instead.
+     *
+     * @param {AuthorizationRequest} _auth
+     * @returns {Promise<Authorization>}
+     * @throws {Error} Always throws — not supported on Ledger hardware.
+     */
+    signAuthorization(_auth: AuthorizationRequest): Promise<Authorization>;
+    /** Clear device handles and local state. @returns {void} */
+    dispose(): void;
+}
+export type TypedData = import("../wallet-account-read-only-evm.js").TypedData;
+export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
+export type DeviceManagementKit = import("@ledgerhq/device-management-kit").DeviceManagementKit;
+export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
+export type AuthorizationRequest = import("ethers").AuthorizationRequest;
+export type Authorization = import("ethers").Authorization;
+export type Observable = import("rxjs").Observable<any>;
