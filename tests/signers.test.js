@@ -2,7 +2,7 @@ import * as bip39 from 'bip39'
 
 import { describe, expect, test } from '@jest/globals'
 
-import { InvalidSignerError, ValueError } from '@tetherto/wdk-wallet'
+import { DisposalError, InvalidSignerError, ValueError } from '@tetherto/wdk-wallet'
 
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
 import PrivateKeySignerEvm from '../src/signers/private-key-signer-evm.js'
@@ -10,6 +10,9 @@ import PrivateKeySignerEvm from '../src/signers/private-key-signer-evm.js'
 const VALID_SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 const VALID_SEED = bip39.mnemonicToSeedSync(VALID_SEED_PHRASE)
 const VALID_PRIVATE_KEY = '260905feebf1ec684f36f1599128b85f3a26c2b817f2065a2fc278398449c41f'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const TYPED_DATA = { domain: {}, types: {}, primaryType: 'Mail', message: {} }
 const EXPECTED_PUBLIC_KEY = '036c082582225926b9356d95b91a4acffa3511b7cc2a14ef5338c090ea2cc3d0aa'
 
 const MESSAGE = 'Dummy message to sign.'
@@ -98,8 +101,23 @@ describe('SeedSignerEvm', () => {
 
     const promise = root.derive("0'/0/0")
 
-    await expect(promise).rejects.toThrow(InvalidSignerError)
-    await expect(promise).rejects.toThrow('Cannot derive: this signer has no root')
+    await expect(promise).rejects.toThrow(DisposalError)
+    await expect(promise).rejects.toThrow('The signer has been disposed.')
+  })
+
+  test('should throw DisposalError from signing methods once disposed', async () => {
+    const signer = await new SeedSignerEvm(VALID_SEED_PHRASE).derive("0'/0/0")
+
+    expect(signer.disposed).toBe(false)
+
+    signer.dispose()
+
+    expect(signer.disposed).toBe(true)
+
+    await expect(signer.sign('message')).rejects.toThrow(DisposalError)
+    await expect(signer.signTransaction({ to: ZERO_ADDRESS, value: 0 })).rejects.toThrow(DisposalError)
+    await expect(signer.signTypedData(TYPED_DATA)).rejects.toThrow(DisposalError)
+    await expect(signer.signAuthorization({ address: ZERO_ADDRESS })).rejects.toThrow(DisposalError)
   })
 
   test('should return the correct signature', async () => {
@@ -215,5 +233,20 @@ describe('PrivateKeySignerEvm', () => {
     signer.dispose()
 
     expect(signer.keyPair.privateKey).toBeNull()
+  })
+
+  test('should throw DisposalError from signing methods once disposed', async () => {
+    const signer = new PrivateKeySignerEvm(VALID_PRIVATE_KEY)
+
+    expect(signer.disposed).toBe(false)
+
+    signer.dispose()
+
+    expect(signer.disposed).toBe(true)
+
+    await expect(signer.sign('message')).rejects.toThrow(DisposalError)
+    await expect(signer.signTransaction({ to: ZERO_ADDRESS, value: 0 })).rejects.toThrow(DisposalError)
+    await expect(signer.signTypedData(TYPED_DATA)).rejects.toThrow(DisposalError)
+    await expect(signer.signAuthorization({ address: ZERO_ADDRESS })).rejects.toThrow(DisposalError)
   })
 })

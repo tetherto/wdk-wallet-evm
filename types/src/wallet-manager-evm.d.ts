@@ -47,6 +47,7 @@ export default class WalletManagerEvm extends WalletManager {
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
      * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccount(index?: number, options?: {
         signerName?: string;
@@ -59,6 +60,7 @@ export default class WalletManagerEvm extends WalletManager {
      * @param {string} signerName - The signer name registered via {@link addSigner}.
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If no signer exists with the given name.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccount(signerName: string): Promise<WalletAccountEvm>;
     /**
@@ -70,10 +72,19 @@ export default class WalletManagerEvm extends WalletManager {
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
      * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccountByPath(path: string, options?: {
         signerName?: string;
     }): Promise<WalletAccountEvm>;
+    /**
+     * Builds the account config, injecting the manager's shared provider so accounts reuse
+     * it instead of opening their own client.
+     *
+     * @private
+     * @returns {EvmWalletConfig} The account configuration.
+     */
+    private _accountConfig;
     /**
      * Returns the current fee rates.
      *

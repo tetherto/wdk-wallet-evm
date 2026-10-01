@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
 import * as bip39 from 'bip39'
 
-import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { DisposalError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -790,6 +790,32 @@ describe('WalletAccountEvm', () => {
       account.dispose()
 
       expect(account.keyPair.privateKey).toBe(null)
+    })
+
+    test('should expose the disposed state', () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      expect(account.disposed).toBe(false)
+
+      account.dispose()
+
+      expect(account.disposed).toBe(true)
+    })
+
+    test('should throw DisposalError from signing methods once disposed', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      account.dispose()
+
+      await expect(account.sign('message')).rejects.toThrow(DisposalError)
+      await expect(account.signTypedData({ domain: {}, types: {}, primaryType: 'Mail', message: {} })).rejects.toThrow(DisposalError)
+      await expect(account.signTransaction({ to: ZeroAddress, value: 0 })).rejects.toThrow(DisposalError)
+      await expect(account.sendTransaction({ to: ZeroAddress, value: 0 })).rejects.toThrow(DisposalError)
+      await expect(account.transfer({ token: ZeroAddress, recipient: ZeroAddress, amount: 1 })).rejects.toThrow(DisposalError)
+      await expect(account.approve({ token: ZeroAddress, spender: ZeroAddress, amount: 1 })).rejects.toThrow(DisposalError)
+      await expect(account.signAuthorization({ address: ZeroAddress })).rejects.toThrow(DisposalError)
+      await expect(account.delegate(ZeroAddress)).rejects.toThrow(DisposalError)
+      await expect(account.revokeDelegation()).rejects.toThrow(DisposalError)
     })
   })
 })

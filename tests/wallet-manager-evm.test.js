@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
 
-import { InvalidSignerError, NoSuchElementError, ProviderRequiredError } from '@tetherto/wdk-wallet'
+import { DisposalError, InvalidSignerError, NoSuchElementError, ProviderRequiredError } from '@tetherto/wdk-wallet'
 
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -217,14 +217,13 @@ describe('WalletManagerEvm', () => {
       for (const account of [account0, account1]) {
         expect(account.keyPair.privateKey).toBe(null)
 
-        // Once disposed, the underlying signer is cleared, so any signing operation
-        // fails when it reaches the now-undefined signer rather than for some other reason.
+        // Once disposed, any signing operation fails fast with a DisposalError.
         await expect(account.sign(MESSAGE))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signMessage'\)/)
+          .rejects.toThrow(DisposalError)
         await expect(account.sendTransaction(TRANSACTION))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signTransaction'\)/)
+          .rejects.toThrow(DisposalError)
         await expect(account.transfer(TRANSFER))
-          .rejects.toThrow(/Cannot read properties of undefined \(reading 'signTransaction'\)/)
+          .rejects.toThrow(DisposalError)
       }
     })
   })

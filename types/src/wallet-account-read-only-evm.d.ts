@@ -16,6 +16,18 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     protected static _getTransferTransaction(options: EvmTransferOptions): Promise<EvmTransaction>;
     /**
+     * Builds an ethers provider from the wallet configuration:
+     * - a url string -> a new `JsonRpcProvider`
+     * - an already-built ethers provider (or failover wrapper) -> reused as-is
+     * - anything else (EIP-1193 / browser wallet) -> wrapped in a `BrowserProvider`
+     * - an array of the above -> a `FailoverProvider` across each entry
+     *
+     * @protected
+     * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
+     * @returns {Provider | undefined} The provider, or undefined if none is configured.
+     */
+    protected static _buildProvider(config?: Omit<EvmWalletConfig, "transferMaxFee" | "transactionMaxFee">): Provider | undefined;
+    /**
      * Creates a new evm read-only wallet account.
      *
      * @param {string} address - The account's address.
@@ -301,9 +313,9 @@ export type EvmGasOverrides = Pick<EvmTransaction, "gasLimit" | "gasPrice" | "ma
 export type EvmTransferOptions = TransferOptions & EvmGasOverrides & Pick<EvmTransaction, "authorizationList">;
 export type EvmWalletConfig = {
     /**
-     * - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. 
+     * - The url of the rpc provider, an already-built ethers provider (e.g. a `JsonRpcProvider` or a failover wrapper), or an instance of a class that implements eip-1193. It's also possible to provide an array of these instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. An already-built provider is reused as-is, which lets a manager share a single provider across all the accounts it creates.
      */
-    provider?: string | Eip1193Provider | Array<string | Eip1193Provider>;
+    provider?: string | Provider | Eip1193Provider | Array<string | Provider | Eip1193Provider>;
     /**
      * - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3. 
      */

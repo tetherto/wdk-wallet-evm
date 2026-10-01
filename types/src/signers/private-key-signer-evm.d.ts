@@ -23,6 +23,13 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
     private _address;
     /** @private */
     private _path;
+    /** @private */
+    private _disposed;
+    /**
+     * True if the signer has been disposed.
+     * @type {boolean}
+     */
+    get disposed(): boolean;
     /** @type {boolean} */
     get isDerivable(): boolean;
     /** @type {number|undefined} */
@@ -39,7 +46,8 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
     /**
      * PrivateKeySignerEvm is not a hierarchical signer and cannot derive.
      * @returns {Promise<never>}
-     * @throws {InvalidSignerError} Always — private-key signers do not support derivation.
+     * @throws {DisposalError} If the signer has been disposed.
+     * @throws {InvalidSignerError} Always (when not disposed) — private-key signers do not support derivation.
      */
     derive(): Promise<never>;
     /** @returns {Promise<string>} */
@@ -49,6 +57,7 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     sign(message: string): Promise<string>;
     /**
@@ -56,6 +65,7 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
      *
      * @param {UnsignedEvmTransaction} unsignedTx - The unsigned transaction object.
      * @returns {Promise<string>}
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTransaction(unsignedTx: UnsignedEvmTransaction): Promise<string>;
     /**
@@ -63,15 +73,19 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
      * Sign an ERC-7702 authorization tuple.
      * @param {AuthorizationRequest} auth
      * @returns {Promise<Authorization>}
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
-    /** Dispose secrets from memory. */
+    /**
+     * Dispose secrets from memory.
+     */
     dispose(): void;
 }
 export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
