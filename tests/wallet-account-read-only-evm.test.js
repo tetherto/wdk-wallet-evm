@@ -71,9 +71,9 @@ function createAccount (overrides = {}) {
 describe('WalletAccountReadOnlyEvm', () => {
   const account = createAccount()
 
-  describe('address', () => {
-    test('should return the correct address', () => {
-      expect(account.address).toBe(ADDRESS)
+  describe('getAddress', () => {
+    test('should return the correct address', async () => {
+      expect(await account.getAddress()).toBe(ADDRESS)
     })
   })
 

@@ -17,17 +17,18 @@
 import WalletManager, { InvalidSignerError, ProviderRequiredError } from '@tetherto/wdk-wallet'
 
 import WalletAccountEvm from './wallet-account-evm.js'
-import SeedSignerEvm from './signers/seed-signer-evm.js'
+import SeedSignerEvm, { BIP_44_ETH_DERIVATION_PATH_PREFIX } from './signers/seed-signer-evm.js'
 
-/** @typedef {import('./signers/seed-signer-evm.js').ISignerEvm} ISignerEvm */
+/** @typedef {import('./signers/signer-evm.js').ISignerEvm} ISignerEvm */
 /** @typedef {import('ethers').Provider} Provider */
 
 /** @typedef {import("@tetherto/wdk-wallet").FeeRates} FeeRates */
-/** @typedef {import("@tetherto/wdk-wallet").ISigner} ISigner */
 /** @typedef {import("@tetherto/wdk-wallet").NoSuchElementError} NoSuchElementError */
+/** @typedef {import("@tetherto/wdk-wallet").ValueError} ValueError */
 
 /** @typedef {import('./wallet-account-evm.js').EvmWalletConfig} EvmWalletConfig */
 
+/** @extends {WalletManager<ISignerEvm>} */
 export default class WalletManagerEvm extends WalletManager {
   /**
    * Multiplier for normal fee rate calculations (in %).
@@ -46,26 +47,48 @@ export default class WalletManagerEvm extends WalletManager {
   static _FEE_RATE_FAST_MULTIPLIER = 200n
 
   /**
-   * Creates a new wallet manager for evm blockchains.
+   * Creates a new wallet manager for evm blockchains from a BIP-39 seed.
    *
-   * Accepts either a BIP-39 seed (string/Uint8Array) for backwards compatibility, or a
-   * pre-built root signer object. The default signer must be derivable (it must be able to
-   * derive child accounts); non-derivable signers (e.g. private-key signers) are not allowed
-   * as the default but may be registered by name via {@link addSigner} - If not adding to your global account managment for using just one non derivable signer create a standalone account.
-   *
-   * @param {string|Uint8Array|ISigner} seedOrSigner - A BIP-39 mnemonic seed phrase, a raw BIP-32 master seed (16-64 bytes), or a root signer. Root signers must be derivable — non-derivable signers (e.g. private-key signers) can only be registered by name via {@link addSigner}.
+   * @overload
+   * @param {string | Uint8Array} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
    * @param {EvmWalletConfig} [config] - The configuration object.
-   * @throws {InvalidSignerError} If the default signer doesn't support account derivation.
+   * @throws {ValueError} If the seed phrase is invalid.
+   */
+
+  /**
+   * Creates a new wallet manager for evm blockchains from a default signer.
+   *
+   * The default signer must be derivable (it must be able to derive child accounts);
+   * non-derivable signers (e.g. private-key signers) are not allowed as the default but
+   * may be registered by name via {@link addSigner}. To use a single non-derivable signer
+   * outside of the wallet manager, create a standalone account instead.
+   * **Warning:** the signer is kept exactly as given, not cloned -- if you still hold a
+   * reference to it and dispose it directly, every subsequent {@link getAccount}/
+   * {@link getAccountByPath} call that falls back to the default signer (i.e. without an
+   * explicit `signerName`) fails, since deriving from a disposed signer isn't possible.
+   * Conversely, the manager never disposes a signer you supplied: {@link dispose} wipes
+   * only the default signer it creates internally from a seed.
+   *
+   * @overload
+   * @param {ISignerEvm} signer - The default signer.
+   * @param {EvmWalletConfig} [config] - The configuration object.
+   * @throws {InvalidSignerError} If the default signer does not support account derivation.
    */
   constructor (seedOrSigner, config = {}) {
+    const isSeed = typeof seedOrSigner === 'string' || seedOrSigner instanceof Uint8Array
     let signer = seedOrSigner
-    if (typeof seedOrSigner === 'string' || seedOrSigner instanceof Uint8Array) {
-      signer = new SeedSignerEvm(seedOrSigner)
-    }
-    if (!signer.isDerivable) {
-      throw new InvalidSignerError('The default signer must be derivable. Non-derivable signers (e.g. private-key signers) can only be registered by name via addSigner.')
+    if (isSeed) {
+      signer = new SeedSignerEvm(seedOrSigner, BIP_44_ETH_DERIVATION_PATH_PREFIX)
     }
     super(signer, config)
+
+    /**
+     * If true, disposes the default signer on calls to the 'dispose' method.
+     *
+     * @protected
+     * @type {boolean}
+     */
+    this._shouldWipeDefaultSignerOnDisposal = isSeed
 
     /**
      * The evm wallet configuration.
@@ -98,9 +121,20 @@ export default class WalletManagerEvm extends WalletManager {
    */
 
   /**
-   * Returns the wallet account associated with a registered signer. Non-derivable
-   * signers (e.g. private-key signers) return the signer's single account; derivable signers
-   * derive a detached child at the signer's own account (the root is never handed out).
+   * Returns the wallet account associated with a registered signer.
+   *
+   * The registered signer is used exactly as given, wherever it happens to sit -- this
+   * overload never derives. For a private-key signer that's its one account; for a derivable
+   * signer, it's the account at that signer's own current path, unchanged. If you want a
+   * derived leaf from a derivable named signer (e.g. a second seed registered as a bank of
+   * accounts), use {@link getAccount}(index, { signerName }) or {@link getAccountByPath}(path,
+   * { signerName }) instead -- both of those always derive, and throw clearly if the named
+   * signer can't.
+   *
+   * **Warning:** the returned account wraps the registered signer itself, exactly where it
+   * sits -- e.g. a second seed registered at the intermediate path "m/44'/60'" yields the
+   * account AT "m/44'/60'", not at a derived leaf, which is rarely what you want to transact
+   * with. Disposing the returned account leaves the registered signer untouched.
    *
    * @overload
    * @param {string} signerName - The signer name registered via {@link addSigner}.
@@ -110,15 +144,12 @@ export default class WalletManagerEvm extends WalletManager {
 
   async getAccount (indexOrSignerName = 0, options = {}) {
     if (typeof indexOrSignerName === 'string') {
-      const key = `${indexOrSignerName}#self`
+      const key = indexOrSignerName
       if (this._accounts[key]) {
         return this._accounts[key]
       }
       const signer = this.getSigner(indexOrSignerName)
-      const accountSigner = signer.isDerivable
-        ? await signer.derive(signer.path.split('/').slice(-3).join('/'))
-        : signer
-      const account = new WalletAccountEvm(accountSigner, this._accountConfig())
+      const account = new WalletAccountEvm(signer, this._accountConfig())
       this._accounts[key] = account
       return account
     }
@@ -139,13 +170,16 @@ export default class WalletManagerEvm extends WalletManager {
    */
   async getAccountByPath (path, options = {}) {
     const { signerName } = options
-    const key = `${signerName ?? ''}:${path}`
+    const key = signerName ? `${signerName}:${path}` : path
     if (this._accounts[key]) {
       return this._accounts[key]
     }
     const signer = this.getSigner(signerName)
+    if (!signer.isDerivable) {
+      throw new InvalidSignerError('The signer does not support account derivation.')
+    }
     const childSigner = await signer.derive(path)
-    const account = new WalletAccountEvm(childSigner, this._accountConfig())
+    const account = new WalletAccountEvm(childSigner, { ...this._accountConfig(), shouldWipeSignerOnDisposal: true })
     this._accounts[key] = account
     return account
   }
@@ -180,5 +214,16 @@ export default class WalletManagerEvm extends WalletManager {
       normal: feeRate * WalletManagerEvm._FEE_RATE_NORMAL_MULTIPLIER / 100n,
       fast: feeRate * WalletManagerEvm._FEE_RATE_FAST_MULTIPLIER / 100n
     }
+  }
+
+  /**
+    * Disposes all the wallet accounts, erasing their private keys from the memory.
+   */
+  dispose () {
+    if (this._shouldWipeDefaultSignerOnDisposal) {
+      this._defaultSigner.dispose()
+    }
+
+    super.dispose()
   }
 }

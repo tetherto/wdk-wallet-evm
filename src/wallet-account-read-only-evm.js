@@ -191,9 +191,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
-   * The account's address.
+   * The account's address, or undefined if the account's signer doesn't expose its address
+   * synchronously.
    *
-   * @type {string}
+   * @deprecated Use {@link getAddress} instead. This property will be removed in an upcoming
+   * release: not all signers (e.g. hardware signers) can expose the address synchronously.
+   * @type {string | undefined}
    */
   get address () {
     return this._address
@@ -277,6 +280,37 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Validates that a transaction does not mix fee fields its type doesn't support.
+   *
+   * @protected
+   * @param {EvmTransaction} tx - The transaction to validate.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+   */
+  static _validateFeeFields (tx) {
+    const has1559 = tx.maxFeePerGas !== undefined || tx.maxPriorityFeePerGas !== undefined
+    const hasLegacy = tx.gasPrice !== undefined
+    const hasBlobs = tx.blobs !== undefined || tx.blobVersionedHashes !== undefined || tx.maxFeePerBlobGas !== undefined
+    const hasAuthList = tx.authorizationList !== undefined
+    const explicitType = (tx.type !== undefined) ? Number(tx.type) : null
+
+    if ((explicitType === 2 || (explicitType === null && has1559)) && hasLegacy) {
+      throw new ValueError('eip-1559 transaction does not support gasPrice')
+    }
+    if ((explicitType === 0 || explicitType === 1) && has1559) {
+      throw new ValueError('pre-eip-1559 transaction does not support maxFeePerGas/maxPriorityFeePerGas')
+    }
+    if ((explicitType === 3 || hasBlobs) && hasLegacy) {
+      throw new ValueError('blob transaction does not support gasPrice')
+    }
+    if ((explicitType === 3 || hasBlobs) && tx.maxFeePerBlobGas === undefined) {
+      throw new ValueError('maxFeePerBlobGas is required for type 3 transactions')
+    }
+    if ((explicitType === 4 || (explicitType === null && hasAuthList)) && hasLegacy) {
+      throw new ValueError('eip-7702 transaction does not support gasPrice')
+    }
+  }
+
+  /**
    * Quotes the costs of a send transaction operation.
    *
    * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
@@ -287,12 +321,15 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
    * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to quote send transaction operations.')
     }
+
+    WalletAccountReadOnlyEvm._validateFeeFields(tx)
 
     const from = await this.getAddress()
 
@@ -310,6 +347,8 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+   * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteTransfer (options) {
     if (!this._provider) {
