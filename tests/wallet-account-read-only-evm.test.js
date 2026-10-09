@@ -1,4 +1,4 @@
-import { AbiCoder, toQuantity } from 'ethers'
+import { AbiCoder, Interface, toQuantity } from 'ethers'
 
 import { describe, expect, jest, test } from '@jest/globals'
 
@@ -71,9 +71,9 @@ function createAccount (overrides = {}) {
 describe('WalletAccountReadOnlyEvm', () => {
   const account = createAccount()
 
-  describe('address', () => {
-    test('should return the correct address', () => {
-      expect(account.address).toBe(ADDRESS)
+  describe('getAddress', () => {
+    test('should return the correct address', async () => {
+      expect(await account.getAddress()).toBe(ADDRESS)
     })
   })
 
@@ -220,6 +220,81 @@ describe('WalletAccountReadOnlyEvm', () => {
       const { fee } = await account.quoteTransfer(TRANSFER)
 
       expect(fee).toBe(MOCKED_GAS * MOCKED_FEE_RATE)
+    })
+
+    test('should quote a transfer from the pinned gas limit and fee cap while still simulating it', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = createAccount({ eth_estimateGas: estimateGasMock })
+
+      const TRANSFER = {
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        gasLimit: 90_000n,
+        maxFeePerGas: 30_000_000_000n,
+        maxPriorityFeePerGas: 2_000_000_000n
+      }
+
+      const iface = new Interface(['function transfer(address to, uint256 amount) returns (bool)'])
+      const data = iface.encodeFunctionData('transfer', [TRANSFER.recipient, TRANSFER.amount])
+
+      const { fee } = await account.quoteTransfer(TRANSFER)
+
+      expect(fee).toBe(TRANSFER.gasLimit * TRANSFER.maxFeePerGas)
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ADDRESS.toLowerCase(),
+        to: TOKEN_ADDRESS.toLowerCase(),
+        data,
+        value: '0x0',
+        gas: toQuantity(TRANSFER.gasLimit),
+        maxFeePerGas: toQuantity(TRANSFER.maxFeePerGas),
+        maxPriorityFeePerGas: toQuantity(TRANSFER.maxPriorityFeePerGas)
+      }])
+    })
+
+    test('should reject a transfer that would revert even when its gas limit is pinned', async () => {
+      const account = createAccount({
+        eth_estimateGas: () => { throw new Error('execution reverted: ERC20: transfer amount exceeds balance') }
+      })
+
+      const promise = account.quoteTransfer({
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        gasLimit: 90_000n,
+        maxFeePerGas: 30_000_000_000n,
+        maxPriorityFeePerGas: 2_000_000_000n
+      })
+
+      await expect(promise).rejects.toMatchObject({ code: 'CALL_EXCEPTION', action: 'estimateGas' })
+    })
+
+    test('should estimate the gas of a transfer whose options set only the fee cap', async () => {
+      const estimateGasMock = jest.fn(() => toQuantity(MOCKED_GAS))
+      const account = createAccount({ eth_estimateGas: estimateGasMock })
+
+      const TRANSFER = {
+        token: TOKEN_ADDRESS,
+        recipient: SPENDER_ADDRESS,
+        amount: 100,
+        maxFeePerGas: 30_000_000_000,
+        maxPriorityFeePerGas: 2_000_000_000
+      }
+
+      const iface = new Interface(['function transfer(address to, uint256 amount) returns (bool)'])
+      const data = iface.encodeFunctionData('transfer', [TRANSFER.recipient, TRANSFER.amount])
+
+      const { fee } = await account.quoteTransfer(TRANSFER)
+
+      expect(fee).toBe(MOCKED_GAS * BigInt(TRANSFER.maxFeePerGas))
+      expect(estimateGasMock).toHaveBeenCalledWith([{
+        from: ADDRESS.toLowerCase(),
+        to: TOKEN_ADDRESS.toLowerCase(),
+        data,
+        value: '0x0',
+        maxFeePerGas: toQuantity(TRANSFER.maxFeePerGas),
+        maxPriorityFeePerGas: toQuantity(TRANSFER.maxPriorityFeePerGas)
+      }])
     })
 
     test('should throw if the account is not connected to a provider', async () => {

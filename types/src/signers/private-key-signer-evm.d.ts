@@ -1,18 +1,19 @@
-import { ISignerEvm } from "./seed-signer-evm.js";
-/** @typedef {import('./seed-signer-evm.js').UnsignedEvmTransaction} UnsignedEvmTransaction */
-/** @typedef {import('../wallet-account-read-only-evm.js').TypedData} TypedData */
-/** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
-/** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
-/** @typedef {import('ethers').Authorization} Authorization */
 /**
- * @extends {ISignerEvm}
  * Signer that wraps a raw private key in a memory-safe buffer, exposing a minimal
  * interface for signing messages, transactions and typed data. This signer does
  * not support derivation and always represents a single account.
+ *
+ * @implements {ISignerEvm}
  */
-export default class PrivateKeySignerEvm extends ISignerEvm {
+export default class PrivateKeySignerEvm implements ISignerEvm {
     /**
-     * @param {string|Uint8Array} privateKey - Hex string (with/without 0x) or raw key bytes.
+     * Create a signer from a raw private key.
+     *
+     * The supplied key is copied: the signer keeps its own internal copy alive until
+     * {@link dispose} zeroes it, and never wipes the supplied key, whose disposal
+     * remains the caller's responsibility.
+     *
+     * @param {string | Uint8Array} privateKey - The private key's hex string (with or without 0x) or byte sequence.
      */
     constructor(privateKey: string | Uint8Array);
     /** @private */
@@ -21,28 +22,46 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
     private _wallet;
     /** @private */
     private _address;
-    /** @private */
-    private _path;
-    /** @type {boolean} */
-    get isDerivable(): boolean;
-    /** @type {number|undefined} */
-    get index(): number | undefined;
-    /** @type {string|undefined} */
-    get path(): string | undefined;
-    /** @type {string} */
+    /**
+     * Whether this signer can derive child signers.
+     *
+     * @type {false}
+     */
+    get isDerivable(): false;
+    /**
+     * The BIP 0044 derivation path.
+     *
+     * @type {string | null}
+     */
+    get path(): string | null;
+    /**
+     * The account's address.
+     *
+     * @deprecated Use {@link getAddress} instead. This property will be removed in an upcoming
+     * release: not all signers (e.g. hardware signers) can expose the address synchronously.
+     * @type {string}
+     */
     get address(): string;
     /**
      * The account's key pair (private and public key buffers).
+     *
      * @type {KeyPair}
      */
     get keyPair(): KeyPair;
     /**
-     * PrivateKeySignerEvm is not a hierarchical signer and cannot derive.
-     * @returns {Promise<never>}
-     * @throws {InvalidSignerError} Always — private-key signers do not support derivation.
+     * Derive a child signer using a relative path (e.g., "0'/0/0").
+     *
+     * @param {string} path - The relative derivation path.
+     * @returns {Promise<never>} The derived signer.
+     * @throws {UnsupportedOperationError} If the signer does not support account derivation.
+     * @throws {ValueError} If the path is not valid.
      */
-    derive(): Promise<never>;
-    /** @returns {Promise<string>} */
+    derive(path: string): Promise<never>;
+    /**
+     * Returns the account's address.
+     *
+     * @returns {Promise<string>} The account's address.
+     */
     getAddress(): Promise<string>;
     /**
      * Signs a message.
@@ -52,30 +71,36 @@ export default class PrivateKeySignerEvm extends ISignerEvm {
      */
     sign(message: string): Promise<string>;
     /**
-     * Signs a transaction and returns the serialized signed transaction hex.
+     * Signs a transaction.
      *
-     * @param {UnsignedEvmTransaction} unsignedTx - The unsigned transaction object.
-     * @returns {Promise<string>}
+     * @param {TransactionLike} tx - The transaction to sign.
+     * @returns {Promise<string>} The signed transaction as a hex string.
      */
-    signTransaction(unsignedTx: UnsignedEvmTransaction): Promise<string>;
+    signTransaction(tx: TransactionLike): Promise<string>;
     /**
      * Signs typed data according to EIP-712.
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
      */
-    signTypedData({ domain, types, message }: TypedData): Promise<string>;
+    signTypedData(typedData: TypedData): Promise<string>;
     /**
-     * Sign an ERC-7702 authorization tuple.
-     * @param {AuthorizationRequest} auth
-     * @returns {Promise<Authorization>}
+     * Signs an ERC-7702 authorization tuple.
+     *
+     * @param {AuthorizationRequest} auth - The authorization request.
+     * @returns {Promise<Authorization>} The signed authorization.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
-    /** Dispose secrets from memory. */
+    /**
+     * Disposes the signer, securely erasing its internal copy of the private key from memory.
+     */
     dispose(): void;
 }
-export type UnsignedEvmTransaction = import("./seed-signer-evm.js").UnsignedEvmTransaction;
-export type TypedData = import("../wallet-account-read-only-evm.js").TypedData;
+export type ISignerEvm = import("./signer-evm.js").ISignerEvm;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;
+export type UnsupportedOperationError = import("@tetherto/wdk-wallet").UnsupportedOperationError;
+export type ValueError = import("@tetherto/wdk-wallet").ValueError;
+export type TransactionLike = import("ethers").TransactionLike;
 export type AuthorizationRequest = import("ethers").AuthorizationRequest;
 export type Authorization = import("ethers").Authorization;
+export type TypedData = import("../wallet-account-read-only-evm.js").TypedData;

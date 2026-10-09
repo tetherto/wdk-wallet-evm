@@ -5,6 +5,8 @@ import { describe, expect, test, beforeEach, afterEach, afterAll } from '@jest/g
 import WalletManagerEvm from '../../index.js'
 import SeedSignerEvm from '../../src/signers/seed-signer-evm.js'
 
+import PrivateKeySignerEvm from '../../src/signers/private-key-signer-evm.js'
+
 import TestToken from './../artifacts/TestToken.json' with { type: 'json' }
 
 import SimpleDelegateContract from './../artifacts/SimpleDelegateContract.json' with { type: 'json' }
@@ -84,7 +86,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
       await sendTestTokensTo(account.address, INITIAL_TOKEN_BALANCE)
     }
 
-    wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE), { provider: RPC_URL })
+    wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE, "m/44'/60'"), { provider: RPC_URL })
   })
 
   afterEach(async () => {
@@ -170,6 +172,45 @@ describe('@tetherto/wdk-wallet-evm', () => {
     expect(fee).toBe(EXPECTED_FEE)
   })
 
+  test('should reject a transfer that would revert before signing it, even with a pinned gas limit', async () => {
+    const account = await wallet.getAccountByPath("0'/0/0")
+
+    const promise = account.transfer({
+      token: testToken.target,
+      recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      amount: INITIAL_TOKEN_BALANCE + 1n,
+      gasLimit: 90_000n,
+      maxFeePerGas: 30_000_000_000n,
+      maxPriorityFeePerGas: 2_000_000_000n
+    })
+
+    await expect(promise).rejects.toThrow(/execution reverted/)
+
+    const tokenBalance = await account.getTokenBalance(testToken.target)
+    expect(tokenBalance).toBe(INITIAL_TOKEN_BALANCE)
+  })
+
+  test('should transfer a token with the gas and fee fields set on the options', async () => {
+    const account = await wallet.getAccountByPath("0'/0/0")
+
+    const TRANSFER = {
+      token: testToken.target,
+      recipient: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      amount: 100,
+      gasLimit: 90_000n,
+      maxFeePerGas: 30_000_000_000n,
+      maxPriorityFeePerGas: 2_000_000_000n
+    }
+
+    const { hash, fee } = await account.transfer(TRANSFER)
+    const transaction = await provider.getTransaction(hash)
+
+    expect(fee).toBe(TRANSFER.gasLimit * TRANSFER.maxFeePerGas)
+    expect(transaction.gasLimit).toBe(TRANSFER.gasLimit)
+    expect(transaction.maxFeePerGas).toBe(TRANSFER.maxFeePerGas)
+    expect(transaction.maxPriorityFeePerGas).toBe(TRANSFER.maxPriorityFeePerGas)
+  })
+
   test('should derive two accounts by their paths, transfer a token from account 1 to 2 and get the correct balances and token balances', async () => {
     const account0 = await wallet.getAccountByPath("0'/0/0")
     const account1 = await wallet.getAccountByPath("0'/0/1")
@@ -242,7 +283,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
   })
 
   test('should create a wallet with a low transfer max fee, derive an account, try to transfer some tokens and gracefully fail', async () => {
-    const wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE), { provider: RPC_URL, transferMaxFee: 0 })
+    const wallet = new WalletManagerEvm(new SeedSignerEvm(SEED_PHRASE, "m/44'/60'"), { provider: RPC_URL, transferMaxFee: 0 })
 
     const account = await wallet.getAccount(0)
 
@@ -254,6 +295,29 @@ describe('@tetherto/wdk-wallet-evm', () => {
 
     await expect(account.transfer(TRANSFER))
       .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+  })
+
+  test('should initialize an account with a non-derivable signer and send a transaction', async () => {
+    const pkSigner = new PrivateKeySignerEvm(ACCOUNT_0.keyPair.privateKey)
+    wallet.addSigner('imported', pkSigner)
+
+    const account = await wallet.getAccount('imported')
+
+    expect(await account.getAddress()).toBe(ACCOUNT_0.address)
+
+    const TRANSACTION = {
+      to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      value: 1_000
+    }
+
+    const { hash, fee } = await account.sendTransaction(TRANSACTION)
+
+    const transaction = await provider.getTransaction(hash)
+
+    expect(transaction.hash).toBe(hash)
+    expect(transaction.to).toBe(TRANSACTION.to)
+    expect(transaction.value).toBe(BigInt(TRANSACTION.value))
+    expect(typeof fee).toBe('bigint')
   })
 
   test('should sign a transaction, then broadcast manually', async () => {
@@ -314,9 +378,11 @@ describe('@tetherto/wdk-wallet-evm', () => {
       address: DELEGATE_CONTRACT_ADDRESS
     })
 
+    const address = await account.getAddress()
+
     const { hash, fee } = await account.sendTransaction({
       type: 4,
-      to: account.address,
+      to: address,
       value: 0,
       gasLimit: 100_000,
       authorizationList: [auth]
@@ -324,7 +390,7 @@ describe('@tetherto/wdk-wallet-evm', () => {
 
     const transaction = await provider.getTransaction(hash)
 
-    expect(transaction.to).toBe(account.address)
+    expect(transaction.to).toBe(address)
     expect(transaction.type).toBe(4)
 
     expect(transaction.authorizationList).toEqual([{

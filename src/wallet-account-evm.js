@@ -14,17 +14,16 @@
 
 'use strict'
 
-import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { Contract, VoidSigner, Transaction, ZeroAddress } from 'ethers'
 
-import { Contract, Transaction, ZeroAddress } from 'ethers'
+import { MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
-import SeedSignerEvm from './signers/seed-signer-evm.js'
+import SeedSignerEvm, { BIP_44_ETH_DERIVATION_PATH_PREFIX } from './signers/seed-signer-evm.js'
 import PrivateKeySignerEvm from './signers/private-key-signer-evm.js'
-import { isBlobTransaction, populateTransactionEvm } from './utils/tx-populator-evm.js'
 
-/** @typedef {import('./signers/seed-signer-evm.js').ISignerEvm} ISignerEvm */
+/** @typedef {import('./signers/signer-evm.js').ISignerEvm} ISignerEvm */
 /** @typedef {import('ethers').HDNodeWallet} HDNodeWallet */
 /** @typedef {import('ethers').AuthorizationRequest} AuthorizationRequest */
 /** @typedef {import('ethers').Authorization} Authorization */
@@ -39,6 +38,7 @@ import { isBlobTransaction, populateTransactionEvm } from './utils/tx-populator-
 /** @typedef {import('./wallet-account-read-only-evm.js').TypedData} TypedData */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransaction} EvmTransaction */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmTransferOptions} EvmTransferOptions */
+/** @typedef {import('./wallet-account-read-only-evm.js').EvmGasOverrides} EvmGasOverrides */
 /** @typedef {import('./wallet-account-read-only-evm.js').EvmWalletConfig} EvmWalletConfig */
 
 /**
@@ -47,6 +47,21 @@ import { isBlobTransaction, populateTransactionEvm } from './utils/tx-populator-
  * @property {string} spender - The spender's address.
  * @property {number | bigint} amount - The amount of tokens to approve to the spender.
  */
+
+/**
+ * The options of a token approval, extended with the optional gas overrides of an evm transaction.
+ *
+ * @typedef {ApproveOptions & EvmGasOverrides} EvmApproveOptions
+ */
+
+/**
+ * @typedef {Object} SignerOptions
+ * @property {boolean} [shouldWipeSignerOnDisposal] - If true, wipes the signer given at construction on calls to the 'dispose' method.
+ */
+
+// Default BIP-44 account path, relative to BIP_44_ETH_DERIVATION_PATH_PREFIX, used by the
+// seed overload when no path is given.
+const DEFAULT_ACCOUNT_PATH = "0'/0/0"
 
 const USDT_MAINNET_ADDRESS = '0xdAC17F958D2ee523a2206206994597C13D831ec7'
 
@@ -59,9 +74,19 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * given BIP-44 path.
    *
    * @overload
-   * @param {string | Uint8Array} seed - The wallet's BIP-39 seed phrase or seed bytes.
-   * @param {string} path - The BIP-44 derivation path (e.g. "0'/0/0").
+   * @param {string | Uint8Array} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
+   * @param {string} path - The BIP-44 account path, relative to "m/44'/60'" (e.g. "0'/0/0").
    * @param {EvmWalletConfig} [config] - The configuration object.
+   * @throws {ValueError} If the given seed phrase is invalid.
+   */
+
+  /**
+   * Creates a new evm wallet account from a BIP-39 seed at path m/44'/60'/0'/0/0.
+   *
+   * @overload
+   * @param {string | Uint8Array} seed - A BIP-39 mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
+   * @param {EvmWalletConfig} [config] - The configuration object.
+   * @throws {ValueError} If the given seed phrase is invalid.
    */
 
   /**
@@ -69,15 +94,28 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @overload
    * @param {ISignerEvm} signer - A signer implementing the EVM signer interface.
-   * @param {EvmWalletConfig} [config] - The configuration object.
+   * @param {EvmWalletConfig & SignerOptions} [config] - The configuration object.
    */
 
   constructor (seedOrSigner, pathOrConfig = {}, config = {}) {
-    const [signer, configuration] = typeof seedOrSigner === 'string' || seedOrSigner instanceof Uint8Array
-      ? [new SeedSignerEvm(seedOrSigner, { path: pathOrConfig, isChild: true }), config]
+    const isSeed = typeof seedOrSigner === 'string' || seedOrSigner instanceof Uint8Array
+    const hasPath = typeof pathOrConfig === 'string'
+    const [signer, configuration] = isSeed
+      ? [
+          new SeedSignerEvm(seedOrSigner, `${BIP_44_ETH_DERIVATION_PATH_PREFIX}/${hasPath ? pathOrConfig : DEFAULT_ACCOUNT_PATH}`),
+          hasPath ? config : pathOrConfig
+        ]
       : [seedOrSigner, pathOrConfig]
 
     super(signer.address, configuration)
+
+    /**
+     * If true, disposes the signer on calls to the 'dispose' method.
+     *
+     * @protected
+     * @type {boolean}
+     */
+    this._shouldWipeSignerOnDisposal = isSeed || Boolean(configuration.shouldWipeSignerOnDisposal)
 
     /**
      * The wallet account configuration.
@@ -92,18 +130,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * The derivation path's index of this account.
+   * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)),
+   * or null if the account's signer is not bound to a BIP-44 position (e.g. private-key signers).
    *
-   * @type {number}
-   */
-  get index () {
-    return this._signer.index
-  }
-
-  /**
-   * The derivation path of this account (see [BIP-44](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)).
-   *
-   * @type {string}
+   * @type {string | null}
    */
   get path () {
     return this._signer.path
@@ -116,7 +146,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * it's strongly recommended to treat the key pair as a read-only view of the keys. While it's still technically possible to alter their
    * content, client code should never do so.
    *
-   * @type {KeyPair}
+   * @type {KeyPair | null}
    */
   get keyPair () {
     return this._signer.keyPair
@@ -131,20 +161,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   static fromPrivateKey (privateKey, config = {}) {
     const signer = new PrivateKeySignerEvm(privateKey)
-    return new WalletAccountEvm(signer, config)
+    return new WalletAccountEvm(signer, { ...config, shouldWipeSignerOnDisposal: true })
   }
 
   /**
-   * Returns the account's address. If it wasn't resolved at construction time (e.g hardware signers), it asks the
-   * underlying signer to resolve it, then caches it locally.
+   * Returns the account's address.
    *
    * @returns {Promise<string>} The account's address.
    */
   async getAddress () {
-    if (this._address) return this._address
-    const addr = await this._signer.getAddress()
-    this.__address = addr
-    return addr
+    return await this._signer.getAddress()
   }
 
   /**
@@ -178,7 +204,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
    */
   async signTransaction (tx) {
-    if (isBlobTransaction(tx)) {
+    if (WalletAccountReadOnlyEvm._isBlobTransaction(tx)) {
       throw new ValueError('eip-4844 blob transactions are not supported')
     }
 
@@ -208,6 +234,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to send transactions.')
     }
+
     const { fee } = await this.quoteSendTransaction(tx)
     if (this._config.transactionMaxFee !== undefined && fee > this._config.transactionMaxFee) {
       throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
@@ -219,9 +246,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     }
 
     // Build, sign and broadcast raw transaction using the signer
-    const from = await this.getAddress()
-    const unsignedTx = await populateTransactionEvm(this._provider, from, tx)
-    const signed = await this._signer.signTransaction(unsignedTx)
+    const address = await this.getAddress()
+    const voidSigner = new VoidSigner(address, this._provider)
+    const populated = await voidSigner.populateTransaction(tx)
+    const signed = await this._signer.signTransaction(populated)
     const hash = await this._provider.send('eth_sendRawTransaction', [signed])
     return { hash, fee }
   }
@@ -229,10 +257,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Quotes the costs of a send transaction operation.
    *
+   * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+   * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+   * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+   * cost as it will be sent.
+   * A signed raw transaction is simulated the same way and quoted from its own gas limit and fee cap.
+   *
    * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {ValueError} If the transaction is an EIP-4844 (type 3) blob transaction.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (typeof tx === 'string') {
@@ -242,27 +277,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
       const parsedTx = Transaction.from(tx)
 
-      if (isBlobTransaction(parsedTx)) {
+      if (WalletAccountReadOnlyEvm._isBlobTransaction(parsedTx)) {
         throw new ValueError('eip-4844 blob transactions are not supported')
       }
 
       const { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList } = parsedTx
 
-      const transaction = { from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList }
+      await this._estimateGas({ from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList })
 
-      const gas = transaction.authorizationList
-        ? await this._estimateGasWithAuthList(transaction)
-        : await this._provider.estimateGas(transaction)
-
-      const fees = await this._provider.getFeeData()
-
-      const feeRate = fees.maxFeePerGas || fees.gasPrice
-
-      return { fee: gas * feeRate }
-    }
-
-    if (isBlobTransaction(tx)) {
-      throw new ValueError('eip-4844 blob transactions are not supported')
+      return { fee: gasLimit * (maxFeePerGas ?? gasPrice) }
     }
 
     return await super.quoteSendTransaction(tx)
@@ -271,7 +294,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Transfers a token to another address.
    *
-   * @param {EvmTransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<TransferResult>} The transfer's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
@@ -297,7 +320,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Approves a specific amount of tokens to a spender.
    *
-   * @param {ApproveOptions} options The approve options.
+   * @param {EvmApproveOptions} options - The approve options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
@@ -325,7 +348,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const tx = {
       to: token,
       value: 0,
-      data: contract.interface.encodeFunctionData('approve', [spender, amount])
+      data: contract.interface.encodeFunctionData('approve', [spender, amount]),
+      ...WalletAccountReadOnlyEvm._getGasOverrides(options)
     }
 
     return await this.sendTransaction(tx)
@@ -347,12 +371,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Signs an ERC-7702 authorization tuple.
    *
+   * The chainId and nonce are populated from the provider when not explicitly provided.
+   *
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
+   * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
    */
   async signAuthorization (auth) {
     const populated = { ...auth }
-    if (this._provider) {
+    if (populated.chainId === undefined || populated.nonce === undefined) {
+      if (!this._provider) {
+        throw new ProviderRequiredError('The wallet must be connected to a provider to populate the authorization chainId and nonce. Provide them explicitly to sign offline.')
+      }
       if (populated.chainId == null) {
         const { chainId } = await this._provider.getNetwork()
         populated.chainId = chainId
@@ -413,6 +443,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * Disposes the wallet account, erasing the private key from the memory.
    */
   dispose () {
-    this._signer.dispose()
+    if (this._shouldWipeSignerOnDisposal) {
+      this._signer.dispose()
+    }
   }
 }

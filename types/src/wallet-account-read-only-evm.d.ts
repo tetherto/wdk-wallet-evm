@@ -1,10 +1,54 @@
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
+     * Extracts the gas and fee overrides set on transfer or approve options.
+     *
+     * @protected
+     * @param {EvmGasOverrides} options - The options to read the overrides from.
+     * @returns {EvmGasOverrides} Only the gas and fee fields that are set on the options.
+     */
+    protected static _getGasOverrides(options: EvmGasOverrides): EvmGasOverrides;
+    /**
+     * Whether a value is an EIP-1193 provider (e.g. a browser wallet).
+     *
+     * @protected
+     * @param {string | Eip1193Provider | Provider} value - The value to inspect.
+     * @returns {boolean} True if the value is an EIP-1193 provider.
+     */
+    protected static _isEip1193Provider(value: string | Eip1193Provider | Provider): boolean;
+    /**
+     * Builds an ethers provider from the wallet configuration:
+     * - a url string -> a new `JsonRpcProvider`
+     * - an already-built ethers provider (or failover wrapper) -> reused as-is
+     * - anything else (EIP-1193 / browser wallet) -> wrapped in a `BrowserProvider`
+     * - an array of the above -> a `FailoverProvider` across each entry
+     *
+     * @protected
+     * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
+     * @returns {Provider | undefined} The provider, or undefined if none is configured.
+     */
+    protected static _buildProvider(config?: Omit<EvmWalletConfig, "transferMaxFee" | "transactionMaxFee">): Provider | undefined;
+    /**
+     * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+     *
+     * @protected
+     * @param {EvmTransaction | Transaction} tx - The transaction to inspect.
+     * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+     */
+    protected static _isBlobTransaction(tx: EvmTransaction | Transaction): boolean;
+    /**
+     * Validates that a transaction does not mix fee fields its type doesn't support.
+     *
+     * @protected
+     * @param {EvmTransaction} tx - The transaction to validate.
+     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+     */
+    protected static _validateFeeFields(tx: EvmTransaction): void;
+    /**
      * Returns an evm transaction to execute the given token transfer.
      *
      * @protected
-     * @param {EvmTransferOptions} options - The transfer's options.
-     * @returns {Promise<EvmTransaction>} The evm transaction.
+     * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides and ERC-7702 authorizations to carry onto the transaction.
+     * @returns {Promise<EvmTransaction>} The ERC-20 transfer call as an evm transaction, with the options' gas overrides and authorizations applied.
      */
     protected static _getTransferTransaction(options: EvmTransferOptions): Promise<EvmTransaction>;
     /**
@@ -29,11 +73,14 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     protected _provider: Provider | undefined;
     /**
-     * The account's address.
+     * The account's address, or undefined if the account's signer doesn't expose its address
+     * synchronously.
      *
-     * @type {string}
+     * @deprecated Use {@link getAddress} instead. This property will be removed in an upcoming
+     * release: not all signers (e.g. hardware signers) can expose the address synchronously.
+     * @type {string | undefined}
      */
-    get address(): string;
+    get address(): string | undefined;
     /**
      * Returns the account's eth balance.
      *
@@ -60,17 +107,26 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
      * Quotes the costs of a send transaction operation.
      *
+     * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+     * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+     * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+     * cost as it will be sent.
+     *
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
     /**
      * Quotes the costs of a transfer operation.
      *
-     * @param {EvmTransferOptions} options - The transfer's options.
+     * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
      * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+     * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+     * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     quoteTransfer(options: EvmTransferOptions): Promise<Omit<TransferResult, "hash">>;
     /**
@@ -156,6 +212,16 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     getDelegation(): Promise<DelegationInfo>;
     /** @private */
     private _estimateGasWithAuthList;
+    /**
+     * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
+     * aware estimation for ERC-7702 transactions.
+     *
+     * @protected
+     * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+     * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
+     */
+    protected _estimateGas(tx: EvmTransactionRequest): Promise<bigint>;
+    private _getFeeRate;
 }
 export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
@@ -164,10 +230,13 @@ export type TypedDataField = import("ethers").TypedDataField;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type EvmTransactionResponse = import("ethers").TransactionResponse;
+export type EvmTransactionRequest = import("ethers").TransactionRequest;
+export type Transaction = import("ethers").Transaction;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTransactionOptions;
+export type TransferOptions = import("@tetherto/wdk-wallet").TransferOptions;
 /**
  * The EVM-specific fields added to a normalized transaction receipt.
  */
@@ -251,29 +320,20 @@ export type EvmTransaction = {
      */
     authorizationList?: AuthorizationLike[];
 };
-export type EvmTransferOptions = {
-    /**
-     * - The address of the token to transfer.
-     */
-    token: string;
-    /**
-     * - The address of the recipient.
-     */
-    recipient: string;
-    /**
-     * - The amount of tokens to transfer to the recipient (in base units).
-     */
-    amount: number | bigint;
-    /**
-     * - An optional list of ERC-7702 signed authorizations.
-     */
-    authorizationList?: AuthorizationLike[];
-};
+/**
+ * The gas and fee fields of an evm transaction that can be set on transfer and approve options.
+ */
+export type EvmGasOverrides = Pick<EvmTransaction, "gasLimit" | "gasPrice" | "maxFeePerGas" | "maxPriorityFeePerGas">;
+/**
+ * The options of a token transfer, extended with the optional gas overrides and ERC-7702 authorizations of an evm
+ * transaction.
+ */
+export type EvmTransferOptions = TransferOptions & EvmGasOverrides & Pick<EvmTransaction, "authorizationList">;
 export type EvmWalletConfig = {
     /**
-     * - The url of the rpc provider, or an instance of a class that implements eip-1193. It's also possible to provide an array of urls or EIP 1193 providers instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. 
+     * - The url of the rpc provider, an already-built ethers provider (e.g. a `JsonRpcProvider` or a failover wrapper), or an instance of a class that implements eip-1193. It's also possible to provide an array of these instead. In such case, connection errors will cause the wallet to automatically fallback on the next provider in the list. An already-built provider is reused as-is, which lets a manager share a single provider across all the accounts it creates.
      */
-    provider?: string | Eip1193Provider | Array<string | Eip1193Provider>;
+    provider?: string | Provider | Eip1193Provider | Array<string | Provider | Eip1193Provider>;
     /**
      * - If set and if 'provider' is a list of urls or EIP 1193 providers, the number of additional retry attempts after the initial call fails. Total attempts = `1 + retries`. For example, `retries: 3` with 4 providers will try each provider once before throwing. If `retries` exceeds the number of providers, the failover will loop back and retry already-failed providers in round-robin order. Default: 3. 
      */

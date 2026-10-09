@@ -29,11 +29,14 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
+/** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
+/** @typedef {import('ethers').Transaction} Transaction */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionReceipt} TransactionReceipt */
 /** @typedef {import('@tetherto/wdk-wallet').WaitForTransactionOptions} WaitForTransactionOptions */
+/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
 
 /**
  * The EVM-specific fields added to a normalized transaction receipt.
@@ -72,11 +75,16 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  */
 
 /**
- * @typedef {Object} EvmTransferOptions
- * @property {string} token - The address of the token to transfer.
- * @property {string} recipient - The address of the recipient.
- * @property {number | bigint} amount - The amount of tokens to transfer to the recipient (in base units).
- * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations.
+ * The gas and fee fields of an evm transaction that can be set on transfer and approve options.
+ *
+ * @typedef {Pick<EvmTransaction, 'gasLimit' | 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>} EvmGasOverrides
+ */
+
+/**
+ * The options of a token transfer, extended with the optional gas overrides and ERC-7702 authorizations of an evm
+ * transaction.
+ *
+ * @typedef {TransferOptions & EvmGasOverrides & Pick<EvmTransaction, 'authorizationList'>} EvmTransferOptions
  */
 
 /**
@@ -180,9 +188,12 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
-   * The account's address.
+   * The account's address, or undefined if the account's signer doesn't expose its address
+   * synchronously.
    *
-   * @type {string}
+   * @deprecated Use {@link getAddress} instead. This property will be removed in an upcoming
+   * release: not all signers (e.g. hardware signers) can expose the address synchronously.
+   * @type {string | undefined}
    */
   get address () {
     return this._address
@@ -266,36 +277,89 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+   *
+   * @protected
+   * @param {EvmTransaction | Transaction} tx - The transaction to inspect.
+   * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+   */
+  static _isBlobTransaction (tx) {
+    const hasBlobs = (
+      ('blobs' in tx && tx.blobs != null) ||
+      ('blobVersionedHashes' in tx && tx.blobVersionedHashes != null) ||
+      ('maxFeePerBlobGas' in tx && tx.maxFeePerBlobGas != null)
+    )
+
+    return Number(tx.type) === 3 || hasBlobs
+  }
+
+  /**
+   * Validates that a transaction does not mix fee fields its type doesn't support.
+   *
+   * @protected
+   * @param {EvmTransaction} tx - The transaction to validate.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+   */
+  static _validateFeeFields (tx) {
+    if (WalletAccountReadOnlyEvm._isBlobTransaction(tx)) {
+      throw new ValueError('eip-4844 blob transactions are not supported')
+    }
+
+    const has1559 = tx.maxFeePerGas !== undefined || tx.maxPriorityFeePerGas !== undefined
+    const hasLegacy = tx.gasPrice !== undefined
+    const hasAuthList = tx.authorizationList !== undefined
+    const explicitType = (tx.type !== undefined) ? Number(tx.type) : null
+
+    if ((explicitType === 2 || (explicitType === null && has1559)) && hasLegacy) {
+      throw new ValueError('eip-1559 transaction does not support gasPrice')
+    }
+    if ((explicitType === 0 || explicitType === 1) && has1559) {
+      throw new ValueError('pre-eip-1559 transaction does not support maxFeePerGas/maxPriorityFeePerGas')
+    }
+    if ((explicitType === 4 || (explicitType === null && hasAuthList)) && hasLegacy) {
+      throw new ValueError('eip-7702 transaction does not support gasPrice')
+    }
+  }
+
+  /**
    * Quotes the costs of a send transaction operation.
+   *
+   * The transaction is always simulated through gas estimation, so one that would revert is rejected here instead of
+   * reaching the signer. A `gasLimit` set on the transaction replaces the estimated gas in the quote, and a `maxFeePerGas`
+   * (or `gasPrice`) set on it replaces the fee rate fetched from the provider, so the quote is the transaction's maximum
+   * cost as it will be sent.
    *
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+   * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to quote send transaction operations.')
     }
 
+    WalletAccountReadOnlyEvm._validateFeeFields(tx)
+
     const from = await this.getAddress()
 
-    const gas = tx.authorizationList
-      ? await this._estimateGasWithAuthList({ from, ...tx })
-      : await this._provider.estimateGas({ from, ...tx })
+    const estimatedGas = await this._estimateGas({ from, ...tx })
 
-    const data = await this._provider.getFeeData()
+    const gas = tx.gasLimit ?? estimatedGas
+    const feeRate = tx.maxFeePerGas ?? tx.gasPrice ?? await this._getFeeRate()
 
-    const feeRate = data.maxFeePerGas || data.gasPrice
-
-    return { fee: gas * feeRate }
+    return { fee: BigInt(gas) * BigInt(feeRate) }
   }
 
   /**
    * Quotes the costs of a transfer operation.
    *
-   * @param {EvmTransferOptions} options - The transfer's options.
+   * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+   * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteTransfer (options) {
     if (!this._provider) {
@@ -516,6 +580,62 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
   }
 
+  /**
+   * Estimates the gas of a transaction by simulating it against the connected provider, using the authorization-list
+   * aware estimation for ERC-7702 transactions.
+   *
+   * @protected
+   * @param {EvmTransactionRequest} tx - The transaction to simulate, including its `from` address.
+   * @returns {Promise<bigint>} The gas units the simulated transaction consumed.
+   */
+  async _estimateGas (tx) {
+    return tx.authorizationList
+      ? await this._estimateGasWithAuthList(tx)
+      : await this._provider.estimateGas(tx)
+  }
+
+  /**
+   * Extracts the gas and fee overrides set on transfer or approve options.
+   *
+   * @protected
+   * @param {EvmGasOverrides} options - The options to read the overrides from.
+   * @returns {EvmGasOverrides} Only the gas and fee fields that are set on the options.
+   */
+  static _getGasOverrides (options) {
+    const overrides = {}
+
+    for (const field of ['gasLimit', 'gasPrice', 'maxFeePerGas', 'maxPriorityFeePerGas']) {
+      if (options[field] !== undefined) overrides[field] = options[field]
+    }
+
+    return overrides
+  }
+
+  /**
+   * Returns an evm transaction to execute the given token transfer.
+   *
+   * @protected
+   * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides and ERC-7702 authorizations to carry onto the transaction.
+   * @returns {Promise<EvmTransaction>} The ERC-20 transfer call as an evm transaction, with the options' gas overrides and authorizations applied.
+   */
+  static async _getTransferTransaction (options) {
+    const { token, recipient, amount, authorizationList } = options
+
+    const abi = ['function transfer(address to, uint256 amount) returns (bool)']
+
+    const contract = new Contract(token, abi)
+
+    const tx = {
+      to: token,
+      value: 0,
+      data: contract.interface.encodeFunctionData('transfer', [recipient, amount]),
+      ...WalletAccountReadOnlyEvm._getGasOverrides(options),
+      authorizationList
+    }
+
+    return tx
+  }
+
   /** @private */
   async _estimateGasWithAuthList ({ from, to, value, data, authorizationList }) {
     const formatAuth = (auth) => {
@@ -549,27 +669,10 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     return BigInt(result)
   }
 
-  /**
-   * Returns an evm transaction to execute the given token transfer.
-   *
-   * @protected
-   * @param {EvmTransferOptions} options - The transfer's options.
-   * @returns {Promise<EvmTransaction>} The evm transaction.
-   */
-  static async _getTransferTransaction (options) {
-    const { token, recipient, amount, authorizationList } = options
+  /** @private */
+  async _getFeeRate () {
+    const { maxFeePerGas, gasPrice } = await this._provider.getFeeData()
 
-    const abi = ['function transfer(address to, uint256 amount) returns (bool)']
-
-    const contract = new Contract(token, abi)
-
-    const tx = {
-      to: token,
-      value: 0,
-      data: contract.interface.encodeFunctionData('transfer', [recipient, amount]),
-      authorizationList
-    }
-
-    return tx
+    return maxFeePerGas || gasPrice
   }
 }
