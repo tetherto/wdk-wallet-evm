@@ -52,3 +52,5 @@ export { default as WalletAccountReadOnlyEvm } from './src/wallet-account-read-o
 export { default as WalletAccountEvm } from './src/wallet-account-evm.js'
 
 export { ISigner } from '@tetherto/wdk-wallet'
+
+export { createX402Signer } from './src/x402-signer.js'

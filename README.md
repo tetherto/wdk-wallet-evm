@@ -371,3 +371,26 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Typed x402 signer projection (proposed helper)
+
+Accounts with asynchronous signers may not expose `address` synchronously.
+Resolve the address before creating an x402 client:
+
+```ts
+import { createX402Signer } from '@tetherto/wdk-wallet-evm'
+import { toClientEvmSigner, type ClientEvmSigner } from '@x402/evm'
+
+const signer: ClientEvmSigner = toClientEvmSigner(await createX402Signer(account))
+```
+
+The projection validates the 20-byte address and byte-hex signature, maps typed-data
+fields to ethers, checks the primary type, and preserves the account method receiver.
+It exposes only address and typed-data signing; optional read, approval and transaction
+extensions require separately compatible capabilities. The address is a snapshot:
+recreate the projection if the underlying signer changes account. Hex validation is
+format validation, not cryptographic signature verification or payment authorization.
+
+This helper is a proposal against `main` after PR #95. The published
+`1.0.0-beta.20` package does not contain it. Do not remove application policy gates
+when using this general signing projection.
