@@ -21,7 +21,6 @@
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
 /** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
-/** @typedef {import('ethers').BlobLike} BlobLike */
 
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
