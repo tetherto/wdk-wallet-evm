@@ -15,7 +15,7 @@
 
 import * as bip39 from 'bip39'
 
-import { ValueError } from '@tetherto/wdk-wallet'
+import { DisposalError, ValueError } from '@tetherto/wdk-wallet'
 
 import MemorySafeHDNodeWallet from '../memory-safe/hd-node-wallet.js'
 
@@ -68,6 +68,9 @@ export default class SeedSignerEvm {
 
     /** @private */
     this._account = account
+
+    /** @private */
+    this._disposed = false
   }
 
   /**
@@ -78,6 +81,15 @@ export default class SeedSignerEvm {
    */
   get isDerivable () {
     return true
+  }
+
+  /**
+   * True if the signer has been disposed.
+   *
+   * @type {boolean}
+   */
+  get disposed () {
+    return this._disposed
   }
 
   /**
@@ -120,10 +132,16 @@ export default class SeedSignerEvm {
    *
    * @param {string} relPath - The path segment to derive, relative to this signer's own path.
    * @returns {Promise<SeedSignerEvm>} The derived child signer.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async derive (relPath) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     const signer = Object.create(SeedSignerEvm.prototype)
     signer._account = this._account.derivePath(relPath)
+    signer._disposed = false
     return signer
   }
 
@@ -141,8 +159,13 @@ export default class SeedSignerEvm {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async sign (message) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._account.signMessage(message)
   }
 
@@ -151,8 +174,13 @@ export default class SeedSignerEvm {
    *
    * @param {TransactionLike} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signTransaction (tx) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._account.signTransaction(tx)
   }
 
@@ -161,8 +189,13 @@ export default class SeedSignerEvm {
    *
    * @param {TypedData} typedData - The typed data to sign.
    * @returns {Promise<string>} The typed data signature.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._account.signTypedData(domain, types, message)
   }
 
@@ -171,8 +204,13 @@ export default class SeedSignerEvm {
    *
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signAuthorization (auth) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._account.authorizeSync(auth)
   }
 
@@ -180,6 +218,9 @@ export default class SeedSignerEvm {
    * Disposes the signer, erasing its secrets from memory.
    */
   dispose () {
+    if (this._disposed) return
+
     this._account.dispose()
+    this._disposed = true
   }
 }

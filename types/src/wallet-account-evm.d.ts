@@ -68,6 +68,12 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      */
     get keyPair(): KeyPair | null;
     /**
+     * True if the account has been disposed.
+     *
+     * @type {boolean}
+     */
+    get disposed(): boolean;
+    /**
      * Returns the account's address.
      *
      * @returns {Promise<string>} The account's address.
@@ -78,6 +84,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature.
+     * @throws {DisposalError} If the account has been disposed.
      */
     sign(message: string): Promise<string>;
     /**
@@ -85,6 +92,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
+     * @throws {DisposalError} If the account has been disposed.
      */
     signTypedData({ domain, types, message }: TypedData): Promise<string>;
     /**
@@ -95,6 +103,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {EvmTransaction} tx - The transaction to sign.
      * @returns {Promise<string>} The signed transaction as a hex string.
      * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
+     * @throws {DisposalError} If the account has been disposed.
      */
     signTransaction(tx: EvmTransaction): Promise<string>;
     /**
@@ -105,6 +114,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+     * @throws {DisposalError} If the account has been disposed.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
     /**
@@ -130,6 +140,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransferResult>} The transfer's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
+     * @throws {DisposalError} If the account has been disposed.
      */
     transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**
@@ -139,6 +150,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
+     * @throws {DisposalError} If the account has been disposed.
      */
     approve(options: EvmApproveOptions): Promise<TransactionResult>;
     /**
@@ -155,6 +167,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
      * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
+     * @throws {DisposalError} If the account has been disposed.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**

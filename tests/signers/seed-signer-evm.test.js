@@ -2,9 +2,11 @@ import * as bip39 from 'bip39'
 
 import { describe, expect, test } from '@jest/globals'
 
-import { ValueError } from '@tetherto/wdk-wallet'
+import { DisposalError, ValueError } from '@tetherto/wdk-wallet'
 
 import SeedSignerEvm from '../../src/signers/seed-signer-evm.js'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 const VALID_SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 const VALID_SEED = bip39.mnemonicToSeedSync(VALID_SEED_PHRASE)
@@ -236,6 +238,31 @@ describe('SeedSignerEvm', () => {
   })
 
   describe('dispose', () => {
+    test('should throw when deriving from a disposed signer', async () => {
+      const root = new SeedSignerEvm(VALID_SEED_PHRASE)
+      root.dispose()
+
+      const promise = root.derive("0'/0/0")
+
+      await expect(promise).rejects.toThrow(DisposalError)
+      await expect(promise).rejects.toThrow('The signer has been disposed.')
+    })
+
+    test('should throw DisposalError from signing methods once disposed', async () => {
+      const signer = await new SeedSignerEvm(VALID_SEED_PHRASE).derive("0'/0/0")
+
+      expect(signer.disposed).toBe(false)
+
+      signer.dispose()
+
+      expect(signer.disposed).toBe(true)
+
+      await expect(signer.sign(MESSAGE)).rejects.toThrow(DisposalError)
+      await expect(signer.signTransaction(TRANSACTION)).rejects.toThrow(DisposalError)
+      await expect(signer.signTypedData(TYPED_DATA)).rejects.toThrow(DisposalError)
+      await expect(signer.signAuthorization({ address: ZERO_ADDRESS })).rejects.toThrow(DisposalError)
+    })
+
     test('should clear secrets on dispose', async () => {
       const root = new SeedSignerEvm(VALID_SEED_PHRASE, "m/44'/60'")
       const child = await root.derive("0'/0/0")

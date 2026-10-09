@@ -65,6 +65,7 @@ export default class WalletManagerEvm extends WalletManager<ISignerEvm> {
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
      * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccount(index?: number, options?: {
         signerName?: string;
@@ -88,6 +89,7 @@ export default class WalletManagerEvm extends WalletManager<ISignerEvm> {
      * @param {string} signerName - The signer name registered via {@link addSigner}.
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If no signer exists with the given name.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccount(signerName: string): Promise<WalletAccountEvm>;
     /**
@@ -99,6 +101,7 @@ export default class WalletManagerEvm extends WalletManager<ISignerEvm> {
      * @returns {Promise<WalletAccountEvm>} The account.
      * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
      * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+     * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
      */
     getAccountByPath(path: string, options?: {
         signerName?: string;

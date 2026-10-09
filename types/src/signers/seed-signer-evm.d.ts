@@ -18,6 +18,8 @@ export default class SeedSignerEvm implements ISignerEvm {
     constructor(seed: string | Uint8Array, path?: string);
     /** @private */
     private _account;
+    /** @private */
+    private _disposed;
     /**
      * Whether this signer can derive child signers. Always true: every seed signer holds an
      * HD node with a private key and can derive below its own path.
@@ -25,6 +27,12 @@ export default class SeedSignerEvm implements ISignerEvm {
      * @type {true}
      */
     get isDerivable(): true;
+    /**
+     * True if the signer has been disposed.
+     *
+     * @type {boolean}
+     */
+    get disposed(): boolean;
     /**
      * The signer's absolute derivation path.
      *
@@ -53,6 +61,7 @@ export default class SeedSignerEvm implements ISignerEvm {
      *
      * @param {string} relPath - The path segment to derive, relative to this signer's own path.
      * @returns {Promise<SeedSignerEvm>} The derived child signer.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     derive(relPath: string): Promise<SeedSignerEvm>;
     /**
@@ -66,6 +75,7 @@ export default class SeedSignerEvm implements ISignerEvm {
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     sign(message: string): Promise<string>;
     /**
@@ -73,6 +83,7 @@ export default class SeedSignerEvm implements ISignerEvm {
      *
      * @param {TransactionLike} tx - The transaction to sign.
      * @returns {Promise<string>} The signed transaction as a hex string.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTransaction(tx: TransactionLike): Promise<string>;
     /**
@@ -80,6 +91,7 @@ export default class SeedSignerEvm implements ISignerEvm {
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTypedData(typedData: TypedData): Promise<string>;
     /**
@@ -87,6 +99,7 @@ export default class SeedSignerEvm implements ISignerEvm {
      *
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**

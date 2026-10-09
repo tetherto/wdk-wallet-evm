@@ -22,12 +22,20 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
     private _wallet;
     /** @private */
     private _address;
+    /** @private */
+    private _disposed;
     /**
      * Whether this signer can derive child signers.
      *
      * @type {false}
      */
     get isDerivable(): false;
+    /**
+     * True if the signer has been disposed.
+     *
+     * @type {boolean}
+     */
+    get disposed(): boolean;
     /**
      * The BIP 0044 derivation path.
      *
@@ -53,6 +61,7 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
      *
      * @param {string} path - The relative derivation path.
      * @returns {Promise<never>} The derived signer.
+     * @throws {DisposalError} If the signer has been disposed.
      * @throws {UnsupportedOperationError} If the signer does not support account derivation.
      * @throws {ValueError} If the path is not valid.
      */
@@ -68,6 +77,7 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     sign(message: string): Promise<string>;
     /**
@@ -75,6 +85,7 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
      *
      * @param {TransactionLike} tx - The transaction to sign.
      * @returns {Promise<string>} The signed transaction as a hex string.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTransaction(tx: TransactionLike): Promise<string>;
     /**
@@ -82,6 +93,7 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
      *
      * @param {TypedData} typedData - The typed data to sign.
      * @returns {Promise<string>} The typed data signature.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signTypedData(typedData: TypedData): Promise<string>;
     /**
@@ -89,6 +101,7 @@ export default class PrivateKeySignerEvm implements ISignerEvm {
      *
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
+     * @throws {DisposalError} If the signer has been disposed.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**

@@ -15,7 +15,7 @@
 
 import { BaseWallet } from 'ethers'
 
-import { UnsupportedOperationError } from '@tetherto/wdk-wallet'
+import { DisposalError, UnsupportedOperationError } from '@tetherto/wdk-wallet'
 
 import MemorySafeSigningKey from '../memory-safe/signing-key.js'
 
@@ -57,6 +57,9 @@ export default class PrivateKeySignerEvm {
 
     /** @private */
     this._address = this._wallet.address
+
+    /** @private */
+    this._disposed = false
   }
 
   /**
@@ -66,6 +69,15 @@ export default class PrivateKeySignerEvm {
    */
   get isDerivable () {
     return false
+  }
+
+  /**
+   * True if the signer has been disposed.
+   *
+   * @type {boolean}
+   */
+  get disposed () {
+    return this._disposed
   }
 
   /**
@@ -101,10 +113,15 @@ export default class PrivateKeySignerEvm {
    *
    * @param {string} path - The relative derivation path.
    * @returns {Promise<never>} The derived signer.
+   * @throws {DisposalError} If the signer has been disposed.
    * @throws {UnsupportedOperationError} If the signer does not support account derivation.
    * @throws {ValueError} If the path is not valid.
    */
   async derive (path) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     throw new UnsupportedOperationError('derive(path)')
   }
 
@@ -122,8 +139,13 @@ export default class PrivateKeySignerEvm {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async sign (message) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._wallet.signMessage(message)
   }
 
@@ -132,8 +154,13 @@ export default class PrivateKeySignerEvm {
    *
    * @param {TransactionLike} tx - The transaction to sign.
    * @returns {Promise<string>} The signed transaction as a hex string.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signTransaction (tx) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._wallet.signTransaction(tx)
   }
 
@@ -142,8 +169,13 @@ export default class PrivateKeySignerEvm {
    *
    * @param {TypedData} typedData - The typed data to sign.
    * @returns {Promise<string>} The typed data signature.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._wallet.signTypedData(domain, types, message)
   }
 
@@ -152,8 +184,13 @@ export default class PrivateKeySignerEvm {
    *
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
+   * @throws {DisposalError} If the signer has been disposed.
    */
   async signAuthorization (auth) {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
+
     return this._wallet.authorizeSync(auth)
   }
 
@@ -161,6 +198,9 @@ export default class PrivateKeySignerEvm {
    * Disposes the signer, securely erasing its internal copy of the private key from memory.
    */
   dispose () {
+    if (this._disposed) return
+
     this._signingKey.dispose()
+    this._disposed = true
   }
 }

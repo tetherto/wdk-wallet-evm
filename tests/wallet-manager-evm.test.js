@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
 
-import { InvalidSignerError, NoSuchElementError, ProviderRequiredError } from '@tetherto/wdk-wallet'
+import { DisposalError, InvalidSignerError, NoSuchElementError, ProviderRequiredError } from '@tetherto/wdk-wallet'
 
 import WalletManagerEvm, { WalletAccountEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -220,15 +220,21 @@ describe('WalletManagerEvm', () => {
       for (const account of [account0, account1]) {
         expect(account.keyPair.privateKey).toBe(null)
 
-        // Once disposed, the signer keeps its (neutered) HD node, so any signing
-        // operation fails inside the crypto layer when it reads the wiped private key.
+        // Once disposed, any signing operation fails fast with a DisposalError.
         await expect(account.sign(MESSAGE))
-          .rejects.toThrow(/Uint8Array expected/)
+          .rejects.toThrow(DisposalError)
         await expect(account.sendTransaction(TRANSACTION))
-          .rejects.toThrow(/Uint8Array expected/)
+          .rejects.toThrow(DisposalError)
         await expect(account.transfer(TRANSFER))
-          .rejects.toThrow(/Uint8Array expected/)
+          .rejects.toThrow(DisposalError)
       }
+    })
+
+    test('should throw DisposalError when getting an account after disposal', async () => {
+      wallet.dispose()
+
+      await expect(wallet.getAccount(0)).rejects.toThrow(DisposalError)
+      await expect(wallet.getAccountByPath("0'/0/0")).rejects.toThrow(DisposalError)
     })
 
     test('should dispose the internally created default signer when constructed from a seed', () => {

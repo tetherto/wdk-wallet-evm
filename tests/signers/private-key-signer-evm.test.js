@@ -1,8 +1,10 @@
 import { describe, expect, test } from '@jest/globals'
 
-import { UnsupportedOperationError } from '@tetherto/wdk-wallet'
+import { DisposalError, UnsupportedOperationError } from '@tetherto/wdk-wallet'
 
 import PrivateKeySignerEvm from '../../src/signers/private-key-signer-evm.js'
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 const VALID_PRIVATE_KEY = '260905feebf1ec684f36f1599128b85f3a26c2b817f2065a2fc278398449c41f'
 const EXPECTED_PUBLIC_KEY = '036c082582225926b9356d95b91a4acffa3511b7cc2a14ef5338c090ea2cc3d0aa'
@@ -147,6 +149,22 @@ describe('PrivateKeySignerEvm', () => {
   })
 
   describe('dispose', () => {
+    test('should throw DisposalError from signing methods once disposed', async () => {
+      const signer = new PrivateKeySignerEvm(VALID_PRIVATE_KEY)
+
+      expect(signer.disposed).toBe(false)
+
+      signer.dispose()
+
+      expect(signer.disposed).toBe(true)
+
+      await expect(signer.derive("0'/0/0")).rejects.toThrow(DisposalError)
+      await expect(signer.sign(MESSAGE)).rejects.toThrow(DisposalError)
+      await expect(signer.signTransaction(TRANSACTION)).rejects.toThrow(DisposalError)
+      await expect(signer.signTypedData(TYPED_DATA)).rejects.toThrow(DisposalError)
+      await expect(signer.signAuthorization({ address: ZERO_ADDRESS })).rejects.toThrow(DisposalError)
+    })
+
     test('should clear secrets on dispose', () => {
       const signer = new PrivateKeySignerEvm(VALID_PRIVATE_KEY)
 
