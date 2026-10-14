@@ -391,6 +391,13 @@ extensions require separately compatible capabilities. The address is a snapshot
 recreate the projection if the underlying signer changes account. Hex validation is
 format validation, not cryptographic signature verification or payment authorization.
 
-This helper is a proposal against `main` after PR #95. The published
-`1.0.0-beta.20` package does not contain it. Do not remove application policy gates
+This helper remains a proposal against `main` after PR #95. Compatibility was
+rechecked against upstream commit `f2e3b006052ab9eda2560d95790939d56a921f2c`
+(version `1.0.0-beta.21`) with `@x402/evm` `2.28.0`: 182 unit tests,
+16 local Hardhat integration tests, declaration generation, and strict TypeScript
+consumer checks passed. An offline EIP-3009 payload produced by the official
+`ExactEvmScheme` using an async WDK signer was verified cryptographically.
+No x402 transaction was broadcast. The upstream account still exposes async
+`getAddress(): Promise<string>`; its transaction and seed-buffer changes do not
+require changes to this projection. Do not remove application policy gates
 when using this general signing projection.

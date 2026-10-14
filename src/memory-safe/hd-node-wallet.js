@@ -21,6 +21,9 @@ import {
 
 import * as secp256k1 from '@noble/secp256k1'
 
+// eslint-disable-next-line camelcase
+import { sodium_memzero } from 'sodium-universal'
+
 import MemorySafeSigningKey from './signing-key.js'
 
 const MasterSecret = new Uint8Array([66, 105, 116, 99, 111, 105, 110, 32, 115, 101, 101, 100])
@@ -191,7 +194,11 @@ export default class MemorySafeHDNodeWallet extends BaseWallet {
     const I = getBytes(computeHmac('sha512', MasterSecret, seed))
     const signingKey = new MemorySafeSigningKey(I.slice(0, 32))
 
-    return new MemorySafeHDNodeWallet(_guard, signingKey, '0x00000000', hexlify(I.slice(32)),
+    const root = new MemorySafeHDNodeWallet(_guard, signingKey, '0x00000000', hexlify(I.slice(32)),
       'm', 0, 0, mnemonic, null)
+
+    sodium_memzero(I)
+
+    return root
   }
 }

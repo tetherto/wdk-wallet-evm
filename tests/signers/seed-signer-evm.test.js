@@ -1,10 +1,19 @@
 import * as bip39 from 'bip39'
 
-import { describe, expect, test } from '@jest/globals'
+import { describe, expect, jest, test } from '@jest/globals'
 
 import { ValueError } from '@tetherto/wdk-wallet'
 
-import SeedSignerEvm from '../../src/signers/seed-signer-evm.js'
+import MemorySafeHDNodeWallet from '../../src/memory-safe/hd-node-wallet.js'
+
+const mnemonicToSeedSync = jest.fn(bip39.mnemonicToSeedSync)
+
+jest.unstable_mockModule('bip39', () => ({
+  ...bip39,
+  mnemonicToSeedSync
+}))
+
+const { default: SeedSignerEvm } = await import('../../src/signers/seed-signer-evm.js')
 
 const VALID_SEED_PHRASE = 'cook voyage document eight skate token alien guide drink uncle term abuse'
 const VALID_SEED = bip39.mnemonicToSeedSync(VALID_SEED_PHRASE)
@@ -61,6 +70,48 @@ const EXPECTED_TYPED_DATA_SIGNATURE = '0xd5d54d9a7fe501ab5dc1532a443a4f70bc8b6ad
 
 describe('SeedSignerEvm', () => {
   describe('constructor', () => {
+    test('should zero the seed buffer created from a mnemonic', () => {
+      const seed = Buffer.from(VALID_SEED)
+      mnemonicToSeedSync.mockReturnValueOnce(seed)
+
+      const signer = new SeedSignerEvm(VALID_SEED_PHRASE)
+
+      try {
+        expect(mnemonicToSeedSync).toHaveBeenLastCalledWith(VALID_SEED_PHRASE)
+        expect(seed).toEqual(Buffer.alloc(seed.length))
+      } finally {
+        signer.dispose()
+      }
+    })
+
+    test('should not change a caller-supplied Uint8Array seed', () => {
+      const seed = new Uint8Array(VALID_SEED)
+      const originalSeed = new Uint8Array(seed)
+      const signer = new SeedSignerEvm(seed)
+
+      try {
+        expect(seed).toEqual(originalSeed)
+      } finally {
+        signer.dispose()
+      }
+    })
+
+    test('should throw for an invalid path and still dispose the root', () => {
+      const root = MemorySafeHDNodeWallet.fromSeed(VALID_SEED)
+      const fromSeedSpy = jest.spyOn(MemorySafeHDNodeWallet, 'fromSeed').mockReturnValueOnce(root)
+      const disposeSpy = jest.spyOn(root, 'dispose')
+
+      try {
+        expect(() => { new SeedSignerEvm(VALID_SEED, "a'/b/c") }) // eslint-disable-line no-new
+          .toThrow('invalid path component')
+        expect(disposeSpy).toHaveBeenCalledTimes(1)
+      } finally {
+        fromSeedSpy.mockRestore()
+        disposeSpy.mockRestore()
+        root.dispose()
+      }
+    })
+
     test('should create a derivable signer at the coin node "m/44\'/60\'" by default', () => {
       const signer = new SeedSignerEvm(VALID_SEED_PHRASE)
 

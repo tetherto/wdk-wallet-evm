@@ -17,6 +17,9 @@ import * as bip39 from 'bip39'
 
 import { ValueError } from '@tetherto/wdk-wallet'
 
+// eslint-disable-next-line camelcase
+import { sodium_memzero } from 'sodium-universal'
+
 import MemorySafeHDNodeWallet from '../memory-safe/hd-node-wallet.js'
 
 /** @typedef {import('./signer-evm.js').ISignerEvm} ISignerEvm */
@@ -54,7 +57,8 @@ export default class SeedSignerEvm {
    * @throws {ValueError} If the given seed phrase is invalid.
    */
   constructor (seed, path = BIP_44_ETH_DERIVATION_PATH_PREFIX) {
-    if (typeof seed === 'string') {
+    const ownsSeed = typeof seed === 'string'
+    if (ownsSeed) {
       if (!bip39.validateMnemonic(seed)) {
         throw new ValueError('The seed phrase is invalid.')
       }
@@ -63,8 +67,14 @@ export default class SeedSignerEvm {
     }
 
     const root = MemorySafeHDNodeWallet.fromSeed(seed)
-    const account = root.derivePath(path)
-    if (account !== root) root.dispose()
+    if (ownsSeed) sodium_memzero(seed)
+
+    let account
+    try {
+      account = root.derivePath(path)
+    } finally {
+      if (account !== root) root.dispose()
+    }
 
     /** @private */
     this._account = account

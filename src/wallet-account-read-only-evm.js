@@ -27,10 +27,10 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
 /** @typedef {import('ethers').TypedDataDomain} TypedDataDomain */
 /** @typedef {import('ethers').TypedDataField} TypedDataField */
 /** @typedef {import('ethers').AuthorizationLike} AuthorizationLike */
-/** @typedef {import('ethers').BlobLike} BlobLike */
 /** @typedef {import('ethers').TransactionReceipt} EvmTransactionReceipt */
 /** @typedef {import('ethers').TransactionResponse} EvmTransactionResponse */
 /** @typedef {import('ethers').TransactionRequest} EvmTransactionRequest */
+/** @typedef {import('ethers').Transaction} Transaction */
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
@@ -68,12 +68,9 @@ import FailoverProvider from '@tetherto/wdk-failover-provider'
  * @property {number | bigint} [gasPrice] - The price (in wei) per unit of gas this transaction will pay.
  * @property {number | bigint} [maxFeePerGas] - The maximum price (in wei) per unit of gas this transaction will pay for the combined [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee and this transaction's priority fee.
  * @property {number | bigint} [maxPriorityFeePerGas] - The price (in wei) per unit of gas this transaction will allow in addition to the [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) block's base fee to bribe miners into giving this transaction priority. This is included in the maxFeePerGas, so this will not affect the total maximum cost set with maxFeePerGas.
- * @property {number} [type] - The transaction type (e.g. 4 for ERC-7702).
+ * @property {number} [type] - The [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718) transaction type: 0 for legacy, 1 for [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930) access-list, 2 for [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559), 4 for ERC-7702. Type 3 ([EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob transactions) is not supported and is rejected. Omit to have the type inferred from the transaction's fields and the network's fee data.
  * @property {number} [nonce] - The transaction nonce.
  * @property {number | bigint} [chainId] - The chain ID of the network.
- * @property {number | bigint} [maxFeePerBlobGas] - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
- * @property {BlobLike[]} [blobs] - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
- * @property {string[]} [blobVersionedHashes] - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
  * @property {AuthorizationLike[]} [authorizationList] - An optional list of ERC-7702 signed authorizations for type 4 transactions.
  */
 
@@ -280,16 +277,36 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
   }
 
   /**
+   * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+   *
+   * @protected
+   * @param {EvmTransaction | Transaction} tx - The transaction to inspect.
+   * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+   */
+  static _isBlobTransaction (tx) {
+    const hasBlobs = (
+      ('blobs' in tx && tx.blobs != null) ||
+      ('blobVersionedHashes' in tx && tx.blobVersionedHashes != null) ||
+      ('maxFeePerBlobGas' in tx && tx.maxFeePerBlobGas != null)
+    )
+
+    return Number(tx.type) === 3 || hasBlobs
+  }
+
+  /**
    * Validates that a transaction does not mix fee fields its type doesn't support.
    *
    * @protected
    * @param {EvmTransaction} tx - The transaction to validate.
-   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
    */
   static _validateFeeFields (tx) {
+    if (WalletAccountReadOnlyEvm._isBlobTransaction(tx)) {
+      throw new ValueError('eip-4844 blob transactions are not supported')
+    }
+
     const has1559 = tx.maxFeePerGas !== undefined || tx.maxPriorityFeePerGas !== undefined
     const hasLegacy = tx.gasPrice !== undefined
-    const hasBlobs = tx.blobs !== undefined || tx.blobVersionedHashes !== undefined || tx.maxFeePerBlobGas !== undefined
     const hasAuthList = tx.authorizationList !== undefined
     const explicitType = (tx.type !== undefined) ? Number(tx.type) : null
 
@@ -298,12 +315,6 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     }
     if ((explicitType === 0 || explicitType === 1) && has1559) {
       throw new ValueError('pre-eip-1559 transaction does not support maxFeePerGas/maxPriorityFeePerGas')
-    }
-    if ((explicitType === 3 || hasBlobs) && hasLegacy) {
-      throw new ValueError('blob transaction does not support gasPrice')
-    }
-    if ((explicitType === 3 || hasBlobs) && tx.maxFeePerBlobGas === undefined) {
-      throw new ValueError('maxFeePerBlobGas is required for type 3 transactions')
     }
     if ((explicitType === 4 || (explicitType === null && hasAuthList)) && hasLegacy) {
       throw new ValueError('eip-7702 transaction does not support gasPrice')
@@ -321,7 +332,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {EvmTransaction} tx - The transaction.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+   * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
    * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async quoteSendTransaction (tx) {

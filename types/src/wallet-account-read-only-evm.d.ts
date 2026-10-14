@@ -28,11 +28,19 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      */
     protected static _buildProvider(config?: Omit<EvmWalletConfig, "transferMaxFee" | "transactionMaxFee">): Provider | undefined;
     /**
+     * Whether the given transaction is an EIP-4844 (type 3) blob transaction.
+     *
+     * @protected
+     * @param {EvmTransaction | Transaction} tx - The transaction to inspect.
+     * @returns {boolean} True if the transaction explicitly targets type 3, or carries any blob field.
+     */
+    protected static _isBlobTransaction(tx: EvmTransaction | Transaction): boolean;
+    /**
      * Validates that a transaction does not mix fee fields its type doesn't support.
      *
      * @protected
      * @param {EvmTransaction} tx - The transaction to validate.
-     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
      */
     protected static _validateFeeFields(tx: EvmTransaction): void;
     /**
@@ -107,7 +115,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
      * @param {EvmTransaction} tx - The transaction.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or a type 3 transaction omits `maxFeePerBlobGas`.
+     * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
      * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     quoteSendTransaction(tx: EvmTransaction): Promise<Omit<TransactionResult, "hash">>;
@@ -219,11 +227,11 @@ export type Provider = import("ethers").Provider;
 export type Eip1193Provider = import("ethers").Eip1193Provider;
 export type TypedDataDomain = import("ethers").TypedDataDomain;
 export type TypedDataField = import("ethers").TypedDataField;
-export type BlobLike = import("ethers").BlobLike;
 export type AuthorizationLike = import("ethers").AuthorizationLike;
 export type EvmTransactionReceipt = import("ethers").TransactionReceipt;
 export type EvmTransactionResponse = import("ethers").TransactionResponse;
 export type EvmTransactionRequest = import("ethers").TransactionRequest;
+export type Transaction = import("ethers").Transaction;
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransferResult = import("@tetherto/wdk-wallet").TransferResult;
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
@@ -296,7 +304,7 @@ export type EvmTransaction = {
      */
     maxPriorityFeePerGas?: number | bigint;
     /**
-     * - The transaction type (e.g. 4 for ERC-7702).
+     * - The [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718) transaction type: 0 for legacy, 1 for [EIP-2930](https://eips.ethereum.org/EIPS/eip-2930) access-list, 2 for [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559), 4 for ERC-7702. Type 3 ([EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob transactions) is not supported and is rejected. Omit to have the type inferred from the transaction's fields and the network's fee data.
      */
     type?: number;
     /**
@@ -307,18 +315,6 @@ export type EvmTransaction = {
      * - The chain ID of the network.
      */
     chainId?: number | bigint;
-    /**
-     * - The maximum price (in wei) per unit of blob gas this transaction will pay for [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) blob data. Required for type 3 (blob) transactions.
-     */
-    maxFeePerBlobGas?: number | bigint;
-    /**
-     * - The blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
-     */
-    blobs?: BlobLike[];
-    /**
-     * - The versioned hashes of the blobs of an [EIP-4844](https://eips.ethereum.org/EIPS/eip-4844) type 3 transaction.
-     */
-    blobVersionedHashes?: string[];
     /**
      * - An optional list of ERC-7702 signed authorizations for type 4 transactions.
      */
