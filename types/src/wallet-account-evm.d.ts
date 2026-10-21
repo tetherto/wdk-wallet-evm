@@ -108,6 +108,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
+    /** @private */
+    private _assertMaxFee;
+    /** @private */
+    private _sendPopulated;
     /**
      * Quotes the costs of a send transaction operation.
      *
@@ -130,7 +134,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
      * @returns {Promise<TransferResult>} The transfer's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
+     * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee or the maximum transaction fee option.
+     * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+     * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**

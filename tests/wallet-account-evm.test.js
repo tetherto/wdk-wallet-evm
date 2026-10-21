@@ -347,6 +347,23 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('sendTransaction', () => {
+    test('should check the max fee against the gas the transaction is signed with, not an earlier estimate', async () => {
+      let estimates = 0
+      const provider = createProvider({
+        eth_estimateGas: () => toQuantity(++estimates === 1 ? MOCKED_GAS : 30_000_000n)
+      })
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transactionMaxFee: MOCKED_GAS * 10_000_000_000n
+      })
+
+      const promise = account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })
+
+      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
+      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
     test('should broadcast a signed transaction unchanged', async () => {
       const { hash, fee } = await account.sendTransaction(SIGNED_TRANSACTION)
 
@@ -644,6 +661,38 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('transfer', () => {
+    test('should still enforce the transaction max fee on a transfer', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transactionMaxFee: 0,
+        transferMaxFee: 10n ** 30n
+      })
+
+      const promise = account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+
+      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
+      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
+    test('should check the transfer max fee against the gas the transaction is signed with', async () => {
+      let estimates = 0
+      const provider = createProvider({
+        eth_estimateGas: () => toQuantity(++estimates === 1 ? MOCKED_GAS : 30_000_000n)
+      })
+      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+        provider,
+        transferMaxFee: MOCKED_GAS * 10_000_000_000n
+      })
+
+      const promise = account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+
+      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
+      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
     test('should sign and broadcast a token transfer', async () => {
       const TRANSFER = {
         token: TOKEN_ADDRESS,
