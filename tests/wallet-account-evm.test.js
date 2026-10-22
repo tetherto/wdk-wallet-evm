@@ -1022,6 +1022,19 @@ describe('WalletAccountEvm', () => {
       expect(eip1193.sentRawTransactions).toEqual([])
     })
 
+    test('should throw without signing anything if the given chain id is 0', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 0 })
+
+      await expect(promise).rejects.toThrow(ValueError)
+      await expect(promise).rejects.toThrow('A delegation cannot target chain id 0.')
+
+      expect(provider.sentRawTransactions).toEqual([])
+      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_getTransactionCount' }))
+    })
+
     test('should treat a configured chain id of 0 as not configured', async () => {
       const provider = createProvider()
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider, chainId: 0 })

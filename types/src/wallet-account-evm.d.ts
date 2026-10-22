@@ -172,17 +172,20 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * the delegate contract lacks a `receive`/`fallback` function.
      *
      * The authorization is signed at the next nonce, on the same chain as the transaction. The chain id is taken from
-     * the options, else from the wallet config, else from the provider; the nonce from the options, else from the
-     * provider. A provider that reports a nonce below the real one yields an authorization that is valid immediately
-     * while the transaction is rejected, and one that reports the wrong chain yields an authorization for that chain,
-     * so give both, or set `chainId` on the wallet config, when the provider is not trusted. A given or configured
-     * chain id is checked against the provider before anything is signed.
+     * the options, else from the wallet config, else from the provider; a configured chain id of 0 counts as not
+     * configured, and a given chain id of 0 is rejected. The nonce is taken from the options, else from the provider.
+     * A given or configured chain id is checked against the provider before anything is signed. The nonce can only be
+     * pinned by giving it: a provider that reports one below the real nonce yields an authorization that is valid
+     * immediately while the transaction is rejected, and a provider that reports the wrong chain yields an
+     * authorization for that chain, so give the nonce, and give or configure the chain id, when the provider is not
+     * trusted.
      *
      * @param {string} delegateAddress - The address of the contract to delegate to.
      * @param {EvmDelegateOptions} [options] - The nonce and chain id of the delegating transaction.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {AssertionError} If the provider is on a different chain than the given or configured one, or reports a chain id of 0 when none is given or configured.
+     * @throws {ValueError} If the given chain id is 0.
      */
     delegate(delegateAddress: string, options?: EvmDelegateOptions): Promise<TransactionResult>;
     /**
@@ -192,6 +195,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {AssertionError} If the provider is on a different chain than the given or configured one, or reports a chain id of 0 when none is given or configured.
+     * @throws {ValueError} If the given chain id is 0.
      */
     revokeDelegation(options?: EvmDelegateOptions): Promise<TransactionResult>;
     /**
