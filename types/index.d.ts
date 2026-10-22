@@ -28,3 +28,4 @@ export type EvmWalletConfig = import("./src/wallet-account-read-only-evm.js").Ev
 export type EvmTransactionDetails = import("./src/wallet-account-read-only-evm.js").EvmTransactionDetails;
 export type ApproveOptions = import("./src/wallet-account-evm.js").ApproveOptions;
 export type EvmApproveOptions = import("./src/wallet-account-evm.js").EvmApproveOptions;
+export type EvmDelegateOptions = import("./src/wallet-account-evm.js").EvmDelegateOptions;
