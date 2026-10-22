@@ -456,7 +456,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       }
     }
 
-    const nonce = Number(options.nonce ?? await this._provider.getTransactionCount(address))
+    const nonce = Number(options.nonce ?? await this._provider.send('eth_getTransactionCount', [address, 'latest']))
 
     const auth = await this.signAuthorization({
       address: delegateAddress,
