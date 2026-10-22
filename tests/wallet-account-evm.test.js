@@ -983,16 +983,16 @@ describe('WalletAccountEvm', () => {
       expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_getTransactionCount' }))
     })
 
-    test('should sign the authorization and the transaction for the given chain id', async () => {
-      const provider = createProvider()
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+    test('should delegate on the configured chain when a pre-built provider agrees with it', async () => {
+      const eip1193 = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: new BrowserProvider(eip1193), chainId: 1 })
 
-      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 1 })
+      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS)
 
       expect(hash).toBe(DUMMY_TX_HASH)
       expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
 
-      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      const transaction = Transaction.from(eip1193.sentRawTransactions[0])
       expect(transaction.chainId).toBe(1n)
       expect(transaction.authorizationList[0].chainId).toBe(1n)
     })

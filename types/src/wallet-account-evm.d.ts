@@ -155,7 +155,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * from the request, else from the provider.
      *
      * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
-     * when reported by the provider.
+     * when reported by the provider or set on the wallet config.
      *
      * @see https://eips.ethereum.org/EIPS/eip-7702
      * @param {AuthorizationRequest} auth - The authorization request.
@@ -174,7 +174,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * The authorization is signed at the next nonce, on the same chain as the transaction. The chain id is taken from
      * the options, else from the wallet config, else from the provider; a configured chain id of 0 counts as not
      * configured, and a given chain id of 0 is rejected. The nonce is taken from the options, else from the provider.
-     * A given or configured chain id is checked against the provider before anything is signed. The nonce can only be
+     * A given or configured chain id is compared with the provider's before anything is signed, which matters for an
+     * already-built provider, since one built by the wallet is pinned to the configured chain. The nonce can only be
      * pinned by giving it: a provider that reports one below the real nonce yields an authorization that is valid
      * immediately while the transaction is rejected, and a provider that reports the wrong chain yields an
      * authorization for that chain, so give the nonce, and give or configure the chain id, when the provider is not
