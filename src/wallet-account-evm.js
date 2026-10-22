@@ -55,6 +55,12 @@ import PrivateKeySignerEvm from './signers/private-key-signer-evm.js'
  */
 
 /**
+ * The options of a delegation: the nonce and chain id of the evm transaction that carries it.
+ *
+ * @typedef {Pick<EvmTransaction, 'nonce' | 'chainId'>} EvmDelegateOptions
+ */
+
+/**
  * @typedef {Object} SignerOptions
  * @property {boolean} [shouldWipeSignerOnDisposal] - If true, wipes the signer given at construction on calls to the 'dispose' method.
  */
@@ -371,7 +377,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Signs an ERC-7702 authorization tuple.
    *
-   * The chainId and nonce are populated from the provider when not explicitly provided.
+   * The chainId is taken from the request, else from the wallet config, else from the provider. The nonce is taken
+   * from the request, else from the provider.
    *
    * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
    * when reported by the provider.
@@ -379,11 +386,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @see https://eips.ethereum.org/EIPS/eip-7702
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
-   * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
-   * @throws {AssertionError} If the chainId is not provided and the provider reports a chain id of 0.
+   * @throws {ProviderRequiredError} If the nonce is not provided, or the chainId is neither provided nor configured, and the wallet is not connected to a provider.
+   * @throws {AssertionError} If the chainId is neither provided nor configured and the provider reports a chain id of 0.
    */
   async signAuthorization (auth) {
     const populated = { ...auth }
+
+    if (populated.chainId == null && this._config.chainId) {
+      populated.chainId = this._config.chainId
+    }
+
     if (populated.chainId == null || populated.nonce == null) {
       if (!this._provider) {
         throw new ProviderRequiredError('The wallet must be connected to a provider to populate the authorization chainId and nonce. Provide them explicitly to sign offline.')
@@ -410,27 +422,46 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * A fixed gas limit is used because `eth_estimateGas` may revert when
    * the delegate contract lacks a `receive`/`fallback` function.
    *
+   * The authorization is signed at the next nonce, on the same chain as the transaction. The chain id is taken from
+   * the options, else from the wallet config, else from the provider; the nonce from the options, else from the
+   * provider. A provider that reports a nonce below the real one yields an authorization that is valid immediately
+   * while the transaction is rejected, and one that reports the wrong chain yields an authorization for that chain,
+   * so give both, or set `chainId` on the wallet config, when the provider is not trusted. A given or configured
+   * chain id is checked against the provider before anything is signed.
+   *
    * @param {string} delegateAddress - The address of the contract to delegate to.
+   * @param {EvmDelegateOptions} [options] - The nonce and chain id of the delegating transaction.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider reports a chain id of 0.
+   * @throws {AssertionError} If the provider is on a different chain than the given or configured one, or reports a chain id of 0 when none is given or configured.
    */
-  async delegate (delegateAddress) {
+  async delegate (delegateAddress, options = {}) {
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to delegate.')
     }
 
     const address = await this.getAddress()
-    const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'latest'])
-    const nonce = Number(nonceHex)
+    const chainId = options.chainId || this._config.chainId || undefined
+
+    if (chainId) {
+      const network = await this._provider.getNetwork()
+
+      if (network.chainId !== BigInt(chainId)) {
+        throw new AssertionError(`The provider is on chain ${network.chainId}, not on chain ${chainId}.`)
+      }
+    }
+
+    const nonce = options.nonce ?? await this._provider.getTransactionCount(address)
 
     const auth = await this.signAuthorization({
       address: delegateAddress,
+      chainId,
       nonce: nonce + 1
     })
 
     return await this.sendTransaction({
       type: 4,
+      chainId,
       nonce,
       to: address,
       value: 0,
@@ -442,12 +473,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Revokes any active ERC-7702 delegation by delegating to the zero address.
    *
+   * @param {EvmDelegateOptions} [options] - The nonce and chain id of the revoking transaction, as for `delegate`.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider reports a chain id of 0.
+   * @throws {AssertionError} If the provider is on a different chain than the given or configured one, or reports a chain id of 0 when none is given or configured.
    */
-  async revokeDelegation () {
-    return await this.delegate(ZeroAddress)
+  async revokeDelegation (options) {
+    return await this.delegate(ZeroAddress, options)
   }
 
   /**

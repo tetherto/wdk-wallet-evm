@@ -1,4 +1,4 @@
-import { Interface, Transaction, Wallet, ZeroAddress, toQuantity } from 'ethers'
+import { BrowserProvider, Interface, Transaction, Wallet, ZeroAddress, toQuantity } from 'ethers'
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
@@ -847,6 +847,25 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('signAuthorization', () => {
+    test('should take the chain id from the wallet config over what a pre-built provider reports', async () => {
+      const provider = new BrowserProvider(createProvider({ eth_chainId: () => '0x89' }))
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider, chainId: 1 })
+
+      const auth = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS, nonce: 8 })
+
+      expect(auth.chainId).toBe(1n)
+      expect(auth.nonce).toBe(8n)
+    })
+
+    test('should sign offline when the chain id is configured and the nonce is given', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { chainId: 1 })
+
+      const auth = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS, nonce: 8 })
+
+      expect(auth.chainId).toBe(1n)
+      expect(auth.nonce).toBe(8n)
+    })
+
     test('should throw when chainId and nonce are missing and the account has no provider', async () => {
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
@@ -949,6 +968,87 @@ describe('WalletAccountEvm', () => {
       await expect(promise).rejects.toThrow('The wallet must be connected to a provider to delegate.')
     })
 
+    test('should use the given nonce without asking the provider', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { nonce: 5 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.nonce).toBe(5)
+      expect(transaction.authorizationList[0].nonce).toBe(6n)
+      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_getTransactionCount' }))
+    })
+
+    test('should sign the authorization and the transaction for the given chain id', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 1 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.chainId).toBe(1n)
+      expect(transaction.authorizationList[0].chainId).toBe(1n)
+    })
+
+    test('should throw before signing anything if the provider disagrees with the given chain id', async () => {
+      const provider = createProvider({ eth_chainId: () => '0x89' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 1 })
+
+      await expect(promise).rejects.toThrow(AssertionError)
+      await expect(promise).rejects.toThrow('The provider is on chain 137, not on chain 1.')
+
+      expect(provider.sentRawTransactions).toEqual([])
+      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_estimateGas' }))
+    })
+
+    test('should throw before signing anything if a pre-built provider disagrees with the configured chain id', async () => {
+      const eip1193 = createProvider({ eth_chainId: () => '0x89' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: new BrowserProvider(eip1193), chainId: 1 })
+
+      const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS)
+
+      await expect(promise).rejects.toThrow(AssertionError)
+      await expect(promise).rejects.toThrow('The provider is on chain 137, not on chain 1.')
+
+      expect(eip1193.sentRawTransactions).toEqual([])
+    })
+
+    test('should treat a configured chain id of 0 as not configured', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider, chainId: 0 })
+
+      await account.delegate(DELEGATE_CONTRACT_ADDRESS)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.chainId).toBe(1n)
+      expect(transaction.authorizationList[0].chainId).toBe(1n)
+    })
+
+    test('should use the given nonce and chain id together', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { nonce: 5, chainId: 1 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.nonce).toBe(5)
+      expect(transaction.chainId).toBe(1n)
+      expect(transaction.authorizationList[0].nonce).toBe(6n)
+      expect(transaction.authorizationList[0].chainId).toBe(1n)
+    })
+
     test('should throw without sending a transaction if the provider reports a chain id of 0', async () => {
       const provider = createProvider({ eth_chainId: () => '0x0' })
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
@@ -963,6 +1063,19 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('revokeDelegation', () => {
+    test('should forward the nonce and chain id to the delegation', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      await account.revokeDelegation({ nonce: 5, chainId: 1 })
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.nonce).toBe(5)
+      expect(transaction.chainId).toBe(1n)
+      expect(transaction.authorizationList[0].address).toBe(ZeroAddress)
+      expect(transaction.authorizationList[0].nonce).toBe(6n)
+    })
+
     test('should send a type 4 transaction delegating to the zero address', async () => {
       const { hash } = await account.revokeDelegation()
 
