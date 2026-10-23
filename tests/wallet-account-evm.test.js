@@ -352,7 +352,7 @@ describe('WalletAccountEvm', () => {
       const provider = createProvider({
         eth_estimateGas: () => toQuantity(++estimates === 1 ? MOCKED_GAS : 30_000_000n)
       })
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
         provider,
         transactionMaxFee: MOCKED_GAS * 10_000_000_000n
       })
@@ -663,7 +663,7 @@ describe('WalletAccountEvm', () => {
   describe('transfer', () => {
     test('should still enforce the transaction max fee on a transfer', async () => {
       const provider = createProvider()
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
         provider,
         transactionMaxFee: 0,
         transferMaxFee: 10n ** 30n
@@ -681,7 +681,7 @@ describe('WalletAccountEvm', () => {
       const provider = createProvider({
         eth_estimateGas: () => toQuantity(++estimates === 1 ? MOCKED_GAS : 30_000_000n)
       })
-      const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
         provider,
         transferMaxFee: MOCKED_GAS * 10_000_000_000n
       })

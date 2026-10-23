@@ -248,9 +248,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /** @private */
-  _assertMaxFee (fee, maxFee, message) {
+  _assertMaxFee (fee, maxFee, maxFeeExceededErrorMessage) {
     if (maxFee !== undefined && fee > maxFee) {
-      throw new MaximumFeeExceededError(message)
+      throw new MaximumFeeExceededError(maxFeeExceededErrorMessage)
     }
 
     if (this._config.transactionMaxFee !== undefined && fee > this._config.transactionMaxFee) {
@@ -264,7 +264,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /** @private */
-  async _sendPopulated (tx, maxFee, message) {
+  async _sendPopulated (tx, maxFee, maxFeeExceededErrorMessage) {
     WalletAccountReadOnlyEvm._validateFeeFields(tx)
 
     const address = await this.getAddress()
@@ -275,7 +275,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     const populated = await voidSigner.populateTransaction(tx)
     const fee = WalletAccountEvm._getMaxFee(populated)
 
-    this._assertMaxFee(fee, maxFee, message)
+    this._assertMaxFee(fee, maxFee, maxFeeExceededErrorMessage)
 
     const signed = await this._signer.signTransaction(populated)
     const hash = await this._provider.send('eth_sendRawTransaction', [signed])
