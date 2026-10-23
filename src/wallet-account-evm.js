@@ -259,6 +259,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /** @private */
+  static _getMaxFee (tx) {
+    return BigInt(tx.gasLimit) * BigInt(tx.maxFeePerGas ?? tx.gasPrice)
+  }
+
+  /** @private */
   async _sendPopulated (tx, maxFee, message) {
     WalletAccountReadOnlyEvm._validateFeeFields(tx)
 
@@ -268,7 +273,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const voidSigner = new VoidSigner(address, this._provider)
     const populated = await voidSigner.populateTransaction(tx)
-    const fee = WalletAccountReadOnlyEvm._getMaxFee(populated)
+    const fee = WalletAccountEvm._getMaxFee(populated)
 
     this._assertMaxFee(fee, maxFee, message)
 
@@ -309,7 +314,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
       await this._estimateGas({ from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList })
 
-      return { fee: WalletAccountReadOnlyEvm._getMaxFee(parsedTx) }
+      return { fee: WalletAccountEvm._getMaxFee(parsedTx) }
     }
 
     return await super.quoteSendTransaction(tx)

@@ -1,13 +1,5 @@
 export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
     /**
-     * Returns the maximum cost of a complete transaction, from the gas and fee fields it will be signed with.
-     *
-     * @protected
-     * @param {EvmTransaction} tx - A populated or already-signed transaction.
-     * @returns {bigint} The maximum cost, in wei.
-     */
-    protected static _getMaxFee(tx: EvmTransaction | Transaction): bigint;
-    /**
      * Extracts the gas and fee overrides set on transfer or approve options.
      *
      * @protected

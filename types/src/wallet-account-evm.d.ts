@@ -8,6 +8,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {WalletAccountEvm} The wallet account.
      */
     static fromPrivateKey(privateKey: string | Uint8Array, config?: EvmWalletConfig): WalletAccountEvm;
+    /** @private */
+    private static _getMaxFee;
     /**
      * Creates a new evm wallet account from a BIP-39 seed, deriving the account's key at the
      * given BIP-44 path.
