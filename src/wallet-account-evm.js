@@ -235,22 +235,51 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       throw new ProviderRequiredError('The wallet must be connected to a provider to send transactions.')
     }
 
-    const { fee } = await this.quoteSendTransaction(tx)
-    if (this._config.transactionMaxFee !== undefined && fee > this._config.transactionMaxFee) {
-      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
-    }
-
     if (typeof tx === 'string') {
+      const { fee } = await this.quoteSendTransaction(tx)
+
+      this._assertMaxFee(fee)
+
       const hash = await this._provider.send('eth_sendRawTransaction', [tx])
       return { hash, fee }
     }
 
-    // Build, sign and broadcast raw transaction using the signer
+    return await this._sendPopulated(tx)
+  }
+
+  /** @private */
+  _assertMaxFee (fee, maxFee, maxFeeExceededErrorMessage) {
+    if (maxFee !== undefined && fee > maxFee) {
+      throw new MaximumFeeExceededError(maxFeeExceededErrorMessage)
+    }
+
+    if (this._config.transactionMaxFee !== undefined && fee > this._config.transactionMaxFee) {
+      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
+    }
+  }
+
+  /** @private */
+  static _getMaxFee (tx) {
+    return BigInt(tx.gasLimit) * BigInt(tx.maxFeePerGas ?? tx.gasPrice)
+  }
+
+  /** @private */
+  async _sendPopulated (tx, maxFee, maxFeeExceededErrorMessage) {
+    WalletAccountReadOnlyEvm._validateFeeFields(tx)
+
     const address = await this.getAddress()
+
+    await this._estimateGas({ from: address, ...tx })
+
     const voidSigner = new VoidSigner(address, this._provider)
     const populated = await voidSigner.populateTransaction(tx)
+    const fee = WalletAccountEvm._getMaxFee(populated)
+
+    this._assertMaxFee(fee, maxFee, maxFeeExceededErrorMessage)
+
     const signed = await this._signer.signTransaction(populated)
     const hash = await this._provider.send('eth_sendRawTransaction', [signed])
+
     return { hash, fee }
   }
 
@@ -285,7 +314,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
       await this._estimateGas({ from, to, value, data, gasLimit, gasPrice, maxFeePerGas, maxPriorityFeePerGas, type, nonce, chainId, authorizationList })
 
-      return { fee: gasLimit * (maxFeePerGas ?? gasPrice) }
+      return { fee: WalletAccountEvm._getMaxFee(parsedTx) }
     }
 
     return await super.quoteSendTransaction(tx)
@@ -297,7 +326,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {EvmTransferOptions} options - The transfer's options, including any gas overrides to carry onto the transaction.
    * @returns {Promise<TransferResult>} The transfer's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
+   * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee or the maximum transaction fee option.
+   * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+   * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async transfer (options) {
     if (!this._provider) {
@@ -306,15 +337,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const tx = await WalletAccountEvm._getTransferTransaction(options)
 
-    const { fee } = await this.quoteSendTransaction(tx)
-
-    if (this._config.transferMaxFee !== undefined && fee > this._config.transferMaxFee) {
-      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transfer operation.')
-    }
-
-    const { hash } = await this.sendTransaction(tx)
-
-    return { hash, fee }
+    return await this._sendPopulated(tx, this._config.transferMaxFee, 'Exceeded maximum fee cost for transfer operation.')
   }
 
   /**
