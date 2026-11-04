@@ -673,7 +673,11 @@ describe('WalletAccountEvm', () => {
 
       expect(hash).toBe(DUMMY_TX_HASH)
       expect(fee).toBe(MOCKED_FEE)
-      expect(provider.sentRawTransactions).toHaveLength(1)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.gasLimit).toBe(MOCKED_GAS)
+      expect(transaction.maxFeePerGas).toBe(MOCKED_FEE_RATE)
     })
 
     test('should check the transfer max fee against the gas the transaction is signed with', async () => {

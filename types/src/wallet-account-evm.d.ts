@@ -104,10 +104,11 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Sends a transaction.
      *
      * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
-     * @returns {Promise<TransactionResult>} The transaction's result.
+     * @returns {Promise<TransactionResult>} The transaction's result; the fee is the maximum cost of the transaction as signed.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
     /** @private */
