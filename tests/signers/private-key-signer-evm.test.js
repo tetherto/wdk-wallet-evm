@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals'
 
-import { UnsupportedOperationError } from '@tetherto/wdk-wallet'
+import { DisposalError, UnsupportedOperationError } from '@tetherto/wdk-wallet'
 
 import PrivateKeySignerEvm from '../../src/signers/private-key-signer-evm.js'
 
@@ -170,6 +170,27 @@ describe('PrivateKeySignerEvm', () => {
       signer.dispose()
 
       expect(Buffer.from(keyBytes).toString('hex')).toBe(VALID_PRIVATE_KEY)
+    })
+
+    test('should report disposed state', () => {
+      const signer = new PrivateKeySignerEvm(VALID_PRIVATE_KEY)
+
+      expect(signer.disposed).toBe(false)
+
+      signer.dispose()
+
+      expect(signer.disposed).toBe(true)
+    })
+
+    test('should throw a DisposalError when used after disposal', async () => {
+      const signer = new PrivateKeySignerEvm(VALID_PRIVATE_KEY)
+
+      signer.dispose()
+
+      await expect(signer.derive("0'/0/0")).rejects.toThrow(DisposalError)
+      await expect(signer.sign(MESSAGE)).rejects.toThrow(DisposalError)
+      await expect(signer.signTransaction(TRANSACTION)).rejects.toThrow(DisposalError)
+      await expect(signer.signTypedData(TYPED_DATA)).rejects.toThrow(DisposalError)
     })
   })
 })
