@@ -14,7 +14,7 @@
 
 'use strict'
 
-import WalletManager, { InvalidSignerError, ProviderRequiredError } from '@tetherto/wdk-wallet'
+import WalletManager, { DisposalError, InvalidSignerError, ProviderRequiredError } from '@tetherto/wdk-wallet'
 
 import WalletAccountEvm from './wallet-account-evm.js'
 import SeedSignerEvm, { BIP_44_ETH_DERIVATION_PATH_PREFIX } from './signers/seed-signer-evm.js'
@@ -118,6 +118,7 @@ export default class WalletManagerEvm extends WalletManager {
    * @returns {Promise<WalletAccountEvm>} The account.
    * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
    * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+   * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
    */
 
   /**
@@ -140,15 +141,23 @@ export default class WalletManagerEvm extends WalletManager {
    * @param {string} signerName - The signer name registered via {@link addSigner}.
    * @returns {Promise<WalletAccountEvm>} The account.
    * @throws {NoSuchElementError} If no signer exists with the given name.
+   * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
    */
 
   async getAccount (indexOrSignerName = 0, options = {}) {
     if (typeof indexOrSignerName === 'string') {
+      if (this.disposed) {
+        throw new DisposalError('The wallet manager has been disposed.')
+      }
+
       const key = indexOrSignerName
       if (this._accounts[key]) {
         return this._accounts[key]
       }
       const signer = this.getSigner(indexOrSignerName)
+      if (signer.disposed) {
+        throw new DisposalError('The given signer has been disposed.')
+      }
       const account = new WalletAccountEvm(signer, this._accountConfig())
       this._accounts[key] = account
       return account
@@ -167,14 +176,22 @@ export default class WalletManagerEvm extends WalletManager {
    * @returns {Promise<WalletAccountEvm>} The account.
    * @throws {NoSuchElementError} If a signer name is given but no signer exists with that name.
    * @throws {InvalidSignerError} If the signer doesn't support account derivation.
+   * @throws {DisposalError} If the wallet manager or the given signer has been disposed.
    */
   async getAccountByPath (path, options = {}) {
+    if (this.disposed) {
+      throw new DisposalError('The wallet manager has been disposed.')
+    }
+
     const { signerName } = options
     const key = signerName ? `${signerName}:${path}` : path
     if (this._accounts[key]) {
       return this._accounts[key]
     }
     const signer = this.getSigner(signerName)
+    if (signer.disposed) {
+      throw new DisposalError('The given signer has been disposed.')
+    }
     if (!signer.isDerivable) {
       throw new InvalidSignerError('The signer does not support account derivation.')
     }
