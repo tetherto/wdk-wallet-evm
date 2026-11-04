@@ -661,19 +661,19 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('transfer', () => {
-    test('should still enforce the transaction max fee on a transfer', async () => {
+    test('should not apply the transaction max fee to a transfer', async () => {
       const provider = createProvider()
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
         provider,
         transactionMaxFee: 0,
-        transferMaxFee: 10n ** 30n
+        transferMaxFee: MOCKED_FEE
       })
 
-      const promise = account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+      const { hash, fee } = await account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
 
-      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
-      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
-      expect(provider.sentRawTransactions).toEqual([])
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_FEE)
+      expect(provider.sentRawTransactions).toHaveLength(1)
     })
 
     test('should check the transfer max fee against the gas the transaction is signed with', async () => {
