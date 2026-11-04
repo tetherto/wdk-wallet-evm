@@ -1058,13 +1058,15 @@ describe('WalletAccountEvm', () => {
       signer.dispose()
     })
 
-    test('should report disposed state when the underlying signer is disposed directly', () => {
+    test('should not report disposed when only the underlying signer is disposed directly', () => {
       const signer = new SeedSignerEvm(SEED_PHRASE)
       const account = new WalletAccountEvm(signer)
 
       signer.dispose()
 
-      expect(account.disposed).toBe(true)
+      // `disposed` reflects the account's own lifecycle, so disposing the signer externally
+      // does not flip it, even though signer-dependent methods now throw (see below).
+      expect(account.disposed).toBe(false)
     })
 
     test('should throw a DisposalError when signing after disposal', async () => {

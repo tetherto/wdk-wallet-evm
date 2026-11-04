@@ -156,15 +156,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * True if the account has been disposed.
+   * True once this account's own {@link dispose} method has been called.
    *
-   * The account is considered disposed once its own {@link dispose} has been called, or once
-   * its underlying signer has been disposed (e.g. a shared signer disposed directly by the caller).
+   * This reflects the account's lifecycle only. A caller-supplied signer disposed externally
+   * does not flip this flag -- the account is still considered alive until it is disposed itself,
+   * even though its signer-dependent methods will throw a {@link DisposalError} (propagated from
+   * the disposed signer) in the meantime.
    *
    * @type {boolean}
    */
   get disposed () {
-    return this._disposed || this._signer.disposed
+    return this._disposed
   }
 
   /**
@@ -193,7 +195,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async sign (message) {
     if (this.disposed) {
@@ -208,7 +210,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {TypedData} typedData - The typed data to sign.
    * @returns {Promise<string>} The typed data signature.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
     if (this.disposed) {
@@ -227,7 +229,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<string>} The signed transaction as a hex string.
    * @throws {ValueError} If the transaction is an EIP-4844 (type 3) blob transaction.
    * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async signTransaction (tx) {
     if (this.disposed) {
@@ -259,7 +261,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async sendTransaction (tx) {
     if (this.disposed) {
@@ -333,7 +335,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransferResult>} The transfer's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async transfer (options) {
     if (this.disposed) {
@@ -364,7 +366,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async approve (options) {
     if (this.disposed) {
@@ -426,7 +428,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<Authorization>} The signed authorization.
    * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
    * @throws {AssertionError} If the chainId is not provided and the provider reports a chain id of 0.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async signAuthorization (auth) {
     if (this.disposed) {
@@ -464,7 +466,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {AssertionError} If the provider reports a chain id of 0.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async delegate (delegateAddress) {
     if (this.disposed) {
@@ -500,7 +502,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {AssertionError} If the provider reports a chain id of 0.
-   * @throws {DisposalError} If the account has been disposed.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async revokeDelegation () {
     return await this.delegate(ZeroAddress)
