@@ -268,10 +268,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const address = await this.getAddress()
 
-    await this._estimateGas({ from: address, ...tx })
+    const gasLimit = await this._estimateGas({ from: address, ...tx })
 
     const voidSigner = new VoidSigner(address, this._provider)
-    const populated = await voidSigner.populateTransaction(tx)
+    const populated = await voidSigner.populateTransaction({ ...tx, gasLimit: tx.gasLimit ?? gasLimit })
     const fee = WalletAccountEvm._getMaxFee(populated)
 
     this._assertMaxFee(fee, maxFee, maxFeeExceededErrorMessage)
