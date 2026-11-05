@@ -171,32 +171,25 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * A fixed gas limit is used because `eth_estimateGas` may revert when
      * the delegate contract lacks a `receive`/`fallback` function.
      *
-     * The chain id is taken from the options, else the wallet config, else the provider, and is checked against the
-     * provider before anything is signed; 0 is rejected from the options and ignored from the config. The nonce is
-     * taken from the options, else the provider, and the authorization is signed at the next one. A provider that
-     * under-reports the nonce yields an authorization that is valid immediately while the transaction is rejected,
-     * so give the nonce when the provider is not trusted.
+     * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
+     * the configured chain id is checked against that provider's network before anything is signed.
      *
      * @param {string} delegateAddress - The address of the contract to delegate to.
-     * @param {EvmDelegateOptions} [options] - The nonce and chain id of the delegating transaction.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider is on a different chain than the given or configured one.
-     * @throws {AssertionError} If no chain id is given or configured and the provider reports a chain id of 0.
-     * @throws {ValueError} If the given chain id is 0.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
-    delegate(delegateAddress: string, options?: EvmDelegateOptions): Promise<TransactionResult>;
+    delegate(delegateAddress: string): Promise<TransactionResult>;
     /**
      * Revokes any active ERC-7702 delegation by delegating to the zero address.
      *
-     * @param {EvmDelegateOptions} [options] - The nonce and chain id of the revoking transaction, as for `delegate`.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider is on a different chain than the given or configured one.
-     * @throws {AssertionError} If no chain id is given or configured and the provider reports a chain id of 0.
-     * @throws {ValueError} If the given chain id is 0.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
-    revokeDelegation(options?: EvmDelegateOptions): Promise<TransactionResult>;
+    revokeDelegation(): Promise<TransactionResult>;
     /**
      * Disposes the wallet account, erasing the private key from the memory. The signer is
      * wiped only if the account owns it: always for an account created from a seed, otherwise
@@ -244,8 +237,4 @@ export type SignerOptions = {
  * The options of a token approval, extended with the optional gas overrides of an evm transaction.
  */
 export type EvmApproveOptions = ApproveOptions & EvmGasOverrides;
-/**
- * The options of a delegation: the nonce and chain id of the evm transaction that carries it.
- */
-export type EvmDelegateOptions = Pick<EvmTransaction, "nonce" | "chainId">;
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js';

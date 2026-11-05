@@ -43,7 +43,6 @@
 /** @typedef {import('./src/wallet-account-evm.js').ApproveOptions} ApproveOptions */
 /** @typedef {import('./src/wallet-account-evm.js').SignerOptions} SignerOptions */
 /** @typedef {import('./src/wallet-account-evm.js').EvmApproveOptions} EvmApproveOptions */
-/** @typedef {import('./src/wallet-account-evm.js').EvmDelegateOptions} EvmDelegateOptions */
 
 export { default } from './src/wallet-manager-evm.js'
 

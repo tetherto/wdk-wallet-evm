@@ -968,21 +968,6 @@ describe('WalletAccountEvm', () => {
       await expect(promise).rejects.toThrow('The wallet must be connected to a provider to delegate.')
     })
 
-    test('should use the given nonce without asking the provider', async () => {
-      const provider = createProvider()
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
-
-      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { nonce: 5 })
-
-      expect(hash).toBe(DUMMY_TX_HASH)
-      expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
-
-      const transaction = Transaction.from(provider.sentRawTransactions[0])
-      expect(transaction.nonce).toBe(5)
-      expect(transaction.authorizationList[0].nonce).toBe(6n)
-      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_getTransactionCount' }))
-    })
-
     test('should delegate on the configured chain when a pre-built provider agrees with it', async () => {
       const eip1193 = createProvider()
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: new BrowserProvider(eip1193), chainId: 1 })
@@ -997,19 +982,6 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList[0].chainId).toBe(1n)
     })
 
-    test('should throw before signing anything if the provider disagrees with the given chain id', async () => {
-      const provider = createProvider({ eth_chainId: () => '0x89' })
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
-
-      const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 1 })
-
-      await expect(promise).rejects.toThrow(AssertionError)
-      await expect(promise).rejects.toThrow('The provider is on chain 137, not on chain 1.')
-
-      expect(provider.sentRawTransactions).toEqual([])
-      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_estimateGas' }))
-    })
-
     test('should throw before signing anything if a pre-built provider disagrees with the configured chain id', async () => {
       const eip1193 = createProvider({ eth_chainId: () => '0x89' })
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: new BrowserProvider(eip1193), chainId: 1 })
@@ -1022,19 +994,6 @@ describe('WalletAccountEvm', () => {
       expect(eip1193.sentRawTransactions).toEqual([])
     })
 
-    test('should throw without signing anything if the given chain id is 0', async () => {
-      const provider = createProvider()
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
-
-      const promise = account.delegate(DELEGATE_CONTRACT_ADDRESS, { chainId: 0 })
-
-      await expect(promise).rejects.toThrow(ValueError)
-      await expect(promise).rejects.toThrow('A delegation cannot target chain id 0.')
-
-      expect(provider.sentRawTransactions).toEqual([])
-      expect(provider.request).not.toHaveBeenCalledWith(expect.objectContaining({ method: 'eth_getTransactionCount' }))
-    })
-
     test('should treat a configured chain id of 0 as not configured', async () => {
       const provider = createProvider()
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider, chainId: 0 })
@@ -1043,22 +1002,6 @@ describe('WalletAccountEvm', () => {
 
       const transaction = Transaction.from(provider.sentRawTransactions[0])
       expect(transaction.chainId).toBe(1n)
-      expect(transaction.authorizationList[0].chainId).toBe(1n)
-    })
-
-    test('should use the given nonce and chain id together', async () => {
-      const provider = createProvider()
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
-
-      const { hash, fee } = await account.delegate(DELEGATE_CONTRACT_ADDRESS, { nonce: 5, chainId: 1 })
-
-      expect(hash).toBe(DUMMY_TX_HASH)
-      expect(fee).toBe(MOCKED_AUTH_LIST_GAS * MOCKED_FEE_RATE)
-
-      const transaction = Transaction.from(provider.sentRawTransactions[0])
-      expect(transaction.nonce).toBe(5)
-      expect(transaction.chainId).toBe(1n)
-      expect(transaction.authorizationList[0].nonce).toBe(6n)
       expect(transaction.authorizationList[0].chainId).toBe(1n)
     })
 
@@ -1076,19 +1019,6 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('revokeDelegation', () => {
-    test('should forward the nonce and chain id to the delegation', async () => {
-      const provider = createProvider()
-      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
-
-      await account.revokeDelegation({ nonce: 5, chainId: 1 })
-
-      const transaction = Transaction.from(provider.sentRawTransactions[0])
-      expect(transaction.nonce).toBe(5)
-      expect(transaction.chainId).toBe(1n)
-      expect(transaction.authorizationList[0].address).toBe(ZeroAddress)
-      expect(transaction.authorizationList[0].nonce).toBe(6n)
-    })
-
     test('should send a type 4 transaction delegating to the zero address', async () => {
       const { hash } = await account.revokeDelegation()
 

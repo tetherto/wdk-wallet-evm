@@ -55,12 +55,6 @@ import PrivateKeySignerEvm from './signers/private-key-signer-evm.js'
  */
 
 /**
- * The options of a delegation: the nonce and chain id of the evm transaction that carries it.
- *
- * @typedef {Pick<EvmTransaction, 'nonce' | 'chainId'>} EvmDelegateOptions
- */
-
-/**
  * @typedef {Object} SignerOptions
  * @property {boolean} [shouldWipeSignerOnDisposal] - If true, wipes the signer given at construction on calls to the 'dispose' method.
  */
@@ -422,33 +416,24 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * A fixed gas limit is used because `eth_estimateGas` may revert when
    * the delegate contract lacks a `receive`/`fallback` function.
    *
-   * The chain id is taken from the options, else the wallet config, else the provider, and is checked against the
-   * provider before anything is signed; 0 is rejected from the options and ignored from the config. The nonce is
-   * taken from the options, else the provider, and the authorization is signed at the next one. A provider that
-   * under-reports the nonce yields an authorization that is valid immediately while the transaction is rejected,
-   * so give the nonce when the provider is not trusted.
+   * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
+   * the configured chain id is checked against that provider's network before anything is signed.
    *
    * @param {string} delegateAddress - The address of the contract to delegate to.
-   * @param {EvmDelegateOptions} [options] - The nonce and chain id of the delegating transaction.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider is on a different chain than the given or configured one.
-   * @throws {AssertionError} If no chain id is given or configured and the provider reports a chain id of 0.
-   * @throws {ValueError} If the given chain id is 0.
+   * @throws {AssertionError} If the provider is on a different chain than the configured one.
+   * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
-  async delegate (delegateAddress, options = {}) {
+  async delegate (delegateAddress) {
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to delegate.')
     }
 
     const address = await this.getAddress()
-    const chainId = options.chainId ?? (this._config.chainId || undefined)
+    const chainId = this._config.chainId || undefined
 
     if (chainId !== undefined) {
-      if (BigInt(chainId) === 0n) {
-        throw new ValueError('A delegation cannot target chain id 0.')
-      }
-
       const network = await this._provider.getNetwork()
 
       if (network.chainId !== BigInt(chainId)) {
@@ -456,7 +441,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       }
     }
 
-    const nonce = Number(options.nonce ?? await this._provider.send('eth_getTransactionCount', [address, 'latest']))
+    const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'latest'])
+    const nonce = Number(nonceHex)
 
     const auth = await this.signAuthorization({
       address: delegateAddress,
@@ -478,15 +464,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Revokes any active ERC-7702 delegation by delegating to the zero address.
    *
-   * @param {EvmDelegateOptions} [options] - The nonce and chain id of the revoking transaction, as for `delegate`.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider is on a different chain than the given or configured one.
-   * @throws {AssertionError} If no chain id is given or configured and the provider reports a chain id of 0.
-   * @throws {ValueError} If the given chain id is 0.
+   * @throws {AssertionError} If the provider is on a different chain than the configured one.
+   * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
-  async revokeDelegation (options) {
-    return await this.delegate(ZeroAddress, options)
+  async revokeDelegation () {
+    return await this.delegate(ZeroAddress)
   }
 
   /**
