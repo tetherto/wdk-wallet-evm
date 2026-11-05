@@ -446,7 +446,6 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const auth = await this.signAuthorization({
       address: delegateAddress,
-      chainId,
       nonce: nonce + 1
     })
 

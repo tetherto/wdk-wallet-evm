@@ -982,6 +982,17 @@ describe('WalletAccountEvm', () => {
       expect(transaction.authorizationList[0].chainId).toBe(1n)
     })
 
+    test('should delegate on the configured chain even if the node reports another one', async () => {
+      const provider = createProvider({ eth_chainId: () => '0x89' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider, chainId: 1 })
+
+      await account.delegate(DELEGATE_CONTRACT_ADDRESS)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.chainId).toBe(1n)
+      expect(transaction.authorizationList[0].chainId).toBe(1n)
+    })
+
     test('should throw before signing anything if a pre-built provider disagrees with the configured chain id', async () => {
       const eip1193 = createProvider({ eth_chainId: () => '0x89' })
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider: new BrowserProvider(eip1193), chainId: 1 })
