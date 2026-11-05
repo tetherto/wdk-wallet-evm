@@ -347,6 +347,36 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('sendTransaction', () => {
+    test('should estimate the gas once and sign the transaction with that estimate', async () => {
+      const { hash } = await account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+
+      const estimateGasCalls = provider.request.mock.calls.filter(([{ method }]) => method === 'eth_estimateGas')
+
+      expect(estimateGasCalls).toHaveLength(1)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.gasLimit).toBe(MOCKED_GAS)
+    })
+
+    test('should throw if the estimated gas makes the fee exceed the transaction max fee', async () => {
+      const provider = createProvider({
+        eth_estimateGas: () => toQuantity(30_000_000n)
+      })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider,
+        transactionMaxFee: MOCKED_GAS * 10_000_000_000n
+      })
+
+      const promise = account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })
+
+      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
+      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
     test('should broadcast a signed transaction unchanged', async () => {
       const { hash, fee } = await account.sendTransaction(SIGNED_TRANSACTION)
 
@@ -644,6 +674,55 @@ describe('WalletAccountEvm', () => {
   })
 
   describe('transfer', () => {
+    test('should not apply the transaction max fee to a transfer', async () => {
+      const provider = createProvider()
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider,
+        transactionMaxFee: 0,
+        transferMaxFee: MOCKED_FEE
+      })
+
+      const { hash, fee } = await account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+      expect(fee).toBe(MOCKED_FEE)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.gasLimit).toBe(MOCKED_GAS)
+      expect(transaction.maxFeePerGas).toBe(MOCKED_FEE_RATE)
+    })
+
+    test('should estimate the gas once and sign the transfer with that estimate', async () => {
+      const { hash } = await account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+
+      expect(hash).toBe(DUMMY_TX_HASH)
+
+      const estimateGasCalls = provider.request.mock.calls.filter(([{ method }]) => method === 'eth_estimateGas')
+
+      expect(estimateGasCalls).toHaveLength(1)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.gasLimit).toBe(MOCKED_GAS)
+    })
+
+    test('should throw if the estimated gas makes the fee exceed the transfer max fee', async () => {
+      const provider = createProvider({
+        eth_estimateGas: () => toQuantity(30_000_000n)
+      })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", {
+        provider,
+        transferMaxFee: MOCKED_GAS * 10_000_000_000n
+      })
+
+      const promise = account.transfer({ token: TOKEN_ADDRESS, recipient: SPENDER_ADDRESS, amount: 100 })
+
+      await expect(promise).rejects.toThrow(MaximumFeeExceededError)
+      await expect(promise).rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+      expect(provider.sentRawTransactions).toEqual([])
+    })
+
     test('should sign and broadcast a token transfer', async () => {
       const TRANSFER = {
         token: TOKEN_ADDRESS,

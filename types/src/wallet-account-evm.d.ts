@@ -8,6 +8,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {WalletAccountEvm} The wallet account.
      */
     static fromPrivateKey(privateKey: string | Uint8Array, config?: EvmWalletConfig): WalletAccountEvm;
+    /** @private */
+    private static _getMaxFee;
     /**
      * Creates a new evm wallet account from a BIP-39 seed, deriving the account's key at the
      * given BIP-44 path.
@@ -102,12 +104,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Sends a transaction.
      *
      * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
-     * @returns {Promise<TransactionResult>} The transaction's result.
+     * @returns {Promise<TransactionResult>} The transaction's result; the fee is the maximum cost of the transaction as signed.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
+    /** @private */
+    private _assertMaxFee;
+    /** @private */
+    private _sendPopulated;
     /**
      * Quotes the costs of a send transaction operation.
      *
@@ -131,6 +138,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {Promise<TransferResult>} The transfer's result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
+     * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+     * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**
