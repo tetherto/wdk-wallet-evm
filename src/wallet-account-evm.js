@@ -16,7 +16,7 @@
 
 import { Contract, VoidSigner, Transaction, ZeroAddress } from 'ethers'
 
-import { AssertionError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { AssertionError, DisposalError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
 import WalletAccountReadOnlyEvm from './wallet-account-read-only-evm.js'
 
@@ -127,6 +127,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     /** @private */
     this._signer = signer
+
+    /** @private */
+    this._disposed = false
   }
 
   /**
@@ -150,6 +153,20 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    */
   get keyPair () {
     return this._signer.keyPair
+  }
+
+  /**
+   * True once this account's own {@link dispose} method has been called.
+   *
+   * This reflects the account's lifecycle only. A caller-supplied signer disposed externally
+   * does not flip this flag -- the account is still considered alive until it is disposed itself,
+   * even though its signer-dependent methods will throw a {@link DisposalError} (propagated from
+   * the disposed signer) in the meantime.
+   *
+   * @type {boolean}
+   */
+  get disposed () {
+    return this._disposed
   }
 
   /**
@@ -178,8 +195,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async sign (message) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     return await this._signer.sign(message)
   }
 
@@ -188,8 +210,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @param {TypedData} typedData - The typed data to sign.
    * @returns {Promise<string>} The typed data signature.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     return await this._signer.signTypedData({ domain, types, message })
   }
 
@@ -202,8 +229,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<string>} The signed transaction as a hex string.
    * @throws {ValueError} If the transaction is an EIP-4844 (type 3) blob transaction.
    * @throws {MaximumFeeExceededError} If a provider is set, and the transaction's cost surpasses the transaction max. fee option.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async signTransaction (tx) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     if (WalletAccountReadOnlyEvm._isBlobTransaction(tx)) {
       throw new ValueError('eip-4844 blob transactions are not supported')
     }
@@ -229,9 +261,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async sendTransaction (tx) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to send transactions.')
     }
@@ -326,10 +363,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransferResult>} The transfer's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
    * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
    */
   async transfer (options) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to transfer tokens.')
     }
@@ -346,8 +388,13 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    * @throws {ValueError} If trying to approve usdts on ethereum with allowance not equal to zero (due to the usdt allowance reset requirement).
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    */
   async approve (options) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to approve funds.')
     }
@@ -402,10 +449,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @see https://eips.ethereum.org/EIPS/eip-7702
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider and a value must come from it: the nonce, or the chainId when none is configured.
    * @throws {AssertionError} If no chainId is provided or configured and the provider reports a chain id of 0.
    */
   async signAuthorization (auth) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     const populated = { ...auth }
 
     if (populated.chainId == null && this._config.chainId) {
@@ -447,10 +499,15 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * @param {string} delegateAddress - The address of the contract to delegate to.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    * @throws {AssertionError} If the provider is on a different chain than the configured one.
    * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
   async delegate (delegateAddress) {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
+
     if (!this._provider) {
       throw new ProviderRequiredError('The wallet must be connected to a provider to delegate.')
     }
@@ -490,6 +547,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
+   * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
    * @throws {AssertionError} If the provider is on a different chain than the configured one.
    * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
@@ -498,11 +556,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   }
 
   /**
-   * Disposes the wallet account, erasing the private key from the memory.
+   * Disposes the wallet account. Also wipes the signer if the account owns it (i.e. for an
+   * account created from a seed or private key, or when `shouldWipeSignerOnDisposal` was set in
+   * the config); a caller-supplied signer is left untouched otherwise.
    */
   dispose () {
+    if (this._disposed) return
+
     if (this._shouldWipeSignerOnDisposal) {
       this._signer.dispose()
     }
+
+    this._disposed = true
   }
 }

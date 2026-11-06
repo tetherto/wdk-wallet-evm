@@ -2,7 +2,7 @@ import * as bip39 from 'bip39'
 
 import { describe, expect, jest, test } from '@jest/globals'
 
-import { ValueError } from '@tetherto/wdk-wallet'
+import { DisposalError, ValueError } from '@tetherto/wdk-wallet'
 
 import MemorySafeHDNodeWallet from '../../src/memory-safe/hd-node-wallet.js'
 
@@ -296,6 +296,26 @@ describe('SeedSignerEvm', () => {
       expect(child.keyPair.privateKey).toBeNull()
 
       root.dispose()
+    })
+
+    test('should report disposed state', () => {
+      const signer = new SeedSignerEvm(VALID_SEED_PHRASE)
+
+      expect(signer.disposed).toBe(false)
+
+      signer.dispose()
+
+      expect(signer.disposed).toBe(true)
+    })
+
+    test('should throw a DisposalError when used after disposal', async () => {
+      const signer = new SeedSignerEvm(VALID_SEED_PHRASE, "m/44'/60'")
+
+      signer.dispose()
+
+      await expect(signer.derive("0'/0/0")).rejects.toThrow(DisposalError)
+      await expect(signer.sign(MESSAGE)).rejects.toThrow(DisposalError)
+      await expect(signer.signTransaction(TRANSACTION)).rejects.toThrow(DisposalError)
     })
 
     test('should be safe to call dispose more than once', () => {

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 
 import * as bip39 from 'bip39'
 
-import { AssertionError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
+import { AssertionError, DisposalError, MaximumFeeExceededError, ProviderRequiredError, ValueError } from '@tetherto/wdk-wallet'
 
 import { WalletAccountEvm, WalletAccountReadOnlyEvm } from '../index.js'
 import SeedSignerEvm from '../src/signers/seed-signer-evm.js'
@@ -1191,6 +1191,68 @@ describe('WalletAccountEvm', () => {
 
       expect(account.keyPair.privateKey).toBe(null)
       expect(signer.keyPair.privateKey).toBe(null)
+    })
+
+    test('should be safe to call dispose more than once', () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      account.dispose()
+
+      expect(() => account.dispose()).not.toThrow()
+    })
+
+    test('should report disposed state after dispose', () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      expect(account.disposed).toBe(false)
+
+      account.dispose()
+
+      expect(account.disposed).toBe(true)
+    })
+
+    test('should report disposed state even when a caller-supplied signer is left untouched', () => {
+      const signer = new SeedSignerEvm(SEED_PHRASE)
+      const account = new WalletAccountEvm(signer)
+
+      account.dispose()
+
+      // The account is disposed even though its unowned signer is still alive.
+      expect(account.disposed).toBe(true)
+      expect(signer.disposed).toBe(false)
+
+      signer.dispose()
+    })
+
+    test('should not report disposed when only the underlying signer is disposed directly', () => {
+      const signer = new SeedSignerEvm(SEED_PHRASE)
+      const account = new WalletAccountEvm(signer)
+
+      signer.dispose()
+
+      // `disposed` reflects the account's own lifecycle, so disposing the signer externally
+      // does not flip it, even though signer-dependent methods now throw (see below).
+      expect(account.disposed).toBe(false)
+    })
+
+    test('should throw a DisposalError when signing after disposal', async () => {
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
+
+      account.dispose()
+
+      await expect(account.sign('Dummy message to sign.')).rejects.toThrow(DisposalError)
+      await expect(account.signTransaction({ to: SPENDER_ADDRESS, value: 1n })).rejects.toThrow(DisposalError)
+      await expect(account.delegate(DELEGATE_CONTRACT_ADDRESS)).rejects.toThrow(DisposalError)
+      await expect(account.revokeDelegation()).rejects.toThrow(DisposalError)
+    })
+
+    test('should throw a DisposalError when the underlying shared signer is disposed directly', async () => {
+      const signer = new SeedSignerEvm(SEED_PHRASE)
+      const account = new WalletAccountEvm(signer)
+
+      signer.dispose()
+
+      await expect(account.sign('Dummy message to sign.')).rejects.toThrow(DisposalError)
     })
   })
 })
