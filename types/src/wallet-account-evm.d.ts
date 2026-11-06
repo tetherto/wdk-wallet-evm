@@ -161,7 +161,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Signs an ERC-7702 authorization tuple.
      *
      * The chainId is taken from the request, else the wallet config, else the provider; the nonce from the request,
-     * else the provider.
+     * else the account's pending nonce from the provider.
      *
      * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
      * when reported by the provider or set on the wallet config.

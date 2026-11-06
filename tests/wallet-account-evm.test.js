@@ -945,6 +945,15 @@ describe('WalletAccountEvm', () => {
       expect(auth.nonce).toBe(8n)
     })
 
+    test('should take the nonce from the pending block', async () => {
+      const provider = createProvider({ eth_getTransactionCount: ([, blockTag]) => blockTag === 'pending' ? '0x6' : '0x5' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const auth = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS, chainId: 1 })
+
+      expect(auth.nonce).toBe(6n)
+    })
+
     test('should throw when chainId and nonce are missing and the account has no provider', async () => {
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
