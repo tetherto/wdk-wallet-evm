@@ -183,6 +183,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
      * the configured chain id is checked against that provider's network before anything is signed.
      *
+     * If a transaction from the account is still pending, the delegation is sent after it. Nodes that allow a delegated
+     * account only one in-flight transaction reject a revocation or re-delegation until that transaction is mined.
+     *
      * @param {string} delegateAddress - The address of the contract to delegate to.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
