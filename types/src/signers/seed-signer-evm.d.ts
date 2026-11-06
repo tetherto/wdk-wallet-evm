@@ -106,6 +106,8 @@ export default class SeedSignerEvm implements ISignerEvm {
      * Disposes the signer, erasing its secrets from memory.
      */
     dispose(): void;
+    /** @private */
+    private _guardDisposed;
 }
 /**
  * Memory-safe BIP-32 HD node (implemented by the internal src/memory-safe/hd-node-wallet.js)
