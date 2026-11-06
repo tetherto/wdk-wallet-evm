@@ -8,6 +8,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @returns {WalletAccountEvm} The wallet account.
      */
     static fromPrivateKey(privateKey: string | Uint8Array, config?: EvmWalletConfig): WalletAccountEvm;
+    /** @private */
+    private static _getMaxFee;
     /**
      * Creates a new evm wallet account from a BIP-39 seed, deriving the account's key at the
      * given BIP-44 path.
@@ -116,13 +118,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Sends a transaction.
      *
      * @param {EvmTransaction | string} tx - The transaction, or a signed raw transaction as a hex string.
-     * @returns {Promise<TransactionResult>} The transaction's result.
+     * @returns {Promise<TransactionResult>} The transaction's result; the fee is the maximum cost of the transaction as signed.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      * @throws {ValueError} If the transaction mixes fee fields that its type doesn't support, or if it is an EIP-4844 (type 3) blob transaction.
      * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
+     * @throws {Error} If the simulation of the transaction reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     sendTransaction(tx: EvmTransaction | string): Promise<TransactionResult>;
+    /** @private */
+    private _assertMaxFee;
+    /** @private */
+    private _sendPopulated;
     /**
      * Quotes the costs of a send transaction operation.
      *
@@ -147,6 +154,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
      * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
      * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
+     * @throws {ValueError} If the options mix gas override fields that the transaction's type doesn't support.
+     * @throws {Error} If the simulation of the transfer reverts, as an ethers error with code `CALL_EXCEPTION`.
      */
     transfer(options: EvmTransferOptions): Promise<TransferResult>;
     /**
@@ -168,17 +177,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Signs an ERC-7702 authorization tuple.
      *
-     * The chainId and nonce are populated from the provider when not explicitly provided.
+     * The chainId is taken from the request, else the wallet config, else the provider; the nonce from the request,
+     * else the account's pending nonce from the provider.
      *
      * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
-     * when reported by the provider.
+     * when reported by the provider or set on the wallet config.
      *
      * @see https://eips.ethereum.org/EIPS/eip-7702
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
-     * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
-     * @throws {AssertionError} If the chainId is not provided and the provider reports a chain id of 0.
      * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
+     * @throws {ProviderRequiredError} If the wallet is not connected to a provider and a value must come from it: the nonce, or the chainId when none is configured.
+     * @throws {AssertionError} If no chainId is provided or configured and the provider reports a chain id of 0.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**
@@ -188,11 +198,18 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * A fixed gas limit is used because `eth_estimateGas` may revert when
      * the delegate contract lacks a `receive`/`fallback` function.
      *
+     * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
+     * the configured chain id is checked against that provider's network before anything is signed.
+     *
+     * If a transaction from the account is still pending, the delegation is sent after it. Nodes that allow a delegated
+     * account only one in-flight transaction reject a revocation or re-delegation until that transaction is mined.
+     *
      * @param {string} delegateAddress - The address of the contract to delegate to.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider reports a chain id of 0.
      * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
     delegate(delegateAddress: string): Promise<TransactionResult>;
     /**
@@ -200,8 +217,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider reports a chain id of 0.
      * @throws {DisposalError} If the account, or the externally supplied signer it uses, has been disposed.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
     revokeDelegation(): Promise<TransactionResult>;
     /**
