@@ -160,16 +160,17 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /**
      * Signs an ERC-7702 authorization tuple.
      *
-     * The chainId and nonce are populated from the provider when not explicitly provided.
+     * The chainId is taken from the request, else the wallet config, else the provider; the nonce from the request,
+     * else the provider.
      *
      * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
-     * when reported by the provider.
+     * when reported by the provider or set on the wallet config.
      *
      * @see https://eips.ethereum.org/EIPS/eip-7702
      * @param {AuthorizationRequest} auth - The authorization request.
      * @returns {Promise<Authorization>} The signed authorization.
-     * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
-     * @throws {AssertionError} If the chainId is not provided and the provider reports a chain id of 0.
+     * @throws {ProviderRequiredError} If the wallet is not connected to a provider and a value must come from it: the nonce, or the chainId when none is configured.
+     * @throws {AssertionError} If no chainId is provided or configured and the provider reports a chain id of 0.
      */
     signAuthorization(auth: AuthorizationRequest): Promise<Authorization>;
     /**
@@ -179,10 +180,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * A fixed gas limit is used because `eth_estimateGas` may revert when
      * the delegate contract lacks a `receive`/`fallback` function.
      *
+     * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
+     * the configured chain id is checked against that provider's network before anything is signed.
+     *
      * @param {string} delegateAddress - The address of the contract to delegate to.
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider reports a chain id of 0.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
     delegate(delegateAddress: string): Promise<TransactionResult>;
     /**
@@ -190,7 +195,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * @returns {Promise<TransactionResult>} The transaction result.
      * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-     * @throws {AssertionError} If the provider reports a chain id of 0.
+     * @throws {AssertionError} If the provider is on a different chain than the configured one.
+     * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
      */
     revokeDelegation(): Promise<TransactionResult>;
     /**

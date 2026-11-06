@@ -393,19 +393,25 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
   /**
    * Signs an ERC-7702 authorization tuple.
    *
-   * The chainId and nonce are populated from the provider when not explicitly provided.
+   * The chainId is taken from the request, else the wallet config, else the provider; the nonce from the request,
+   * else the provider.
    *
    * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
-   * when reported by the provider.
+   * when reported by the provider or set on the wallet config.
    *
    * @see https://eips.ethereum.org/EIPS/eip-7702
    * @param {AuthorizationRequest} auth - The authorization request.
    * @returns {Promise<Authorization>} The signed authorization.
-   * @throws {ProviderRequiredError} If the chainId or nonce are not provided and the wallet is not connected to a provider.
-   * @throws {AssertionError} If the chainId is not provided and the provider reports a chain id of 0.
+   * @throws {ProviderRequiredError} If the wallet is not connected to a provider and a value must come from it: the nonce, or the chainId when none is configured.
+   * @throws {AssertionError} If no chainId is provided or configured and the provider reports a chain id of 0.
    */
   async signAuthorization (auth) {
     const populated = { ...auth }
+
+    if (populated.chainId == null && this._config.chainId) {
+      populated.chainId = this._config.chainId
+    }
+
     if (populated.chainId == null || populated.nonce == null) {
       if (!this._provider) {
         throw new ProviderRequiredError('The wallet must be connected to a provider to populate the authorization chainId and nonce. Provide them explicitly to sign offline.')
@@ -432,10 +438,14 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    * A fixed gas limit is used because `eth_estimateGas` may revert when
    * the delegate contract lacks a `receive`/`fallback` function.
    *
+   * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
+   * the configured chain id is checked against that provider's network before anything is signed.
+   *
    * @param {string} delegateAddress - The address of the contract to delegate to.
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider reports a chain id of 0.
+   * @throws {AssertionError} If the provider is on a different chain than the configured one.
+   * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
   async delegate (delegateAddress) {
     if (!this._provider) {
@@ -443,6 +453,16 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     }
 
     const address = await this.getAddress()
+    const chainId = this._config.chainId || undefined
+
+    if (chainId !== undefined) {
+      const network = await this._provider.getNetwork()
+
+      if (network.chainId !== BigInt(chainId)) {
+        throw new AssertionError(`The provider is on chain ${network.chainId}, not on chain ${chainId}.`)
+      }
+    }
+
     const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'latest'])
     const nonce = Number(nonceHex)
 
@@ -453,6 +473,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     return await this.sendTransaction({
       type: 4,
+      chainId,
       nonce,
       to: address,
       value: 0,
@@ -466,7 +487,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
    *
    * @returns {Promise<TransactionResult>} The transaction result.
    * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
-   * @throws {AssertionError} If the provider reports a chain id of 0.
+   * @throws {AssertionError} If the provider is on a different chain than the configured one.
+   * @throws {AssertionError} If no chain id is configured and the provider reports a chain id of 0.
    */
   async revokeDelegation () {
     return await this.delegate(ZeroAddress)
