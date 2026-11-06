@@ -161,7 +161,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * Signs an ERC-7702 authorization tuple.
      *
      * The chainId is taken from the request, else the wallet config, else the provider; the nonce from the request,
-     * else the provider.
+     * else the account's pending nonce from the provider.
      *
      * A chainId of 0 makes the authorization valid on every chain, so it is only signed when given explicitly, never
      * when reported by the provider or set on the wallet config.
@@ -182,6 +182,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      *
      * The chain id is taken from the wallet config, else the provider. When the config also passes a pre-built provider,
      * the configured chain id is checked against that provider's network before anything is signed.
+     *
+     * If a transaction from the account is still pending, the delegation is sent after it. Nodes that allow a delegated
+     * account only one in-flight transaction reject a revocation or re-delegation until that transaction is mined.
      *
      * @param {string} delegateAddress - The address of the contract to delegate to.
      * @returns {Promise<TransactionResult>} The transaction result.

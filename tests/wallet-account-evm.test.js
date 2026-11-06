@@ -945,6 +945,15 @@ describe('WalletAccountEvm', () => {
       expect(auth.nonce).toBe(8n)
     })
 
+    test('should take the nonce from the pending block', async () => {
+      const provider = createProvider({ eth_getTransactionCount: ([, blockTag]) => blockTag === 'pending' ? '0x6' : '0x5' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      const auth = await account.signAuthorization({ address: DELEGATE_CONTRACT_ADDRESS, chainId: 1 })
+
+      expect(auth.nonce).toBe(6n)
+    })
+
     test('should throw when chainId and nonce are missing and the account has no provider', async () => {
       const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0")
 
@@ -1045,6 +1054,17 @@ describe('WalletAccountEvm', () => {
 
       await expect(promise).rejects.toThrow(ProviderRequiredError)
       await expect(promise).rejects.toThrow('The wallet must be connected to a provider to delegate.')
+    })
+
+    test('should take the nonce from the pending block so a pending transaction is not replaced', async () => {
+      const provider = createProvider({ eth_getTransactionCount: ([, blockTag]) => blockTag === 'pending' ? '0x6' : '0x5' })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      await account.delegate(DELEGATE_CONTRACT_ADDRESS)
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+      expect(transaction.nonce).toBe(6)
+      expect(transaction.authorizationList[0].nonce).toBe(7n)
     })
 
     test('should delegate on the configured chain when a pre-built provider agrees with it', async () => {
