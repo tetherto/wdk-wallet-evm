@@ -145,9 +145,7 @@ export default class SeedSignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async derive (relPath) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     const signer = Object.create(SeedSignerEvm.prototype)
     signer._account = this._account.derivePath(relPath)
@@ -172,9 +170,7 @@ export default class SeedSignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async sign (message) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._account.signMessage(message)
   }
@@ -187,9 +183,7 @@ export default class SeedSignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signTransaction (tx) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._account.signTransaction(tx)
   }
@@ -202,9 +196,7 @@ export default class SeedSignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._account.signTypedData(domain, types, message)
   }
@@ -217,9 +209,7 @@ export default class SeedSignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signAuthorization (auth) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._account.authorizeSync(auth)
   }
@@ -232,5 +222,12 @@ export default class SeedSignerEvm {
 
     this._account.dispose()
     this._disposed = true
+  }
+
+  /** @private */
+  _guardDisposed () {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
   }
 }

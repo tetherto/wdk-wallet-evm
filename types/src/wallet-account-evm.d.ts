@@ -228,6 +228,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
      * the config); a caller-supplied signer is left untouched otherwise.
      */
     dispose(): void;
+    /** @private */
+    private _guardDisposed;
 }
 export type ISignerEvm = import("./signers/signer-evm.js").ISignerEvm;
 export type HDNodeWallet = import("ethers").HDNodeWallet;

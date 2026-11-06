@@ -118,9 +118,7 @@ export default class PrivateKeySignerEvm {
    * @throws {ValueError} If the path is not valid.
    */
   async derive (path) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     throw new UnsupportedOperationError('derive(path)')
   }
@@ -142,9 +140,7 @@ export default class PrivateKeySignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async sign (message) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._wallet.signMessage(message)
   }
@@ -157,9 +153,7 @@ export default class PrivateKeySignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signTransaction (tx) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._wallet.signTransaction(tx)
   }
@@ -172,9 +166,7 @@ export default class PrivateKeySignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signTypedData ({ domain, types, message }) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._wallet.signTypedData(domain, types, message)
   }
@@ -187,9 +179,7 @@ export default class PrivateKeySignerEvm {
    * @throws {DisposalError} If the signer has been disposed.
    */
   async signAuthorization (auth) {
-    if (this.disposed) {
-      throw new DisposalError('The signer has been disposed.')
-    }
+    this._guardDisposed()
 
     return this._wallet.authorizeSync(auth)
   }
@@ -202,5 +192,12 @@ export default class PrivateKeySignerEvm {
 
     this._signingKey.dispose()
     this._disposed = true
+  }
+
+  /** @private */
+  _guardDisposed () {
+    if (this.disposed) {
+      throw new DisposalError('The signer has been disposed.')
+    }
   }
 }
