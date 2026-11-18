@@ -108,7 +108,7 @@ export default class WalletAccountReadOnlyEvm extends WalletAccountReadOnly {
    * @param {Omit<EvmWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
    */
   constructor (address, config = { }) {
-    super(address)
+    super(address, config)
 
     /**
      * The read-only wallet account configuration.
