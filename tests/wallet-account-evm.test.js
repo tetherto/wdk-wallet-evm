@@ -404,6 +404,38 @@ describe('WalletAccountEvm', () => {
       expect(transaction.from).toBe(ACCOUNT.address)
     })
 
+    test('should use the next nonce for consecutive transactions', async () => {
+      // The pending nonce moves up as soon as a transaction is broadcast, so the second transaction must not reuse a
+      // nonce that the provider's read cache still holds from the first one.
+      let pendingNonce = 0
+
+      const provider = createProvider({
+        eth_getTransactionCount: () => toQuantity(pendingNonce),
+        eth_sendRawTransaction: () => {
+          pendingNonce++
+          return DUMMY_TX_HASH
+        }
+      })
+      const account = new WalletAccountEvm(SEED_PHRASE, "0'/0/0", { provider })
+
+      await account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })
+      await account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000 })
+
+      const nonces = provider.request.mock.calls
+        .filter(([{ method }]) => method === 'eth_sendRawTransaction')
+        .map(([{ params }]) => Transaction.from(params[0]).nonce)
+
+      expect(nonces).toEqual([0, 1])
+    })
+
+    test('should keep a nonce set on the transaction', async () => {
+      await account.sendTransaction({ to: SPENDER_ADDRESS, value: 1_000, nonce: 9 })
+
+      const transaction = Transaction.from(provider.sentRawTransactions[0])
+
+      expect(transaction.nonce).toBe(9)
+    })
+
     test('should throw if transaction fee exceeds the transaction max fee configuration', async () => {
       const account = new WalletAccountEvm(await new SeedSignerEvm(SEED_PHRASE, "m/44'/60'").derive("0'/0/0"), {
         provider,

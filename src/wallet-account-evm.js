@@ -291,6 +291,21 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     return BigInt(tx.gasLimit) * BigInt(tx.maxFeePerGas ?? tx.gasPrice)
   }
 
+  /**
+   * Returns the account's next nonce, counting its pending transactions.
+   *
+   * The nonce is read with a raw `eth_getTransactionCount` call instead of `provider.getTransactionCount`, which goes
+   * through the ethers read cache (250ms by default) and can return the nonce of a transaction that was just sent.
+   *
+   * @private
+   * @param {string} address - The account's address.
+   * @returns {Promise<number>} The pending nonce.
+   */
+  async _getPendingNonce (address) {
+    const nonce = await this._provider.send('eth_getTransactionCount', [address, 'pending'])
+    return Number(nonce)
+  }
+
   /** @private */
   async _sendPopulated (tx, maxFee, maxFeeExceededErrorMessage) {
     WalletAccountReadOnlyEvm._validateFeeFields(tx)
@@ -299,8 +314,10 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
 
     const gasLimit = await this._estimateGas({ from: address, ...tx })
 
+    const nonce = tx.nonce ?? await this._getPendingNonce(address)
+
     const voidSigner = new VoidSigner(address, this._provider)
-    const populated = await voidSigner.populateTransaction({ ...tx, gasLimit: tx.gasLimit ?? gasLimit })
+    const populated = await voidSigner.populateTransaction({ ...tx, nonce, gasLimit: tx.gasLimit ?? gasLimit })
     const fee = WalletAccountEvm._getMaxFee(populated)
 
     this._assertMaxFee(fee, maxFee, maxFeeExceededErrorMessage)
@@ -463,7 +480,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       }
       if (populated.nonce == null) {
         const address = await this.getAddress()
-        populated.nonce = await this._provider.getTransactionCount(address, 'pending')
+        populated.nonce = await this._getPendingNonce(address)
       }
     }
     return await this._signer.signAuthorization(populated)
@@ -507,8 +524,7 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
       }
     }
 
-    const nonceHex = await this._provider.send('eth_getTransactionCount', [address, 'pending'])
-    const nonce = Number(nonceHex)
+    const nonce = await this._getPendingNonce(address)
 
     const auth = await this.signAuthorization({
       address: delegateAddress,
