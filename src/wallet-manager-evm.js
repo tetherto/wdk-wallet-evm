@@ -237,8 +237,8 @@ export default class WalletManagerEvm extends WalletManager {
    * Disposes the cached wallet accounts that hold a private key. An account created directly on a
    * signer added via {@link addSigner} keeps its key. If the manager was created from a seed, the
    * internally created default signer is wiped too; a default signer supplied at construction is
-   * left untouched, as are signers registered via {@link addSigner}. A seed phrase passed as a
-   * string cannot be wiped: it stays in memory until it is garbage collected.
+   * left untouched, as are signers registered via {@link addSigner}. The seed given at
+   * construction is not wiped; a seed phrase string stays in memory until it is garbage collected.
    */
   dispose () {
     if (this._shouldWipeDefaultSignerOnDisposal) {
