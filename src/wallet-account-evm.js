@@ -291,17 +291,9 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm {
     return BigInt(tx.gasLimit) * BigInt(tx.maxFeePerGas ?? tx.gasPrice)
   }
 
-  /**
-   * Returns the account's next nonce, counting its pending transactions.
-   *
-   * The nonce is read with a raw `eth_getTransactionCount` call instead of `provider.getTransactionCount`, which goes
-   * through the ethers read cache (250ms by default) and can return the nonce of a transaction that was just sent.
-   *
-   * @private
-   * @param {string} address - The account's address.
-   * @returns {Promise<number>} The pending nonce.
-   */
+  /** @private */
   async _getPendingNonce (address) {
+    // A raw call, because provider.getTransactionCount goes through the ethers read cache (250ms by default).
     const nonce = await this._provider.send('eth_getTransactionCount', [address, 'pending'])
     return Number(nonce)
   }

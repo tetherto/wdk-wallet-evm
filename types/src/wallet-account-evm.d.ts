@@ -129,6 +129,8 @@ export default class WalletAccountEvm extends WalletAccountReadOnlyEvm implement
     /** @private */
     private _assertMaxFee;
     /** @private */
+    private _getPendingNonce;
+    /** @private */
     private _sendPopulated;
     /**
      * Quotes the costs of a send transaction operation.
