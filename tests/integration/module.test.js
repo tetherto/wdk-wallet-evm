@@ -123,6 +123,23 @@ describe('@tetherto/wdk-wallet-evm', () => {
     expect(fee).toBe(EXPECTED_FEE)
   })
 
+  test('should send two transactions in a row from the same account', async () => {
+    const account = await wallet.getAccount(0)
+
+    const TRANSACTION = {
+      to: '0xa460AEbce0d3A4BecAd8ccf9D6D4861296c503Bd',
+      value: 1_000
+    }
+
+    const { hash: firstHash } = await account.sendTransaction(TRANSACTION)
+    const { hash: secondHash } = await account.sendTransaction(TRANSACTION)
+
+    const first = await provider.getTransaction(firstHash)
+    const second = await provider.getTransaction(secondHash)
+
+    expect(second.nonce).toBe(first.nonce + 1)
+  })
+
   test('should derive two accounts, send a tx from account 1 to 2 and get the correct balances', async () => {
     const account0 = await wallet.getAccount(0)
 
